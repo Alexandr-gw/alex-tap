@@ -38,7 +38,7 @@ jobs:
         env:
           # Keep secrets out of code; set real ones in repo → Settings → Secrets and variables → Actions
           NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL || 'http://localhost:3000' }}
-          NODE_ENV: "production"
+          NODE_ENV: ${{ secrets.NODE_ENV || 'development' }}
         run: npm run -s build
 
       - name: Dependency vulnerability scan

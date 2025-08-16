@@ -1,0 +1,22 @@
+version: "3.9"
+services:
+  db: { image: postgres:16-alpine, environment: { POSTGRES_USER: app, POSTGRES_PASSWORD: app, POSTGRES_DB: app }, ports: [ "5432:5432" ] }
+  redis: { image: redis:7-alpine, ports: [ "6379:6379" ] }
+
+  server:
+    build: ./server
+    working_dir: /app
+    command: npm run dev
+    ports: [ "4000:4000" ]
+    volumes: [ "./server:/app" ]
+    depends_on: [ db, redis ]
+
+  client:
+    build: ./client
+    working_dir: /app
+    command: npm run dev
+    ports: [ "3000:3000" ]
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:4000
+    volumes: [ "./client:/app" ]
+    depends_on: [ server ]
