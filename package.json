@@ -1,13 +1,20 @@
 {
   "private": true,
   "name": "alex-tap",
-  "workspaces": ["client","server","packages/*"],
+  "workspaces": [
+    "client",
+    "server",
+    "packages/*"
+  ],
   "scripts": {
-    "dev:client": "npm --workspace client run dev",
-    "build:client": "npm --workspace client run build",
-    "lint:client": "npm --workspace client run lint",
-    "typecheck:client": "npm --workspace client run typecheck",
-    "build:server": "npm --workspace server run build",
-    "dev:server": "npm --workspace server run dev"
+    "dev:client": "npm -w client run dev",
+    "build:client": "npm -w client run build",
+    "lint:client": "npm -w client run lint",
+    "typecheck:client": "npm -w client run typecheck",
+    "build:server": "npm -w server run build",
+    "dev:server": "npm -w server run dev"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19"
   }
 }
