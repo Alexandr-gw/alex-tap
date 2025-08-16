@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+permissions:
+  contents: read
+
+jobs:
+  build_test_lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run -s typecheck
+        continue-on-error: false
+
+      - name: Lint
+        run: npm run -s lint
+        continue-on-error: false
+
+      - name: Build
+        env:
+          # Keep secrets out of code; set real ones in repo → Settings → Secrets and variables → Actions
+          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL || 'http://localhost:3000' }}
+          NODE_ENV: "production"
+        run: npm run -s build
+
+      - name: Dependency vulnerability scan
+        run: npx audit-ci --low --moderate --high --critical
