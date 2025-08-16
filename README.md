@@ -1,5 +1,5 @@
 # Alex-tap — Service Booking & Scheduling Platform
-
+![CI](https://github.com/Alexandr-gw/alex-tap/actions/workflows/ci.yml/badge.svg)
 ![Architecture Diagram](https://private-user-images.githubusercontent.com/22914743/478294461-db7ea2d6-0a5e-486d-bde7-9b1a0bb39127.png?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NTUyMjkyNzUsIm5iZiI6MTc1NTIyODk3NSwicGF0aCI6Ii8yMjkxNDc0My80NzgyOTQ0NjEtZGI3ZWEyZDYtMGE1ZS00ODZkLWJkZTctOWIxYTBiYjM5MTI3LnBuZz9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFWQ09EWUxTQTUzUFFLNFpBJTJGMjAyNTA4MTUlMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjUwODE1VDAzMzYxNVomWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPWY1Y2JhY2JmOTE0NjQ0OWM3NTM0YjY5NjMxZTc5ZTNmOWQ0NWRlMDgwOTY2MWZhOTAwYWFlYTc2ZTU5MjM1MmEmWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0In0.86mw4NOei_0UmSP_J1JvfOFJHofT7rB5rnTihf6N53I)
 
 A multi-tenant, role-based service booking system, built with **Next.js**, **TypeScript**, **Tailwind CSS**, **Keycloak**, **PostgreSQL**, **Stripe**, **Twilio**, and **Google Maps**.
