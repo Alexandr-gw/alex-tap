@@ -1,10 +1,10 @@
-import {Injectable} from '@nestjs/common';
-import {randomBytes, createHash} from 'crypto';
+import { Injectable } from '@nestjs/common';
+import { randomBytes, createHash } from 'crypto';
 
 function base64urlEncode(buffer: Buffer): string {
     return buffer.toString('base64')
-        .replace(/=/g, '') // Remove padding
-        .replace(/\+/g, '-') // Replace '+' with '-'
+        .replace(/=/g, '')
+        .replace(/\+/g, '-')
         .replace(/\//g, '_');
 }
 
@@ -15,7 +15,7 @@ export class AuthService {
         const codeChallenge = base64urlEncode(
             createHash('sha256').update(codeVerifier).digest()
         );
-        return {codeVerifier, codeChallenge};
+        return { codeVerifier, codeChallenge };
     }
 
     buildAuthUrl(params: {
@@ -38,58 +38,92 @@ export class AuthService {
         return url.toString();
     }
 
-    exchangeCodeForToken(params: {
-        tokenEndpoint:string;
-        clientId:string;
-        code:string;
-        codeVerifier:string;
-        redirectUri:string;
-    }){
-        const body = new URLSearchParams();
-        body.set('grant_type', 'authorization_code');
-        body.set('client_id', params.clientId);
-        body.set('code', params.code);
-        body.set('code_verifier', params.codeVerifier);
-        body.set('redirect_uri', params.redirectUri);
+    async exchangeCodeForToken(params: {
+        tokenEndpoint: string;
+        clientId: string;
+        code: string;
+        codeVerifier: string;
+        redirectUri: string;
+    }) {
+        try {
+            const body = new URLSearchParams();
+            body.set('grant_type', 'authorization_code');
+            body.set('client_id', params.clientId);
+            body.set('code', params.code);
+            body.set('code_verifier', params.codeVerifier);
+            body.set('redirect_uri', params.redirectUri);
 
-        return fetch(params.tokenEndpoint, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: body.toString(),
-        }).then(res => {
+            const res = await fetch(params.tokenEndpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: body.toString(),
+            });
+
             if (!res.ok) {
                 throw new Error(`Token exchange failed: ${res.statusText}`);
             }
-            return res.json();
-        });
+            return await res.json();
+        } catch (error) {
+            throw new Error(`Token exchange failed: ${error.message}`);
+        }
     }
 
-    refreshToken(params:{
-        tokernEndpoint:string;
-        clientId:string;
-        refreshToken:string;
-    }){
-        const body = new URLSearchParams();
-        body.set('grant_type', 'refresh_token');
-        body.set('client_id', params.clientId);
-        body.set('refresh_token', params.refreshToken);
+    async refreshToken(params: {
+        tokernEndpoint: string;
+        clientId: string;
+        refreshToken: string;
+    }) {
+        try {
+            const body = new URLSearchParams();
+            body.set('grant_type', 'refresh_token');
+            body.set('client_id', params.clientId);
+            body.set('refresh_token', params.refreshToken);
 
-        return fetch(params.tokernEndpoint, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: body.toString(),
-        }).then(res => {
+            const res = await fetch(params.tokernEndpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: body.toString(),
+            });
+
             if (!res.ok) {
                 throw new Error(`Token refresh failed: ${res.statusText}`);
             }
-            return res.json();
-        });
+            return await res.json();
+        } catch (error) {
+            throw new Error(`Token refresh failed: ${error.message}`);
+        }
     }
 
+    async frontChannelLogout(params: {
+        logoutEndpoint: string;
+        clientId: string;
+        refreshToken?: string;
+    }) {
+        try {
+            const body = new URLSearchParams();
+            body.set('client_id', params.clientId);
+            if (params.refreshToken) {
+                body.set('refresh_token', params.refreshToken);
+            }
 
+            const res = await fetch(params.logoutEndpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: body.toString()
+            });
+
+            if (!res.ok) {
+                throw new Error(`Front-channel logout failed: ${res.statusText}`);
+            }
+            return await res.text();
+        } catch (error) {
+            throw new Error(`Front-channel logout failed: ${error.message}`);
+        }
+    }
 }
-
