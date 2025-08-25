@@ -23,8 +23,8 @@ export class AuthController {
         res.cookie('oidc_nonce', nonce, {httpOnly: true, secure: true, sameSite: 'lax', maxAge: 5 * 60 * 1000});
 
         const authorizationUrl = this.AuthService.buildAuthUrl({
-            authorizationEndpoint: this.cfg.getOrThrow<string>('OIDC_AUTHORIZATION_ENDPOINT'),
-            clientId: this.cfg.getOrThrow<string>('OIDC_CLIENT_ID'),
+            authorizationEndpoint: this.cfg.getOrThrow<string>('KEYCLOAK_AUTHORIZATION_ENDPOINT'),
+            clientId: this.cfg.getOrThrow<string>('KEYCLOAK_CLIENT_ID'),
             redirectUri: this.cfg.getOrThrow<string>('OIDC_REDIRECT_URI'),
             challenge: codeChallenge,
             state,
@@ -75,9 +75,9 @@ export class AuthController {
             const accessTtl = Math.max(1, Math.floor((tokenResponse.expires_in ?? 300) * 0.95)) * 1000;
             const refreshTtl = Math.max(1, Math.floor((tokenResponse.refresh_expires_in ?? 3600) * 0.95)) * 1000;
 
-            res.cookie(accessName, access_token, { ...cookieOpts, maxAge: accessTtl });
+            res.cookie(accessName, access_token, {...cookieOpts, maxAge: accessTtl});
             if (refresh_token) {
-                res.cookie(refreshName, refresh_token, { ...cookieOpts, maxAge: refreshTtl });
+                res.cookie(refreshName, refresh_token, {...cookieOpts, maxAge: refreshTtl});
             }
 
 
@@ -94,7 +94,84 @@ export class AuthController {
         }
     }
 
-@Post('refresh')
+    @Post('refresh')
+    async refresh(@Req() req, @Res() res) {
+        const appBase = this.cfg.getOrThrow<string>('APP_BASE_URL');
 
-@Post('logout')
+        const accessName = this.cfg.getOrThrow<string>('COOKIE_NAME_ACCESS');
+        const refreshName = this.cfg.getOrThrow<string>('COOKIE_NAME_REFRESH');
+
+        const refreshToken = req.cookies[refreshName];
+        if (!refreshToken) {
+            return res.status(401).json({error: 'no_refresh'});
+        }
+
+        const cookieOpts = {httpOnly: true, secure: true, sameSite: 'lax' as const, path: '/'};
+
+        try {
+            const json = await this.AuthService.refreshToken({
+                tokenEndpoint: this.cfg.getOrThrow<string>('KEYCLOAK_TOKEN_ENDPOINT'),
+                clientId: this.cfg.getOrThrow<string>('KEYCLOAK_CLIENT_ID'),
+                refreshToken,
+            });
+
+            const {access_token, refresh_token, id_token, expires_in, refresh_expires_in} = json || {};
+            if (!access_token || !id_token) {
+                throw new Error('Missing tokens in response');
+            }
+
+            const accessTtlMs = Math.max(1, Math.floor((expires_in ?? 300) * 0.95)) * 1000;
+            const refreshTtlMs = Math.max(1, Math.floor((refresh_expires_in ?? 3600) * 0.95)) * 1000;
+
+            res.cookie(accessName, access_token, {...cookieOpts, maxAge: accessTtlMs});
+            if (refresh_token) {
+                res.cookie(refreshName, refresh_token, {...cookieOpts, maxAge: refreshTtlMs});
+            }
+
+            return res.json({ok: true});
+        } catch (err) {
+            res.clearCookie(accessName, cookieOpts);
+            res.clearCookie(refreshName, cookieOpts);
+            return res.status(401).json({error: 'refresh_failed'});
+        }
+    }
+
+
+    @Post('logout')
+    async logout(@Req() req, @Res() res) {
+        const accessName = this.cfg.getOrThrow<string>('COOKIE_NAME_ACCESS');
+        const refreshName = this.cfg.getOrThrow<string>('COOKIE_NAME_REFRESH');
+        const clientId = this.cfg.getOrThrow<string>('KEYCLOAK_CLIENT_ID');
+        const kcLogoutPOST = this.cfg.getOrThrow<string>('KEYCLOAK_LOGOUT_ENDPOINT'); // POST endpoint
+        const appBase = this.cfg.getOrThrow<string>('APP_BASE_URL');
+
+        const kcLogoutGET = this.cfg.get<string>('OIDC_LOGOUT_ENDPOINT'); // GET/redirect endpoint
+        const postLogout = this.cfg.get<string>('OIDC_POST_LOGOUT_REDIRECT_URI') ?? `${appBase}/login`;
+
+        const cookieOpts = {httpOnly: true, secure: true, sameSite: 'lax' as const, path: '/'};
+
+        const refreshToken = req.cookies?.[refreshName];
+
+        try {
+            await this.AuthService.frontChannelLogout({
+                logoutEndpoint: kcLogoutPOST,
+                clientId,
+                refreshToken,
+            });
+        } catch {
+            // Ignore errors - proceed with local logout
+        }
+
+        res.clearCookie(accessName, cookieOpts);
+        res.clearCookie(refreshName, cookieOpts);
+
+        if (kcLogoutGET) {
+            const url = new URL(kcLogoutGET);
+            url.searchParams.set('post_logout_redirect_uri', postLogout);
+            return res.redirect(url.toString());
+        }
+
+        return res.json({ok: true});
+    }
+
 }
