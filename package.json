@@ -15,6 +15,7 @@
     "typescript": "^5.4.0"
   },
   "dependencies": {
-    "@nestjs/config": "^4.0.2"
+    "@nestjs/config": "^4.0.2",
+    "jose": "^6.0.13"
   }
 }
