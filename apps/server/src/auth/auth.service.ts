@@ -1,5 +1,5 @@
-import { Injectable } from '@nestjs/common';
-import { randomBytes, createHash } from 'crypto';
+import {Injectable} from '@nestjs/common';
+import {randomBytes, createHash} from 'crypto';
 
 function base64urlEncode(buffer: Buffer): string {
     return buffer.toString('base64')
@@ -15,7 +15,7 @@ export class AuthService {
         const codeChallenge = base64urlEncode(
             createHash('sha256').update(codeVerifier).digest()
         );
-        return { codeVerifier, codeChallenge };
+        return {codeVerifier, codeChallenge};
     }
 
     buildAuthUrl(params: {
@@ -60,11 +60,11 @@ export class AuthService {
                 },
                 body: body.toString(),
             });
-
+            const raw = await res.text();
             if (!res.ok) {
-                throw new Error(`Token exchange failed: ${res.statusText}`);
+                throw new Error(`Token exchange failed: ${res.status} ${res.statusText} :: ${raw}`);
             }
-            return await res.json();
+            return JSON.parse(raw);
         } catch (error) {
             throw new Error(`Token exchange failed: ${error.message}`);
         }

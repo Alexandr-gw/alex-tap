@@ -47,8 +47,8 @@ export class AuthController {
 
         try {
             const tokenResponse = await this.AuthService.exchangeCodeForToken({
-                tokenEndpoint: this.cfg.getOrThrow<string>('OIDC_TOKEN_ENDPOINT'),
-                clientId: this.cfg.getOrThrow<string>('OIDC_CLIENT_ID'),
+                tokenEndpoint: this.cfg.getOrThrow<string>('KEYCLOAK_TOKEN_ENDPOINT'),
+                clientId: this.cfg.getOrThrow<string>('KEYCLOAK_CLIENT_ID'),
                 code,
                 codeVerifier,
                 redirectUri: this.cfg.getOrThrow<string>('OIDC_REDIRECT_URI'),
@@ -66,7 +66,7 @@ export class AuthController {
             }
             const cookieOpts = {
                 httpOnly: true,
-                secure: true,
+                secure: false,
                 sameSite: 'lax' as const,
                 path: '/',
             };
@@ -90,6 +90,7 @@ export class AuthController {
             res.clearCookie('oidc_state');
             res.clearCookie('oidc_nonce');
             res.clearCookie('pkce_verifier');
+            console.log( 'Auth callback error:', err);
             return res.redirect(`${this.cfg.getOrThrow<string>('APP_BASE_URL')}/401`);
         }
     }

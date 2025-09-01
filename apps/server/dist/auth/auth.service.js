@@ -48,10 +48,11 @@ let AuthService = class AuthService {
                 },
                 body: body.toString(),
             });
+            const raw = await res.text();
             if (!res.ok) {
-                throw new Error(`Token exchange failed: ${res.statusText}`);
+                throw new Error(`Token exchange failed: ${res.status} ${res.statusText} :: ${raw}`);
             }
-            return await res.json();
+            return JSON.parse(raw);
         }
         catch (error) {
             throw new Error(`Token exchange failed: ${error.message}`);
