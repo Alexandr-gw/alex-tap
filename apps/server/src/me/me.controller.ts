@@ -24,14 +24,22 @@ export class MeController {
 
     @Get()
     async me(@AuthUser() claims: Claims, @CompanyId() companyId: string | null) {
-        // 1) Roles from Keycloak token (realm + this client)
-        const clientId = this.cfg.get<string>('KEYCLOAK_CLIENT_ID')!;
-        const rolesFromToken = [
-            ...(claims.realm_access?.roles ?? []),
-            ...(claims.resource_access?.[clientId]?.roles ?? []),
-        ];
+        // --- 1) Roles from token (realm + resource clients) ---
+        const preferredClient = this.cfg.get<string>('KEYCLOAK_CLIENT_ID') ?? null;
 
-        // 2) Upsert our local user mirror by Keycloak sub (first-login friendly)
+        const realmRoles = claims.realm_access?.roles ?? [];
+        const allClientRoles = Object.values(claims.resource_access ?? {}).flatMap(
+            (r) => r?.roles ?? [],
+        );
+        const preferredRoles =
+            (preferredClient && claims.resource_access?.[preferredClient]?.roles) ?? [];
+
+        // unique union: realm + preferred client (if any) + all client roles
+        const rolesFromToken = Array.from(
+            new Set([...realmRoles, ...preferredRoles, ...allClientRoles]),
+        );
+
+        // --- 2) Upsert local user mirror by Keycloak sub (first-login friendly) ---
         const user = await this.prisma.user.upsert({
             where: { sub: claims.sub },
             update: {
@@ -46,7 +54,7 @@ export class MeController {
             select: { id: true, sub: true, email: true, name: true },
         });
 
-        // 3) Load memberships to drive app-level RBAC & tenancy
+        // --- 3) Load memberships for app-level RBAC/tenancy ---
         const memberships = await this.prisma.membership.findMany({
             where: { userId: user.id },
             select: {
@@ -56,16 +64,20 @@ export class MeController {
             },
         });
 
-        // 4) Determine active company (if header/context provided, enforce it)
+        // --- 4) Enforce company scoping (if provided via decorator/header) ---
         let activeCompanyId: string | null = companyId ?? null;
+
         if (activeCompanyId) {
-            const allowed = memberships.some(m => m.companyId === activeCompanyId);
-            if (!allowed) throw new ForbiddenException('Access denied for this company');
+            const allowed = memberships.some((m) => m.companyId === activeCompanyId);
+            if (!allowed) {
+                throw new ForbiddenException('Access denied for this company');
+            }
         } else if (memberships.length === 1) {
+            // sensible default: single-company users get auto-selected
             activeCompanyId = memberships[0].companyId;
         }
 
-        // 5) Response = token identity + app context from DB
+        // --- 5) Shape response: identity (token) + app context (DB) ---
         return {
             sub: user.sub,
             email: claims.email ?? user.email ?? null,
@@ -73,10 +85,10 @@ export class MeController {
             email_verified: claims.email_verified ?? false,
 
             rolesFromToken,
-            memberships: memberships.map(m => ({
+            memberships: memberships.map((m) => ({
                 companyId: m.companyId,
                 companyName: m.company.name,
-                role: m.role,
+                role: m.role, // Prisma enum: ADMIN | MANAGER | WORKER | CLIENT
             })),
             activeCompanyId,
         };
