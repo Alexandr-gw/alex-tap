@@ -1,7 +1,9 @@
 import { ServicesService } from './services.service';
+import { PrismaService } from '@/prisma/prisma.service';
 export declare class ServicesController {
     private svc;
-    constructor(svc: ServicesService);
+    private readonly prisma;
+    constructor(svc: ServicesService, prisma: PrismaService);
     list(companyId: string, search?: string, page?: number, pageSize?: number, sort?: string, active?: boolean): Promise<{
         items: {
             id: string;

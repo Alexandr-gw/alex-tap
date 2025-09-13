@@ -42,11 +42,11 @@ export class ServicesService {
 
     async create(companyId: string, userId: string, dto: any) {
         const data: Prisma.ServiceCreateInput = {
-            company: {connect: {id: companyId}},          // ← relation connect (no companyId in CreateInput)
+            company: {connect: {id: companyId}},
             name: dto.name,
             active: dto.active ?? true,
-            basePriceCents: dto.basePriceCents,               // field exists
-            durationMins: dto.durationMins ?? dto.durationMinutes, // normalize input → model field is durationMins
+            basePriceCents: dto.basePriceCents,
+            durationMins: dto.durationMins ?? dto.durationMinutes,
             currency: dto.currency ?? 'CAD',
             stripeProductId: dto.stripeProductId ?? null,
             stripePriceId: dto.stripePriceId ?? null,
@@ -81,7 +81,6 @@ export class ServicesService {
 
         const updateData: Prisma.ServiceUpdateInput = {
             name: dto.name ?? undefined,
-            lineItems: dto.lineItems ?? undefined,
             active: dto.active ?? undefined,
             basePriceCents: dto.basePriceCents ?? undefined,
             durationMins: (dto.durationMins ?? dto.durationMinutes) ?? undefined,
@@ -121,7 +120,6 @@ export class ServicesService {
             .slice(0, 140);
     }
 
-    // ✅ Strongly type the return and avoid dynamic keys
     private parseSort(sort?: string): Prisma.ServiceOrderByWithRelationInput[] {
         if (!sort) return [{name: 'asc' as Prisma.SortOrder}];
 

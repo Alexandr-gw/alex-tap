@@ -78,7 +78,6 @@ let ServicesService = class ServicesService {
             throw new common_1.NotFoundException({ ok: false, error: 'not_found' });
         const updateData = {
             name: dto.name ?? undefined,
-            lineItems: dto.lineItems ?? undefined,
             active: dto.active ?? undefined,
             basePriceCents: dto.basePriceCents ?? undefined,
             durationMins: (dto.durationMins ?? dto.durationMinutes) ?? undefined,

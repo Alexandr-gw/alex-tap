@@ -28,8 +28,8 @@ let IdempotencyInterceptor = class IdempotencyInterceptor {
         const key = req.header('Idempotency-Key');
         if (!key)
             return next.handle();
-        const userId = req.user?.sub ?? 'anonymous';
-        const companyId = req.companyId ?? 'unknown';
+        const userId = req.user?.userId;
+        const companyId = req.companyId;
         const dedupeKey = (0, uuid_1.v5)(`${companyId}:${userId}:${key}`, NAMESPACE);
         const existing = await this.prisma.auditLog.findFirst({
             where: { companyId, action: 'idempotency', entityType: 'service_post', entityId: dedupeKey },
@@ -41,17 +41,23 @@ let IdempotencyInterceptor = class IdempotencyInterceptor {
                 observer.complete();
             });
         }
-        return next.handle().pipe((0, operators_1.map)(async (response) => {
-            await this.prisma.auditLog.create({
-                data: {
-                    companyId: companyId ?? 'unknown',
-                    actorUserId: userId ?? null,
-                    entityType: 'service_post',
-                    entityId: dedupeKey,
-                    action: 'idempotency',
-                    changes: response,
-                },
-            });
+        return next.handle().pipe((0, operators_1.mergeMap)(async (response) => {
+            try {
+                if (companyId) {
+                    await this.prisma.auditLog.create({
+                        data: {
+                            companyId,
+                            actorUserId: userId ?? null,
+                            entityType: 'service_post',
+                            entityId: dedupeKey,
+                            action: 'idempotency',
+                            changes: response,
+                        },
+                    });
+                }
+            }
+            catch (e) {
+            }
             return response;
         }));
     }

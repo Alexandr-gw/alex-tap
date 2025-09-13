@@ -23,10 +23,13 @@ const services_zod_1 = require("./services.zod");
 const throttler_1 = require("@nestjs/throttler");
 const idempotency_interceptor_1 = require("../../common/interceptors/idempotency.interceptor");
 const auth_user_decorator_1 = require("../../common/decorators/auth-user.decorator");
+const prisma_service_1 = require("../../prisma/prisma.service");
 let ServicesController = class ServicesController {
     svc;
-    constructor(svc) {
+    prisma;
+    constructor(svc, prisma) {
         this.svc = svc;
+        this.prisma = prisma;
     }
     async list(companyId, search, page, pageSize, sort, active) {
         return this.svc.list(companyId, { search, page, pageSize, sort, active });
@@ -35,10 +38,10 @@ let ServicesController = class ServicesController {
         return this.svc.getById(companyId, id);
     }
     async create(companyId, user, body) {
-        return this.svc.create(companyId, user.sub, body);
+        return this.svc.create(companyId, user.id, body);
     }
     async update(companyId, user, id, body) {
-        return this.svc.update(companyId, user.sub, id, body);
+        return this.svc.update(companyId, user.id, id, body);
     }
 };
 exports.ServicesController = ServicesController;
@@ -89,6 +92,6 @@ __decorate([
 exports.ServicesController = ServicesController = __decorate([
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, rolse_guards_1.RolesGuard),
     (0, common_1.Controller)('api/v1/services'),
-    __metadata("design:paramtypes", [services_service_1.ServicesService])
+    __metadata("design:paramtypes", [services_service_1.ServicesService, prisma_service_1.PrismaService])
 ], ServicesController);
 //# sourceMappingURL=services.controller.js.map

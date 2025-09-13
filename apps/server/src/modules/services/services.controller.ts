@@ -21,11 +21,13 @@ import {ServiceCreateSchema, ServiceUpdateSchema} from './services.zod';
 import {Throttle} from '@nestjs/throttler';
 import {IdempotencyInterceptor} from '@/common/interceptors/idempotency.interceptor';
 import {AuthUser, CompanyId} from '@/common/decorators/auth-user.decorator';
+import {PrismaService} from '@/prisma/prisma.service';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('api/v1/services')
 export class ServicesController {
-    constructor(private svc: ServicesService) {
+    constructor(
+        private svc: ServicesService, private readonly prisma: PrismaService,) {
     }
 
     @Get()
@@ -54,7 +56,7 @@ export class ServicesController {
         @AuthUser() user: any,
         @Body(new ZodValidationPipe(ServiceCreateSchema)) body: unknown,
     ) {
-        return this.svc.create(companyId, user.sub, body);
+        return this.svc.create(companyId, user.id, body);
     }
 
     @Patch(':id')
@@ -66,6 +68,6 @@ export class ServicesController {
         @Param('id') id: string,
         @Body(new ZodValidationPipe(ServiceUpdateSchema)) body: unknown,
     ) {
-        return this.svc.update(companyId, user.sub, id, body);
+        return this.svc.update(companyId, user!.id, id, body);
     }
 }

@@ -2,7 +2,7 @@ import { CallHandler, ExecutionContext, Injectable, NestInterceptor, ConflictExc
 import { Observable } from 'rxjs';
 import { PrismaService } from '@/prisma/prisma.service';
 import { v5 as uuidv5 } from 'uuid';
-import { map } from 'rxjs/operators';
+import { mergeMap } from 'rxjs/operators';
 
 const NAMESPACE = '2e0d3a92-2b9e-49c5-a8f6-7d7464fdc0b2';
 
@@ -17,8 +17,8 @@ export class IdempotencyInterceptor implements NestInterceptor {
         const key = req.header('Idempotency-Key');
         if (!key) return next.handle();
 
-        const userId = req.user?.sub ?? 'anonymous';
-        const companyId = req.companyId ?? 'unknown';
+        const userId: string | undefined = req.user?.userId;
+        const companyId = req.companyId;
         const dedupeKey = uuidv5(`${companyId}:${userId}:${key}`, NAMESPACE);
 
         const existing = await this.prisma.auditLog.findFirst({
@@ -33,19 +33,27 @@ export class IdempotencyInterceptor implements NestInterceptor {
         }
 
         return next.handle().pipe(
-            map(async (response) => {
-                await this.prisma.auditLog.create({
-                    data: {
-                        companyId: companyId ?? 'unknown',
-                        actorUserId: userId ?? null,
-                        entityType: 'service_post',
-                        entityId: dedupeKey,
-                        action: 'idempotency',
-                        changes: response,
-                    },
-                });
+            mergeMap(async (response) => {
+                // write idempotency record AFTER first success
+                try {
+                    if (companyId) {
+                        await this.prisma.auditLog.create({
+                            data: {
+                                companyId,
+                                actorUserId: userId ?? null,
+                                entityType: 'service_post',
+                                entityId: dedupeKey,
+                                action: 'idempotency',
+                                changes: response,
+                            },
+                        });
+                    }
+                } catch (e) {
+                    // this.logger.warn('idempotency log failed', e);
+                }
                 return response;
             }),
+
         ) as unknown as Observable<any>;
     }
 }
