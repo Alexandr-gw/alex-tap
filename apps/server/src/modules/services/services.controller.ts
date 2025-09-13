@@ -1,29 +1,43 @@
-import { Controller, Get, Post, Patch, Param, Query, Body, UseGuards, UseInterceptors } from '@nestjs/common';
-import { ServicesService } from './services.service';
-import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
-import { Roles } from '@/common/decorators/rolse.decorator';
-import { RolesGuard } from '@/common/guards/rolse.guards';
-import { ZodValidationPipe } from '@/common/pipes/zod-validation.pipe';
-import { ServiceCreateSchema, ServiceUpdateSchema } from './services.zod';
-import { Throttle } from '@nestjs/throttler';
-import { IdempotencyInterceptor } from '@/common/interceptors/idempotency.interceptor';
-import { AuthUser, CompanyId } from '@/common/decorators/auth-user.decorator';
+import {
+    Controller,
+    Get,
+    Post,
+    Patch,
+    Param,
+    Query,
+    Body,
+    UseGuards,
+    UseInterceptors,
+    ParseIntPipe,
+    DefaultValuePipe,
+    ParseBoolPipe,
+} from '@nestjs/common';
+import {ServicesService} from './services.service';
+import {JwtAuthGuard} from '@/common/guards/jwt-auth.guard';
+import {Roles} from '@/common/decorators/rolse.decorator';
+import {RolesGuard} from '@/common/guards/rolse.guards';
+import {ZodValidationPipe} from '@/common/pipes/zod-validation.pipe';
+import {ServiceCreateSchema, ServiceUpdateSchema} from './services.zod';
+import {Throttle} from '@nestjs/throttler';
+import {IdempotencyInterceptor} from '@/common/interceptors/idempotency.interceptor';
+import {AuthUser, CompanyId} from '@/common/decorators/auth-user.decorator';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('api/v1/services')
 export class ServicesController {
-    constructor(private svc: ServicesService) {}
+    constructor(private svc: ServicesService) {
+    }
 
     @Get()
     async list(
         @CompanyId() companyId: string,
         @Query('search') search?: string,
-        @Query('page') page?: string,
-        @Query('pageSize') pageSize?: string,
+        @Query('page', new DefaultValuePipe(1), ParseIntPipe) page?: number,
+        @Query('pageSize', new DefaultValuePipe(20), ParseIntPipe) pageSize?: number,
         @Query('sort') sort?: string,
-        @Query('active') active?: string,
+        @Query('active', new DefaultValuePipe(undefined), ParseBoolPipe) active?: boolean,
     ) {
-        return this.svc.list(companyId, { search, page, pageSize, sort, active });
+        return this.svc.list(companyId, {search, page, pageSize, sort, active});
     }
 
     @Get(':id')
@@ -33,7 +47,7 @@ export class ServicesController {
 
     @Post()
     @Roles('admin', 'manager')
-    @Throttle({ default: { ttl: 60_000, limit: 20 } })
+    @Throttle({default: {ttl: 60_000, limit: 20}})
     @UseInterceptors(IdempotencyInterceptor)
     async create(
         @CompanyId() companyId: string,
@@ -45,7 +59,7 @@ export class ServicesController {
 
     @Patch(':id')
     @Roles('admin', 'manager')
-    @Throttle({ default: { ttl: 60_000, limit: 20 } })
+    @Throttle({default: {ttl: 60_000, limit: 20}})
     async update(
         @CompanyId() companyId: string,
         @AuthUser() user: any,

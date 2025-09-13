@@ -1,103 +1,112 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
-import { PrismaService } from '@/prisma/prisma.service';
-import { Prisma } from '@prisma/client';
+import {Injectable, NotFoundException, ConflictException} from '@nestjs/common';
+import {PrismaService} from '@/prisma/prisma.service';
+import {Prisma} from '@prisma/client';
 
 @Injectable()
 export class ServicesService {
-    constructor(private prisma: PrismaService) {}
+    constructor(private prisma: PrismaService) {
+    }
 
-    async list(companyId: string, params: { search?: string; page?: number; pageSize?: number; sort?: string; active?: string }) {
+    async list(
+        companyId: string,
+        params: { search?: string; page?: number; pageSize?: number; sort?: string; active?: boolean },
+    ) {
         const page = Math.max(1, Number(params.page ?? 1));
         const pageSize = Math.min(100, Math.max(1, Number(params.pageSize ?? 20)));
+
         const where: Prisma.ServiceWhereInput = {
             companyId,
             deletedAt: null,
             AND: [
-                params.active !== undefined ? { active: params.active === 'true' } : {},
-                params.search ? { name: { contains: params.search, mode: 'insensitive' } } : {},
+                // active is boolean | undefined now
+                params.active !== undefined ? {active: params.active} : {},
+                params.search ? {name: {contains: params.search, mode: 'insensitive'}} : {},
             ],
         };
-        const orderBy: Prisma.ServiceOrderByWithRelationInput[] = this.parseSort(params.sort);
+
+        const orderBy = this.parseSort(params.sort);
+
         const [items, total] = await Promise.all([
-            this.prisma.service.findMany({ where, orderBy, take: pageSize, skip: (page - 1) * pageSize }),
-            this.prisma.service.count({ where }),
+            this.prisma.service.findMany({where, orderBy, take: pageSize, skip: (page - 1) * pageSize}),
+            this.prisma.service.count({where}),
         ]);
-        return { items, page, pageSize, total };
+
+        return {items, page, pageSize, total};
     }
 
     async getById(companyId: string, id: string) {
-        const svc = await this.prisma.service.findFirst({ where: { id, companyId, deletedAt: null } });
-        if (!svc) throw new NotFoundException({ ok: false, error: 'not_found' });
+        const svc = await this.prisma.service.findFirst({where: {id, companyId, deletedAt: null}});
+        if (!svc) throw new NotFoundException({ok: false, error: 'not_found'});
         return svc;
     }
 
     async create(companyId: string, userId: string, dto: any) {
-        const data = {
-            companyId,
+        const data: Prisma.ServiceCreateInput = {
+            company: {connect: {id: companyId}},          // ← relation connect (no companyId in CreateInput)
             name: dto.name,
-            slug: dto.slug ?? this.toSlug(dto.name),
-            description: dto.description ?? null,
             active: dto.active ?? true,
-            unit: dto.unit,
-            basePriceCents: dto.basePriceCents,
-            durationMinutes: dto.durationMinutes,
-            categoryId: dto.categoryId ?? null,
-            taxRateId: dto.taxRateId ?? null,
-            color: dto.color ?? null,
-        } as Prisma.ServiceCreateInput;
+            basePriceCents: dto.basePriceCents,               // field exists
+            durationMins: dto.durationMins ?? dto.durationMinutes, // normalize input → model field is durationMins
+            currency: dto.currency ?? 'CAD',
+            stripeProductId: dto.stripeProductId ?? null,
+            stripePriceId: dto.stripePriceId ?? null,
+        };
+
 
         try {
-            const created = await this.prisma.service.create({ data });
+            const created = await this.prisma.service.create({data});
+
+            // Adjust to your AuditLog schema: entityType + changes (no before/after JSON in your model)
             await this.prisma.auditLog.create({
                 data: {
                     companyId,
-                    userId,
-                    entity: 'service',
+                    actorUserId: userId,
+                    entityType: 'service',
                     entityId: created.id,
                     action: 'create',
-                    afterJson: created,
+                    changes: created,
                 },
             });
+
             return created;
         } catch (e: any) {
-            if (this.isUniqueViolation(e)) throw new ConflictException({ ok: false, error: 'slug_conflict' });
+            if (this.isUniqueViolation(e)) throw new ConflictException({ok: false, error: 'slug_conflict'});
             throw e;
         }
     }
 
     async update(companyId: string, userId: string, id: string, dto: any) {
-        const existing = await this.prisma.service.findFirst({ where: { id, companyId, deletedAt: null } });
-        if (!existing) throw new NotFoundException({ ok: false, error: 'not_found' });
+        const existing = await this.prisma.service.findFirst({where: {id, companyId, deletedAt: null}});
+        if (!existing) throw new NotFoundException({ok: false, error: 'not_found'});
 
         const updateData: Prisma.ServiceUpdateInput = {
             name: dto.name ?? undefined,
-            slug: dto.slug ?? undefined,
-            description: dto.description ?? undefined,
+            lineItems: dto.lineItems ?? undefined,
             active: dto.active ?? undefined,
-            unit: dto.unit ?? undefined,
             basePriceCents: dto.basePriceCents ?? undefined,
-            durationMinutes: dto.durationMinutes ?? undefined,
-            categoryId: dto.categoryId ?? undefined,
-            taxRateId: dto.taxRateId ?? undefined,
-            color: dto.color ?? undefined,
+            durationMins: (dto.durationMins ?? dto.durationMinutes) ?? undefined,
+            currency: dto.currency ?? undefined,
+            stripeProductId: dto.stripeProductId ?? undefined,
+            stripePriceId: dto.stripePriceId ?? undefined,
         };
 
         try {
-            const updated = await this.prisma.service.update({ where: { id }, data: updateData });
+            const updated = await this.prisma.service.update({where: {id}, data: updateData});
+
             await this.prisma.auditLog.create({
                 data: {
                     companyId,
-                    userId,
-                    entity: 'service',
+                    actorUserId: userId,
+                    entityType: 'service',
                     entityId: id,
                     action: 'update',
-                    beforeJson: existing,
-                    afterJson: updated,
+                    changes: {before: existing, after: updated}, // store diff/tuple in Json
                 },
             });
+
             return updated;
         } catch (e: any) {
-            if (this.isUniqueViolation(e)) throw new ConflictException({ ok: false, error: 'slug_conflict' });
+            if (this.isUniqueViolation(e)) throw new ConflictException({ok: false, error: 'slug_conflict'});
             throw e;
         }
     }
@@ -112,18 +121,40 @@ export class ServicesService {
             .slice(0, 140);
     }
 
-    private parseSort(sort?: string) {
-        if (!sort) return [{ name: 'asc' }] as Prisma.ServiceOrderByWithRelationInput[];
+    // ✅ Strongly type the return and avoid dynamic keys
+    private parseSort(sort?: string): Prisma.ServiceOrderByWithRelationInput[] {
+        if (!sort) return [{name: 'asc' as Prisma.SortOrder}];
+
         const parts = sort.split(',').map((s) => s.trim()).filter(Boolean);
         const orders: Prisma.ServiceOrderByWithRelationInput[] = [];
+
         for (const p of parts) {
-            const dir = p.startsWith('-') ? 'desc' : 'asc';
+            const dir: Prisma.SortOrder = p.startsWith('-') ? 'desc' : 'asc';
             const field = p.replace(/^[-+]/, '');
-            if (['name', 'basePriceCents', 'durationMinutes', 'updatedAt', 'active'].includes(field)) {
-                orders.push({ [field]: dir } as any);
+
+            switch (field) {
+                case 'name':
+                    orders.push({name: dir});
+                    break;
+                case 'basePriceCents':
+                    orders.push({basePriceCents: dir});
+                    break;
+                case 'durationMins':
+                    orders.push({durationMins: dir});
+                    break;
+                case 'updatedAt':
+                    orders.push({updatedAt: dir});
+                    break;
+                case 'active':
+                    orders.push({active: dir});
+                    break;
+                default:
+                    // ignore unknown fields
+                    break;
             }
         }
-        return orders.length ? orders : [{ name: 'asc' }];
+
+        return orders.length ? orders : [{name: 'asc' as Prisma.SortOrder}];
     }
 
     private isUniqueViolation(e: any) {

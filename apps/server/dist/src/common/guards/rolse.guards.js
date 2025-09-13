@@ -12,19 +12,16 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.RolesGuard = exports.Roles = exports.ROLES_KEY = void 0;
 const common_1 = require("@nestjs/common");
 const core_1 = require("@nestjs/core");
-const config_1 = require("@nestjs/config");
 exports.ROLES_KEY = 'roles';
 const Roles = (...roles) => (0, common_1.SetMetadata)(exports.ROLES_KEY, roles);
 exports.Roles = Roles;
 let RolesGuard = class RolesGuard {
     reflector;
-    cfg;
-    constructor(reflector, cfg) {
+    constructor(reflector) {
         this.reflector = reflector;
-        this.cfg = cfg;
     }
     canActivate(ctx) {
-        const required = this.reflector.getAllAndOverride(exports.ROLES_KEY, [
+        const required = this.reflector.getAllAndOverride('roles', [
             ctx.getHandler(), ctx.getClass(),
         ]);
         if (!required?.length)
@@ -33,14 +30,12 @@ let RolesGuard = class RolesGuard {
         const user = req.user;
         if (!user)
             throw new common_1.UnauthorizedException('unauthenticated');
-        const clientId = this.cfg.getOrThrow('KEYCLOAK_CLIENT_ID');
-        const realmRoles = Array.isArray(user?.realm_access?.roles) ? user.realm_access.roles : [];
-        const clientRoles = Array.isArray(user?.resource_access?.[clientId]?.roles)
-            ? user.resource_access[clientId].roles
-            : [];
-        const norm = (r) => r.toLowerCase();
-        const all = new Set([...realmRoles, ...clientRoles].map(norm));
-        const ok = required.some(r => all.has(norm(r)));
+        const precomputed = Array.isArray(user.roles) ? user.roles : [];
+        const realm = Array.isArray(user?.realm_access?.roles) ? user.realm_access.roles : [];
+        const allClient = Object.values(user?.resource_access ?? {}).flatMap((r) => Array.isArray(r?.roles) ? r.roles : []);
+        const toSet = (arr) => new Set(arr.map(r => r.toLowerCase()));
+        const all = toSet([...precomputed, ...realm, ...allClient]);
+        const ok = required.some(r => all.has(r.toLowerCase()));
         if (!ok)
             throw new common_1.ForbiddenException('insufficient_roles');
         return true;
@@ -49,6 +44,6 @@ let RolesGuard = class RolesGuard {
 exports.RolesGuard = RolesGuard;
 exports.RolesGuard = RolesGuard = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [core_1.Reflector, config_1.ConfigService])
+    __metadata("design:paramtypes", [core_1.Reflector])
 ], RolesGuard);
 //# sourceMappingURL=rolse.guards.js.map

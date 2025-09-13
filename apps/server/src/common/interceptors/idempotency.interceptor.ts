@@ -22,10 +22,10 @@ export class IdempotencyInterceptor implements NestInterceptor {
         const dedupeKey = uuidv5(`${companyId}:${userId}:${key}`, NAMESPACE);
 
         const existing = await this.prisma.auditLog.findFirst({
-            where: { companyId, action: 'idempotency', entity: 'service_post', entityId: dedupeKey },
+            where: { companyId, action: 'idempotency', entityType: 'service_post', entityId: dedupeKey },
         });
         if (existing) {
-            const payload = existing.afterJson as any;
+            const payload = existing.changes as any;
             return new Observable((observer) => {
                 observer.next({ idempotent: true, ...payload });
                 observer.complete();
@@ -36,12 +36,12 @@ export class IdempotencyInterceptor implements NestInterceptor {
             map(async (response) => {
                 await this.prisma.auditLog.create({
                     data: {
-                        companyId,
-                        userId,
-                        entity: 'service_post',
+                        companyId: companyId ?? 'unknown',
+                        actorUserId: userId ?? null,
+                        entityType: 'service_post',
                         entityId: dedupeKey,
                         action: 'idempotency',
-                        afterJson: response,
+                        changes: response,
                     },
                 });
                 return response;
