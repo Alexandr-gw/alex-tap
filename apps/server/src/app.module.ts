@@ -8,12 +8,13 @@ import {PrismaModule} from './prisma/prisma.module';
 import {HealthModule} from './health/health.module';
 import {ThrottlerModule} from '@nestjs/throttler';
 import {ServicesModule} from './modules/services/services.module';
+import {SlotsModule} from "@/slots/slots.module";
 
 @Module({
     imports: [AuthModule, ConfigModule.forRoot({isGlobal: true}), MeModule, PrismaModule, HealthModule,
         ThrottlerModule.forRoot([
             {ttl: 60_000, limit: 20},
-        ]), ServicesModule],
+        ]), ServicesModule, SlotsModule],
     controllers: [AppController],
     providers: [AppService],
 })
