@@ -10,7 +10,7 @@ export class SlotsController {
 
     @Get()
     async getSlots(
-        @Param('id', new ParseUUIDPipe()) workerId: string,
+        @Param('id') workerId: string,
         @Query() q: GetWorkerSlotsDto,
     ) {
         const from = new Date(q.from);

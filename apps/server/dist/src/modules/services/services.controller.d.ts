@@ -18,6 +18,8 @@ export declare class ServicesController {
             currency: string;
             stripeProductId: string | null;
             stripePriceId: string | null;
+            bufferBeforeMins: number;
+            bufferAfterMins: number;
         }[];
         page: number;
         pageSize: number;
@@ -36,6 +38,8 @@ export declare class ServicesController {
         currency: string;
         stripeProductId: string | null;
         stripePriceId: string | null;
+        bufferBeforeMins: number;
+        bufferAfterMins: number;
     }>;
     create(companyId: string, user: any, body: unknown): Promise<{
         id: string;
@@ -50,6 +54,8 @@ export declare class ServicesController {
         currency: string;
         stripeProductId: string | null;
         stripePriceId: string | null;
+        bufferBeforeMins: number;
+        bufferAfterMins: number;
     }>;
     update(companyId: string, user: any, id: string, body: unknown): Promise<{
         id: string;
@@ -64,5 +70,7 @@ export declare class ServicesController {
         currency: string;
         stripeProductId: string | null;
         stripePriceId: string | null;
+        bufferBeforeMins: number;
+        bufferAfterMins: number;
     }>;
 }
