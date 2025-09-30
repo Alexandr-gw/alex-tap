@@ -243,6 +243,7 @@ model Job {
   comments  JobComment[]
   tasks     Task[]
   payments  Payment[]
+  IdempotencyKey IdempotencyKey[]
 
   @@index([companyId, startAt])
   @@index([companyId, status])
@@ -358,4 +359,18 @@ model AuditLog {
   actor   User?   @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
 
   @@index([companyId, entityType, entityId, createdAt])
+}
+
+model IdempotencyKey {
+  key         String   @id            // idempotency key itself
+  companyId   String
+  requestHash String
+  jobId       String?  @unique        // set after create succeeds
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime
+
+  // Optional: relation if you want
+  job   Job?  @relation(fields: [jobId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, createdAt])
 }
