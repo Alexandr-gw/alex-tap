@@ -23,6 +23,60 @@ export class SlotsService {
 
     private BLOCKING_STATUSES = [JobStatus.SCHEDULED, JobStatus.IN_PROGRESS] as const;
 
+    async isSlotBookable(args: {
+        companyId: string;
+        workerId: string;
+        serviceId: string;
+        start: Date;
+        end: Date;
+    }): Promise<boolean> {
+        const { companyId, workerId, serviceId, start, end } = args;
+
+        // basic sanity + get tz/duration in one go
+        const [worker, service] = await Promise.all([
+            this.prisma.worker.findUnique({
+                where: { id: workerId },
+                select: { active: true, companyId: true, company: { select: { timezone: true } } },
+            }),
+            this.prisma.service.findUnique({
+                where: { id: serviceId },
+                select: {
+                    active: true,
+                    companyId: true,
+                    durationMins: true,
+                },
+            }),
+        ]);
+
+        if (!worker?.active || worker.companyId !== companyId) return false;
+        if (!service?.active || service.companyId !== companyId) return false;
+
+        const tz = worker.company?.timezone || 'America/Edmonton';
+        const durationMins = service.durationMins;
+        const stepMins = Math.min(15, Math.max(5, durationMins));
+
+        // for now: no buffer fields → default to zero
+        const buffers = { before: 0, after: 0 };
+
+        // build a day window around the target to reuse getWorkerSlots
+        const dayStart = new Date(start);
+        dayStart.setUTCHours(0, 0, 0, 0);
+        const dayEnd = new Date(start);
+        dayEnd.setUTCHours(23, 59, 59, 999);
+
+        const day = await this.getWorkerSlots({
+            workerId,
+            serviceId,
+            from: dayStart,
+            to: dayEnd,
+            stepOverride: stepMins,
+        });
+
+        const targetStartIso = start.toISOString();
+        const targetEndIso = end.toISOString();
+
+        return day.slots.some(s => s.start === targetStartIso && s.end === targetEndIso);
+    }
     async getWorkerSlots(args: GetWorkerSlotsArgs) {
         const { workerId, serviceId, from, to, stepOverride } = args;
 

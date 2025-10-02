@@ -362,14 +362,13 @@ model AuditLog {
 }
 
 model IdempotencyKey {
-  key         String   @id            // idempotency key itself
+  key         String   @id
   companyId   String
   requestHash String
-  jobId       String?  @unique        // set after create succeeds
+  jobId       String?  @unique
   createdAt   DateTime @default(now())
   expiresAt   DateTime
 
-  // Optional: relation if you want
   job   Job?  @relation(fields: [jobId], references: [id], onDelete: SetNull)
 
   @@index([companyId, createdAt])

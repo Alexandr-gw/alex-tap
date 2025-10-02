@@ -4,6 +4,7 @@ import { CreateJobDto } from './dto/create-job.dto';
 import { hashRequestBody } from '@/common/utils/idempotency.util';
 import { SlotsService } from '@/slots/slots.service';
 import { addMinutes, parseISO } from 'date-fns';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class JobsService {
@@ -24,7 +25,7 @@ export class JobsService {
         const now = new Date();
         const expiresAt = new Date(now.getTime() + 1000 * 60 * 30);
 
-        return this.prisma.$transaction(async (tx) => {
+        return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
             if (idempotencyKey) {
                 const existing = await tx.idempotencyKey.findUnique({ where: { key: idempotencyKey } });
                 if (!existing) {
