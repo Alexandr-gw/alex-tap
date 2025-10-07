@@ -20,6 +20,45 @@ let SlotsService = class SlotsService {
         this.prisma = prisma;
     }
     BLOCKING_STATUSES = [client_1.JobStatus.SCHEDULED, client_1.JobStatus.IN_PROGRESS];
+    async isSlotBookable(args) {
+        const { companyId, workerId, serviceId, start, end } = args;
+        const [worker, service] = await Promise.all([
+            this.prisma.worker.findUnique({
+                where: { id: workerId },
+                select: { active: true, companyId: true, company: { select: { timezone: true } } },
+            }),
+            this.prisma.service.findUnique({
+                where: { id: serviceId },
+                select: {
+                    active: true,
+                    companyId: true,
+                    durationMins: true,
+                },
+            }),
+        ]);
+        if (!worker?.active || worker.companyId !== companyId)
+            return false;
+        if (!service?.active || service.companyId !== companyId)
+            return false;
+        const tz = worker.company?.timezone || 'America/Edmonton';
+        const durationMins = service.durationMins;
+        const stepMins = Math.min(15, Math.max(5, durationMins));
+        const buffers = { before: 0, after: 0 };
+        const dayStart = new Date(start);
+        dayStart.setUTCHours(0, 0, 0, 0);
+        const dayEnd = new Date(start);
+        dayEnd.setUTCHours(23, 59, 59, 999);
+        const day = await this.getWorkerSlots({
+            workerId,
+            serviceId,
+            from: dayStart,
+            to: dayEnd,
+            stepOverride: stepMins,
+        });
+        const targetStartIso = start.toISOString();
+        const targetEndIso = end.toISOString();
+        return day.slots.some(s => s.start === targetStartIso && s.end === targetEndIso);
+    }
     async getWorkerSlots(args) {
         const { workerId, serviceId, from, to, stepOverride } = args;
         const worker = await this.prisma.worker.findUnique({

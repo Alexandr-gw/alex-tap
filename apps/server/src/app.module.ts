@@ -9,12 +9,13 @@ import {HealthModule} from './health/health.module';
 import {ThrottlerModule} from '@nestjs/throttler';
 import {ServicesModule} from './modules/services/services.module';
 import {SlotsModule} from "@/slots/slots.module";
+import {JobsModule} from "@/jobs/jobs.module";
 
 @Module({
     imports: [AuthModule, ConfigModule.forRoot({isGlobal: true}), MeModule, PrismaModule, HealthModule,
         ThrottlerModule.forRoot([
             {ttl: 60_000, limit: 20},
-        ]), ServicesModule, SlotsModule],
+        ]), ServicesModule, SlotsModule, JobsModule],
     controllers: [AppController],
     providers: [AppService],
 })

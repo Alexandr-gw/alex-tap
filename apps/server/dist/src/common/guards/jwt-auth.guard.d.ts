@@ -6,7 +6,6 @@ export declare class JwtAuthGuard implements CanActivate {
     private readonly apiAudience;
     private readonly loginClientId;
     private readonly accessCookieName;
-    private readonly requireVerifiedEmail;
     constructor(cfg: ConfigService);
     canActivate(ctx: ExecutionContext): Promise<boolean>;
 }

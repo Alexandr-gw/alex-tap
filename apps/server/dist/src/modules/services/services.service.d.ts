@@ -22,8 +22,6 @@ export declare class ServicesService {
             currency: string;
             stripeProductId: string | null;
             stripePriceId: string | null;
-            bufferBeforeMins: number;
-            bufferAfterMins: number;
         }[];
         page: number;
         pageSize: number;
@@ -42,8 +40,6 @@ export declare class ServicesService {
         currency: string;
         stripeProductId: string | null;
         stripePriceId: string | null;
-        bufferBeforeMins: number;
-        bufferAfterMins: number;
     }>;
     create(companyId: string, userId: string, dto: any): Promise<{
         id: string;
@@ -58,8 +54,6 @@ export declare class ServicesService {
         currency: string;
         stripeProductId: string | null;
         stripePriceId: string | null;
-        bufferBeforeMins: number;
-        bufferAfterMins: number;
     }>;
     update(companyId: string, userId: string, id: string, dto: any): Promise<{
         id: string;
@@ -74,8 +68,6 @@ export declare class ServicesService {
         currency: string;
         stripeProductId: string | null;
         stripePriceId: string | null;
-        bufferBeforeMins: number;
-        bufferAfterMins: number;
     }>;
     private toSlug;
     private parseSort;

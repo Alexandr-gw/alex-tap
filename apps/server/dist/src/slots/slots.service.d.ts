@@ -10,6 +10,13 @@ export declare class SlotsService {
     private readonly prisma;
     constructor(prisma: PrismaService);
     private BLOCKING_STATUSES;
+    isSlotBookable(args: {
+        companyId: string;
+        workerId: string;
+        serviceId: string;
+        start: Date;
+        end: Date;
+    }): Promise<boolean>;
     getWorkerSlots(args: GetWorkerSlotsArgs): Promise<{
         workerId: string;
         serviceId: string;

@@ -19,13 +19,11 @@ let JwtAuthGuard = class JwtAuthGuard {
     apiAudience;
     loginClientId;
     accessCookieName;
-    requireVerifiedEmail;
     constructor(cfg) {
         this.issuer = cfg.getOrThrow('KEYCLOAK_ISSUER');
         this.apiAudience = cfg.getOrThrow('API_AUDIENCE');
         this.loginClientId = cfg.getOrThrow('KEYCLOAK_CLIENT_ID');
         this.accessCookieName = cfg.get('COOKIE_NAME_ACCESS') || 'token';
-        this.requireVerifiedEmail = cfg.get('REQUIRE_VERIFIED_EMAIL') ?? false;
         const jwksUri = cfg.getOrThrow('KEYCLOAK_JWKS_URI');
         this.jwks = (0, jose_1.createRemoteJWKSet)(new URL(jwksUri));
     }
@@ -38,7 +36,7 @@ let JwtAuthGuard = class JwtAuthGuard {
         if (!token)
             throw new common_1.UnauthorizedException('missing_token');
         try {
-            const { payload, protectedHeader } = await (0, jose_1.jwtVerify)(token, this.jwks, {
+            const { payload } = await (0, jose_1.jwtVerify)(token, this.jwks, {
                 issuer: this.issuer,
                 audience: this.apiAudience,
                 clockTolerance: 5,
@@ -47,11 +45,26 @@ let JwtAuthGuard = class JwtAuthGuard {
             if (claims.typ && claims.typ !== 'Bearer') {
                 throw new common_1.UnauthorizedException('invalid_typ');
             }
-            if (claims.azp && claims.azp !== this.loginClientId) {
-                throw new common_1.UnauthorizedException('wrong_azp');
-            }
-            req.user = claims;
-            req.companyId = req.header('x-company-id') ?? req.cookies?.['active_company_id'] ?? null;
+            const realmRoles = claims.realm_access?.roles ?? [];
+            const apiClientRoles = claims.resource_access?.[this.apiAudience]?.roles ?? [];
+            const allClientRoles = Object.values(claims.resource_access ?? {})
+                .flatMap(r => r.roles ?? []);
+            const merged = (apiClientRoles.length ? apiClientRoles : allClientRoles)
+                .concat(realmRoles)
+                .map(r => r.toLowerCase());
+            const roles = Array.from(new Set(merged));
+            const companyId = claims.companyId ??
+                req.header('x-company-id') ??
+                req.cookies?.['active_company_id'] ??
+                null;
+            req.user = {
+                sub: claims.sub,
+                email: claims.email ?? null,
+                username: claims.preferred_username ?? null,
+                roles,
+                companyId,
+                raw: undefined,
+            };
             return true;
         }
         catch (e) {

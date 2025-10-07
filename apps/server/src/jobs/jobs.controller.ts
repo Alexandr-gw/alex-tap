@@ -1,20 +1,82 @@
-import { Body, Controller, Headers, HttpCode, HttpStatus, Post, UseGuards, ValidationPipe } from '@nestjs/common';
+import {
+    BadRequestException,
+    Body,
+    Controller,
+    Get,
+    Headers,
+    HttpCode,
+    HttpStatus,
+    Param,
+    Post,
+    Query,
+    Req,
+    UseGuards,
+    ValidationPipe,
+} from '@nestjs/common';
+import { Request } from 'express';
 import { JobsService } from './jobs.service';
 import { CreateJobDto } from './dto/create-job.dto';
+import { ListJobsDto } from './dto/list-jobs.dto';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 
+@UseGuards(JwtAuthGuard)
 @Controller('api/v1/jobs')
 export class JobsController {
     constructor(private readonly jobs: JobsService) {}
 
+    // ------- CREATE -------
     @Post()
     @HttpCode(HttpStatus.CREATED)
-    @UseGuards(JwtAuthGuard) // flip to public if desired
     async create(
         @Body(new ValidationPipe({ whitelist: true, transform: true })) body: CreateJobDto,
         @Headers('idempotency-key') idem?: string,
     ) {
         const job = await this.jobs.create(body, idem ?? undefined);
         return job;
+    }
+
+    // ------- LIST -------
+    @Get()
+    async list(
+        @Req() req: Request & { user: { roles: string[]; companyId: string | null; sub: string | null } },
+        @Query(new ValidationPipe({ whitelist: true, transform: true, transformOptions: { enableImplicitConversion: true } }))
+        dto: ListJobsDto,
+    ) {
+        const companyId = req.user.companyId ?? dto.companyId; // allow query fallback during dev
+        if (!companyId) throw new BadRequestException('companyId is required');
+        return this.jobs.findManyForUser({
+            companyId,
+            roles: req.user.roles,
+            userSub: req.user.sub,
+            dto,
+        });
+    }
+
+
+    // ------- GET ONE -------
+    @Get(':id')
+    async getOne(
+        @Req() req: Request & { user?: any },
+        @Param('id') id: string, // cuid/string (do NOT use ParseUUIDPipe)
+        @Headers('x-company-id') companyHeader?: string,
+    ) {
+        const roles: string[] = req.user?.roles ?? [];
+        const userSub: string | null = req.user?.sub ?? null;
+
+        const companyId =
+            req.user?.companyId ??
+            req.user?.company?.id ??
+            companyHeader;
+
+        if (!companyId) {
+            throw new BadRequestException('companyId is required (token or x-company-id header)');
+        }
+
+        return this.jobs.findOneForUser({
+            companyId,
+            roles,
+            userSub,
+            id,
+        });
     }
 }

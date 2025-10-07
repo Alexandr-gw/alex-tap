@@ -18,6 +18,7 @@ const health_module_1 = require("./health/health.module");
 const throttler_1 = require("@nestjs/throttler");
 const services_module_1 = require("./modules/services/services.module");
 const slots_module_1 = require("./slots/slots.module");
+const jobs_module_1 = require("./jobs/jobs.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -26,7 +27,7 @@ exports.AppModule = AppModule = __decorate([
         imports: [auth_module_1.AuthModule, config_1.ConfigModule.forRoot({ isGlobal: true }), me_module_1.MeModule, prisma_module_1.PrismaModule, health_module_1.HealthModule,
             throttler_1.ThrottlerModule.forRoot([
                 { ttl: 60_000, limit: 20 },
-            ]), services_module_1.ServicesModule, slots_module_1.SlotsModule],
+            ]), services_module_1.ServicesModule, slots_module_1.SlotsModule, jobs_module_1.JobsModule],
         controllers: [app_controller_1.AppController],
         providers: [app_service_1.AppService],
     })
