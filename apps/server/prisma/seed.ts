@@ -1,4 +1,14 @@
-import { PrismaClient, Role, JobStatus, TaskStatus, PaymentProvider, PaymentStatus, NotificationChannel, NotificationStatus, NotificationTargetType } from "@prisma/client";
+import {
+    PrismaClient,
+    Role,
+    JobStatus,
+    TaskStatus,
+    PaymentProvider,
+    PaymentStatus,
+    NotificationChannel,
+    NotificationStatus,
+    NotificationTargetType
+} from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -7,90 +17,145 @@ const env = (k: string, fallback: string) => process.env[k] || fallback;
 async function main() {
     // 1) Company
     const company = await prisma.company.upsert({
-        where: { id: "demo-company" }, // use fixed id for idempotent seeds
+        where: {id: "demo-company"}, // use fixed id for idempotent seeds
         update: {},
-        create: { id: "demo-company", name: "Demo Co.", timezone: "America/Edmonton" },
+        create: {id: "demo-company", name: "Demo Co.", timezone: "America/Edmonton"},
     });
 
     // 2) Users (mirrors of Keycloak subs)
     const uAdmin = await prisma.user.upsert({
-        where: { sub: env("KEYCLOAK_DEMO_SUB_ADMIN", "00000000-0000-0000-0000-000000000001") },
+        where: {sub: env("KEYCLOAK_DEMO_SUB_ADMIN", "00000000-0000-0000-0000-000000000001")},
         update: {},
-        create: { sub: env("KEYCLOAK_DEMO_SUB_ADMIN", "00000000-0000-0000-0000-000000000001"), email: "admin@demo.co", name: "Demo Admin" }
+        create: {
+            sub: env("KEYCLOAK_DEMO_SUB_ADMIN", "00000000-0000-0000-0000-000000000001"),
+            email: "admin@demo.co",
+            name: "Demo Admin"
+        }
     });
     const uManager = await prisma.user.upsert({
-        where: { sub: env("KEYCLOAK_DEMO_SUB_MANAGER", "00000000-0000-0000-0000-000000000002") },
+        where: {sub: env("KEYCLOAK_DEMO_SUB_MANAGER", "00000000-0000-0000-0000-000000000002")},
         update: {},
-        create: { sub: env("KEYCLOAK_DEMO_SUB_MANAGER", "00000000-0000-0000-0000-000000000002"), email: "manager@demo.co", name: "Mina Manager" }
+        create: {
+            sub: env("KEYCLOAK_DEMO_SUB_MANAGER", "00000000-0000-0000-0000-000000000002"),
+            email: "manager@demo.co",
+            name: "Mina Manager"
+        }
     });
     const uWorker = await prisma.user.upsert({
-        where: { sub: env("KEYCLOAK_DEMO_SUB_WORKER", "00000000-0000-0000-0000-000000000003") },
+        where: {sub: env("KEYCLOAK_DEMO_SUB_WORKER", "00000000-0000-0000-0000-000000000003")},
         update: {},
-        create: { sub: env("KEYCLOAK_DEMO_SUB_WORKER", "00000000-0000-0000-0000-000000000003"), email: "worker@demo.co", name: "Will Worker" }
+        create: {
+            sub: env("KEYCLOAK_DEMO_SUB_WORKER", "00000000-0000-0000-0000-000000000003"),
+            email: "worker@demo.co",
+            name: "Will Worker"
+        }
     });
     const uClient = await prisma.user.upsert({
-        where: { sub: env("KEYCLOAK_DEMO_SUB_CLIENT", "00000000-0000-0000-0000-000000000004") },
+        where: {sub: env("KEYCLOAK_DEMO_SUB_CLIENT", "00000000-0000-0000-0000-000000000004")},
         update: {},
-        create: { sub: env("KEYCLOAK_DEMO_SUB_CLIENT", "00000000-0000-0000-0000-000000000004"), email: "client@demo.co", name: "Cathy Client" }
+        create: {
+            sub: env("KEYCLOAK_DEMO_SUB_CLIENT", "00000000-0000-0000-0000-000000000004"),
+            email: "client@demo.co",
+            name: "Cathy Client"
+        }
     });
 
     // 3) Memberships
     await prisma.membership.upsert({
-        where: { companyId_userId: { companyId: company.id, userId: uAdmin.id } },
+        where: {companyId_userId: {companyId: company.id, userId: uAdmin.id}},
         update: {},
-        create: { companyId: company.id, userId: uAdmin.id, role: Role.ADMIN }
+        create: {companyId: company.id, userId: uAdmin.id, role: Role.ADMIN}
     });
     await prisma.membership.upsert({
-        where: { companyId_userId: { companyId: company.id, userId: uManager.id } },
+        where: {companyId_userId: {companyId: company.id, userId: uManager.id}},
         update: {},
-        create: { companyId: company.id, userId: uManager.id, role: Role.MANAGER }
+        create: {companyId: company.id, userId: uManager.id, role: Role.MANAGER}
     });
     await prisma.membership.upsert({
-        where: { companyId_userId: { companyId: company.id, userId: uWorker.id } },
+        where: {companyId_userId: {companyId: company.id, userId: uWorker.id}},
         update: {},
-        create: { companyId: company.id, userId: uWorker.id, role: Role.WORKER }
+        create: {companyId: company.id, userId: uWorker.id, role: Role.WORKER}
     });
     await prisma.membership.upsert({
-        where: { companyId_userId: { companyId: company.id, userId: uClient.id } },
+        where: {companyId_userId: {companyId: company.id, userId: uClient.id}},
         update: {},
-        create: { companyId: company.id, userId: uClient.id, role: Role.CLIENT }
+        create: {companyId: company.id, userId: uClient.id, role: Role.CLIENT}
     });
 
     // 4) Workers
     const w1 = await prisma.worker.upsert({
-        where: { companyId_userId: { companyId: company.id, userId: uWorker.id } },
-        update: { active: true },
-        create: { companyId: company.id, userId: uWorker.id, displayName: "Will Worker", phone: "+1-780-555-0101", colorTag: "#5b8", active: true }
+        where: {companyId_userId: {companyId: company.id, userId: uWorker.id}},
+        update: {active: true},
+        create: {
+            companyId: company.id,
+            userId: uWorker.id,
+            displayName: "Will Worker",
+            phone: "+1-780-555-0101",
+            colorTag: "#5b8",
+            active: true
+        }
     });
 
     const w2 = await prisma.worker.create({
-        data: { companyId: company.id, displayName: "Sara Subcontractor", phone: "+1-780-555-0102", colorTag: "#58b", active: true }
+        data: {
+            companyId: company.id,
+            displayName: "Sara Subcontractor",
+            phone: "+1-780-555-0102",
+            colorTag: "#58b",
+            active: true
+        }
     });
 
     // 5) Services
     const svc1 = await prisma.service.create({
-        data: { companyId: company.id, name: "Standard Clean", durationMins: 90, basePriceCents: 12000, currency: "CAD" }
+        data: {companyId: company.id, name: "Standard Clean", durationMins: 90, basePriceCents: 12000, currency: "CAD"}
     });
     const svc2 = await prisma.service.create({
-        data: { companyId: company.id, name: "Deep Clean", durationMins: 150, basePriceCents: 22000, currency: "CAD" }
+        data: {companyId: company.id, name: "Deep Clean", durationMins: 150, basePriceCents: 22000, currency: "CAD"}
     });
 
     // 6) Availability (Mon–Fri 09:00–17:00)
-    for (const dayOfWeek of [1,2,3,4,5]) {
+    for (const dayOfWeek of [1, 2, 3, 4, 5]) {
         await prisma.availabilityRule.create({
-            data: { companyId: company.id, workerId: w1.id, dayOfWeek, startTime: "09:00", endTime: "17:00", timezone: "America/Edmonton" }
+            data: {
+                companyId: company.id,
+                workerId: w1.id,
+                dayOfWeek,
+                startTime: "09:00",
+                endTime: "17:00",
+                timezone: "America/Edmonton"
+            }
         });
         await prisma.availabilityRule.create({
-            data: { companyId: company.id, workerId: w2.id, dayOfWeek, startTime: "10:00", endTime: "18:00", timezone: "America/Edmonton" }
+            data: {
+                companyId: company.id,
+                workerId: w2.id,
+                dayOfWeek,
+                startTime: "10:00",
+                endTime: "18:00",
+                timezone: "America/Edmonton"
+            }
         });
     }
 
     // 7) Clients
     const c1 = await prisma.clientProfile.create({
-        data: { companyId: company.id, name: "John Smith", email: "john@example.com", phone: "+1-780-555-1000", address: "123 4th Ave, Edmonton AB" }
+        data: {
+            companyId: company.id,
+            name: "John Smith",
+            email: "john@example.com",
+            phone: "+1-780-555-1000",
+            address: "123 4th Ave, Edmonton AB"
+        }
     });
     const c2 = await prisma.clientProfile.create({
-        data: { companyId: company.id, name: "Acme Corp", email: "ops@acme.co", phone: "+1-780-555-2000", address: "500 Industrial Rd, Edmonton AB" }
+        data: {
+            companyId: company.id,
+            name: "Acme Corp",
+            email: "ops@acme.co",
+            phone: "+1-780-555-2000",
+            address: "500 Industrial Rd, Edmonton AB"
+        }
     });
 
     // 8) Jobs + line items
@@ -112,7 +177,14 @@ async function main() {
             balanceCents: 12600,
             currency: "CAD",
             lineItems: {
-                create: [{ description: "Standard Clean", serviceId: svc1.id, quantity: 1, unitPriceCents: 12000, taxRateBps: 500, totalCents: 12600 }]
+                create: [{
+                    description: "Standard Clean",
+                    serviceId: svc1.id,
+                    quantity: 1,
+                    unitPriceCents: 12000,
+                    taxRateBps: 500,
+                    totalCents: 12600
+                }]
             }
         }
     });
@@ -132,17 +204,32 @@ async function main() {
             balanceCents: 23100,
             currency: "CAD",
             lineItems: {
-                create: [{ description: "Deep Clean", serviceId: svc2.id, quantity: 1, unitPriceCents: 22000, taxRateBps: 500, totalCents: 23100 }]
+                create: [{
+                    description: "Deep Clean",
+                    serviceId: svc2.id,
+                    quantity: 1,
+                    unitPriceCents: 22000,
+                    taxRateBps: 500,
+                    totalCents: 23100
+                }]
             }
         }
     });
 
     // 9) Comments, tasks
     await prisma.jobComment.create({
-        data: { jobId: job1.id, authorUserId: uManager.id, message: "Confirmed with client; access code 4321." }
+        data: {jobId: job1.id, authorUserId: uManager.id, message: "Confirmed with client; access code 4321."}
     });
     await prisma.task.create({
-        data: { companyId: company.id, jobId: job1.id, assigneeWorkerId: w1.id, status: TaskStatus.OPEN, title: "Bring eco supplies", notes: "No bleach", dueAt: new Date(now.getTime() + 45*60*1000) }
+        data: {
+            companyId: company.id,
+            jobId: job1.id,
+            assigneeWorkerId: w1.id,
+            status: TaskStatus.OPEN,
+            title: "Bring eco supplies",
+            notes: "No bleach",
+            dueAt: new Date(now.getTime() + 45 * 60 * 1000)
+        }
     });
 
     // 10) Payments
@@ -151,12 +238,32 @@ async function main() {
             companyId: company.id,
             jobId: job1.id,
             provider: PaymentProvider.STRIPE,
+            status: PaymentStatus.SUCCEEDED,
+            amountCents: job1.totalCents,
+            currency: 'CAD',
+
+            providerPaymentId: 'ch_seed_001',
+            stripePaymentIntentId: 'pi_seed_001',
+            stripeCustomerId: 'cus_seed_001',
+            receiptUrl: 'https://example.org/receipt/seed',
+            capturedAt: new Date(job1.endAt.getTime() + 10 * 60 * 1000),
+            metadata: { source: 'seed' },
+        },
+    });
+
+// Pending (requires action) payment for job2
+    await prisma.payment.create({
+        data: {
+            companyId: company.id,
+            jobId: job2.id,
+            provider: PaymentProvider.STRIPE,
             status: PaymentStatus.PENDING,
-            amountCents: 12600,
-            currency: "CAD",
-            providerPaymentId: "pi_demo_123",
-            last4: "4242"
-        }
+            amountCents: job2.totalCents,
+            currency: 'CAD',
+            providerPaymentId: 'ch_seed_002',
+            stripePaymentIntentId: 'pi_seed_002',
+            metadata: { source: 'seed' },
+        },
     });
 
     // 11) Notifications
@@ -168,7 +275,7 @@ async function main() {
             status: NotificationStatus.QUEUED,
             targetType: NotificationTargetType.JOB,
             targetId: job1.id,
-            payload: { to: c1.phone, text: "Reminder: your appointment is in 1 hour." },
+            payload: {to: c1.phone, text: "Reminder: your appointment is in 1 hour."},
             scheduledAt: new Date(now.getTime() + 10 * 60 * 1000)
         }
     });
@@ -181,7 +288,7 @@ async function main() {
             entityId: job1.id,
             action: "create",
             actorUserId: uManager.id,
-            changes: { created: true },
+            changes: {created: true},
             ip: "127.0.0.1",
             userAgent: "seed-script"
         }
@@ -191,5 +298,10 @@ async function main() {
 }
 
 main()
-    .catch((e) => { console.error(e); process.exit(1); })
-    .finally(async () => { await prisma.$disconnect(); });
+    .catch((e) => {
+        console.error(e);
+        process.exit(1);
+    })
+    .finally(async () => {
+        await prisma.$disconnect();
+    });

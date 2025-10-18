@@ -38,6 +38,7 @@ enum PaymentStatus {
   SUCCEEDED
   FAILED
   REFUNDED
+  CANCELED
 }
 
 enum PaymentProvider {
@@ -304,24 +305,36 @@ model JobComment {
 }
 
 model Payment {
-  id                String          @id @default(cuid())
-  companyId         String
-  jobId             String
-  provider          PaymentProvider
-  status            PaymentStatus
-  amountCents       Int
-  currency          String          @default("CAD")
-  providerPaymentId String?
-  receiptUrl        String?
-  last4             String?
-  createdAt         DateTime        @default(now())
+  id                  String   @id @default(cuid())
+  companyId           String
+  jobId               String
+  provider            PaymentProvider
+  status              PaymentStatus
+  amountCents         Int
+  currency            String   @default("CAD")
+
+  providerPaymentId   String?  @unique
+
+  stripeSessionId      String? @unique
+  stripePaymentIntentId String? @unique
+  stripeCustomerId     String?
+  receiptUrl           String?
+
+  idempotencyKey       String? @unique
+  metadata             Json?
+  raw                  Json?
+  capturedAt           DateTime?
+  refundedAt           DateTime?
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Restrict)
   job     Job     @relation(fields: [jobId], references: [id], onDelete: Cascade)
 
-  @@unique([provider, providerPaymentId])
   @@index([companyId, createdAt])
   @@index([jobId])
+  @@index([status])
 }
 
 model Notification {
