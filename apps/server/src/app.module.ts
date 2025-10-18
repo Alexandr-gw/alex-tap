@@ -10,12 +10,15 @@ import {ThrottlerModule} from '@nestjs/throttler';
 import {ServicesModule} from './modules/services/services.module';
 import {SlotsModule} from "@/slots/slots.module";
 import {JobsModule} from "@/jobs/jobs.module";
+import {StripeModule} from "@/stripe/stripe.controller";
+import {PaymentsModule} from "@/payments/payments.module";
+import {WebhooksModule} from "@/webhooks/webhooks.module";
 
 @Module({
     imports: [AuthModule, ConfigModule.forRoot({isGlobal: true}), MeModule, PrismaModule, HealthModule,
         ThrottlerModule.forRoot([
             {ttl: 60_000, limit: 20},
-        ]), ServicesModule, SlotsModule, JobsModule],
+        ]), ServicesModule, SlotsModule, JobsModule,StripeModule,PaymentsModule,WebhooksModule],
     controllers: [AppController],
     providers: [AppService],
 })
