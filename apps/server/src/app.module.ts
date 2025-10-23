@@ -10,7 +10,7 @@ import {ThrottlerModule} from '@nestjs/throttler';
 import {ServicesModule} from './modules/services/services.module';
 import {SlotsModule} from "@/slots/slots.module";
 import {JobsModule} from "@/jobs/jobs.module";
-import {StripeModule} from "@/stripe/stripe.controller";
+import {StripeModule} from "@/stripe/stripe.module";
 import {PaymentsModule} from "@/payments/payments.module";
 import {WebhooksModule} from "@/webhooks/webhooks.module";
 

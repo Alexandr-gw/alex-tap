@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Injectable, BadRequestException, ForbiddenException, Inject } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { PaymentProvider, PaymentStatus } from '@prisma/client';
 import { CreateCheckoutDto } from './dto/create-checkout.dto';
@@ -10,7 +10,7 @@ export class PaymentsService {
     constructor(
         private readonly prisma: PrismaService,
         // @ts-ignore
-        private readonly stripe: Stripe,
+       @Inject('STRIPE') private readonly stripe: Stripe,
     ) {}
 
     async createCheckoutSession(companyId: string, actorUserId: string, dto: CreateCheckoutDto) {
@@ -59,14 +59,14 @@ export class PaymentsService {
         );
 
         const payment = await this.prisma.payment.upsert({
-            where: { idempotencyKey },             // must be unique & non-null
+            where: { idempotencyKey },
             create: {
                 companyId,
                 jobId: job.id,
-                provider: PaymentProvider.STRIPE,    // ✅ required
+                provider: PaymentProvider.STRIPE,
                 amountCents: job.balanceCents,
                 currency:  'CAD',
-                status: PaymentStatus.REQUIRES_ACTION, // ✅ enum, not string
+                status: PaymentStatus.REQUIRES_ACTION,
                 idempotencyKey,
                 stripeSessionId: session.id,
                 metadata: { createdBy: actorUserId },
