@@ -61,7 +61,7 @@ export class PaymentsService {
         const payment = await this.prisma.payment.upsert({
             where: { idempotencyKey },
             create: {
-                companyId,
+                companyId: job.companyId,
                 jobId: job.id,
                 provider: PaymentProvider.STRIPE,
                 amountCents: job.balanceCents,
