@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@nestjs/config": "^4.0.2",
-    "jose": "^6.0.13"
+    "jose": "^6.0.13",
+    "stripe": "^19.1.0"
   }
 }

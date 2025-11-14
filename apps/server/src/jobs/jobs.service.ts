@@ -14,12 +14,14 @@ import { hasAnyRole } from '@/common/utils/roles.util';
 import { addMinutes, parseISO } from 'date-fns';
 import { Prisma, JobStatus } from '@prisma/client';
 import { hashRequestBody } from '@/common/utils/idempotency.util';
+import {NotificationService} from "@/notifications/notification.service";
 
 @Injectable()
 export class JobsService {
     constructor(
         private readonly prisma: PrismaService,
         private readonly slots: SlotsService, // needed for create()
+        private readonly notifications: NotificationService
     ) {}
 
     // ---------- READ: list ----------
@@ -230,6 +232,19 @@ export class JobsService {
                     data: { jobId: job.id },
                 });
             }
+
+            async confirmJob(companyId: string, jobId: string) {
+                // 1) Update job status to SCHEDULED (if not already)
+                const job = await this.prisma.job.update({
+                    where: { id: jobId },
+                    data: { status: 'SCHEDULED' },
+                    include: {
+                        company: true,
+                        client: true,
+                        worker: true,
+                    },
+                });
+            await this.notifications.enqueueJobReminders(companyId, jobId)
 
             return job;
         }, { isolationLevel: 'Serializable' });
