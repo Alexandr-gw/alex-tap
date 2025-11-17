@@ -232,21 +232,21 @@ export class JobsService {
                     data: { jobId: job.id },
                 });
             }
-
-            async confirmJob(companyId: string, jobId: string) {
-                // 1) Update job status to SCHEDULED (if not already)
-                const job = await this.prisma.job.update({
-                    where: { id: jobId },
-                    data: { status: 'SCHEDULED' },
-                    include: {
-                        company: true,
-                        client: true,
-                        worker: true,
-                    },
-                });
-            await this.notifications.enqueueJobReminders(companyId, jobId)
-
             return job;
-        }, { isolationLevel: 'Serializable' });
+        },
+
+            { isolationLevel: 'Serializable' });
+    }
+    async confirmJob(companyId: string, jobId: string) {
+        // 1) Update job status
+        const job = await this.prisma.job.update({
+            where: { id: jobId },
+            data: { status: JobStatus.SCHEDULED },
+        });
+
+        // 2) enqueue reminders
+        await this.notifications.enqueueJobReminders(companyId, jobId);
+
+        return job;
     }
 }
