@@ -1,38 +1,22 @@
-// src/app/router.tsx
-import { createBrowserRouter, Navigate } from "react-router-dom";
-
-import { DashboardLayout } from "../components/layout/DashboardLayout";
-//import { TrackingPage } from "@/features/tracking/TrackingPage";
-
-// (optional later)
-// import { LandingPage } from "@/features/landing/LandingPage";
-// import { DashboardHomePage } from "@/features/dashboard/DashboardHomePage";
+import { createBrowserRouter, Navigate } from "react-router-dom"
+import { DashboardLayout } from "../components/layouts/DashboardLayout"
+import { LandingPage } from "../features/public/pages/LandingPage"
+import { DashboardHomePage } from "../features/dashboard/pages/DashboardHomePage"
+import { LoginPage } from "../features/auth/pages/LoginPage"
 
 export const router = createBrowserRouter([
-    // /* PUBLIC */
-    // {
-    //     path: "/",
-    //     element: <LandingPage />,
-    // },
+    // Public
+    { path: "/", element: <LandingPage /> },
+    { path: "/login", element: <LoginPage /> },
 
-    /* DASHBOARD (shell) */
+    // Dashboard (protected later in Step 1)
     {
         element: <DashboardLayout />,
         children: [
-            {
-                path: "/dashboard",
-                element: <DashboardLayout />,
-            },
-            // {
-            //     path: "/tracking",
-            //     element: <TrackingPage />,
-            // },
+            { path: "/dashboard", element: <DashboardHomePage /> },
         ],
     },
 
-    /* FALLBACK */
-    {
-        path: "*",
-        element: <Navigate to="/" replace />,
-    },
-]);
+    // Fallback
+    { path: "*", element: <Navigate to="/" replace /> },
+])
