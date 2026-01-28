@@ -3,11 +3,13 @@ import { NavLink } from "react-router-dom"
 export function Header() {
     return (
         <header className="h-14 border-b bg-background">
+            <div className="p-6 bg-red-500 text-white rounded-2xl">test</div>
+
             <div className="mx-auto flex h-full max-w-screen-2xl items-center justify-between px-4">
                 <div className="flex items-center gap-3">
                     <div className="h-8 w-8 rounded-md bg-muted" />
                     <div className="leading-tight">
-                        <div className="text-sm font-semibold">Ghost Route</div>
+                        <div className="text-sm font-semibold">Alex-tap</div>
                         <div className="text-xs text-muted-foreground">Dashboard</div>
                     </div>
                 </div>

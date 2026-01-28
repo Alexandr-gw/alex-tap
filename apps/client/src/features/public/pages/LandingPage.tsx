@@ -18,12 +18,13 @@ const steps = [
 export function LandingPage() {
     return (
         <div className="min-h-dvh bg-background text-foreground">
+
             {/* Top bar (public) */}
             <header className="border-b">
                 <div className="mx-auto flex h-14 max-w-screen-2xl items-center justify-between px-4">
                     <div className="flex items-center gap-3">
                         <div className="h-8 w-8 rounded-md bg-muted" />
-                        <div className="text-sm font-semibold">Ghost Route</div>
+                        <div className="text-sm font-semibold">Alex-tap</div>
                     </div>
 
                     <div className="flex items-center gap-2">
