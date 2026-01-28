@@ -6,7 +6,7 @@ export function LoginPage() {
             <header className="border-b">
                 <div className="mx-auto flex h-14 max-w-screen-2xl items-center justify-between px-4">
                     <NavLink to="/" className="text-sm font-semibold">
-                        Ghost Route
+                        Alex-tap
                     </NavLink>
                     <NavLink to="/" className="text-sm text-muted-foreground hover:underline">
                         Back

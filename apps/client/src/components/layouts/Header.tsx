@@ -1,16 +1,17 @@
-import { NavLink } from "react-router-dom"
+// Header.tsx
+import { NavLink } from "react-router-dom";
 
 export function Header() {
     return (
-        <header className="h-14 border-b bg-background">
-            <div className="p-6 bg-red-500 text-white rounded-2xl">test</div>
-
-            <div className="mx-auto flex h-full max-w-screen-2xl items-center justify-between px-4">
+        <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/80 backdrop-blur">
+            <div className="mx-auto flex h-14 max-w-screen-2xl items-center justify-between px-4">
                 <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-md bg-muted" />
+                    <div className="grid h-9 w-9 place-items-center rounded-xl bg-indigo-600 text-sm font-semibold text-white shadow-sm">
+                        A
+                    </div>
                     <div className="leading-tight">
-                        <div className="text-sm font-semibold">Alex-tap</div>
-                        <div className="text-xs text-muted-foreground">Dashboard</div>
+                        <div className="text-sm font-semibold text-slate-900">Alex-tap</div>
+                        <div className="text-xs text-slate-500">Dashboard</div>
                     </div>
                 </div>
 
@@ -19,8 +20,8 @@ export function Header() {
                         to="/dashboard"
                         className={({ isActive }) =>
                             [
-                                "rounded-md px-3 py-2 text-sm",
-                                isActive ? "bg-muted font-medium" : "text-muted-foreground hover:bg-muted",
+                                "rounded-xl px-3 py-2 text-sm font-medium transition",
+                                isActive ? "bg-slate-100 text-slate-900" : "text-slate-600 hover:bg-slate-100",
                             ].join(" ")
                         }
                     >
@@ -31,19 +32,22 @@ export function Header() {
                         to="/tracking"
                         className={({ isActive }) =>
                             [
-                                "rounded-md px-3 py-2 text-sm",
-                                isActive ? "bg-muted font-medium" : "text-muted-foreground hover:bg-muted",
+                                "rounded-xl px-3 py-2 text-sm font-medium transition",
+                                isActive ? "bg-slate-100 text-slate-900" : "text-slate-600 hover:bg-slate-100",
                             ].join(" ")
                         }
                     >
                         Tracking
                     </NavLink>
 
-                    <button className="ml-2 rounded-md border px-3 py-2 text-sm hover:bg-muted">
+                    <button className="ml-2 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50">
+            <span className="grid h-7 w-7 place-items-center rounded-lg bg-indigo-600 text-xs font-semibold text-white">
+              U
+            </span>
                         User
                     </button>
                 </nav>
             </div>
         </header>
-    )
+    );
 }
