@@ -1,7 +1,7 @@
 import { RouterProvider } from "react-router-dom";
 import { router } from "./app/router.tsx";
-import { QueryProvider } from "./components/providers/query-provider";
-import { ThemeProvider } from "./components/providers/theme-provider";
+import { QueryProvider } from "./components/providers/QueryProvider.tsx";
+import { ThemeProvider } from "./components/providers/ThemeProvider.tsx";
 import { Toaster } from "./components/ui/toaster";
 
 export default function App() {
