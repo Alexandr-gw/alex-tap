@@ -1,28 +1,31 @@
 // vite.config.ts
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
 import tailwindcss from "@tailwindcss/vite";
 
-const BE_PORT = process.env.BE_PORT ?? "3001"; // set your real BE port here
+export default defineConfig(({ mode }) => {
+    const env = loadEnv(mode, process.cwd(), "");
 
-export default defineConfig({
-    plugins: [react(), tailwindcss()],
-    server: {
-        port: 3000, // FE port
-        proxy: {
-            "/api": {
-                target: `http://localhost:${BE_PORT}`,
-                changeOrigin: true,
-                secure: false,
-                // FE "/api/me" -> BE "/me"
-                rewrite: (p) => p.replace(/^\/api/, ""),
+    const SERVER_PORT = env.API_PORT || "5000"; // backend port
+
+    return {
+        plugins: [react(), tailwindcss()],
+        server: {
+            port: 3000, // FE port
+            proxy: {
+                "/api": {
+                    target: `http://localhost:${SERVER_PORT}`,
+                    changeOrigin: true,
+                    secure: false,
+                    rewrite: (p) => p.replace(/^\/api/, ""),
+                },
             },
         },
-    },
-    resolve: {
-        alias: {
-            "@": path.resolve(__dirname, "src"),
+        resolve: {
+            alias: {
+                "@": path.resolve(__dirname, "src"),
+            },
         },
-    },
+    };
 });

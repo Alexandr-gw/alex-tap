@@ -16,7 +16,6 @@ function makeQueryClient() {
     });
 }
 
-// In Vite (client-only), this ensures a single instance for the whole app lifetime.
 let browserQueryClient: QueryClient | undefined;
 
 function getQueryClient() {

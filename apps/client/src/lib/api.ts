@@ -1,4 +1,4 @@
-const API_BASE = "/api";
+export const API_BASE = "/api";
 
 export type ApiError = { status: number; message: string };
 
@@ -6,17 +6,14 @@ function getActiveCompanyId() {
     return localStorage.getItem("activeCompanyId");
 }
 
-export async function apiFetch<T>(
-    path: string,
-    init: RequestInit = {},
-): Promise<T> {
+export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
     const companyId = getActiveCompanyId();
 
     const res = await fetch(`${API_BASE}${path}`, {
         ...init,
         credentials: "include",
         headers: {
-            "Content-Type": "application/json",
+            ...(init.body ? { "Content-Type": "application/json" } : {}), // optional improvement
             ...(companyId ? { "x-company-id": companyId } : {}),
             ...(init.headers ?? {}),
         },
@@ -31,21 +28,8 @@ export async function apiFetch<T>(
         throw { status: res.status, message: msg } satisfies ApiError;
     }
 
+    // if some endpoints return 204
+    if (res.status === 204) return undefined as T;
+
     return res.json() as Promise<T>;
-}
-
-export function startLogin() {
-    window.location.href = `${API_BASE}/auth/login`;
-}
-
-export async function logout() {
-    // your BE endpoint is POST /auth/logout (it may redirect)
-    const res = await fetch(`${API_BASE}/auth/logout`, {
-        method: "POST",
-        credentials: "include",
-    });
-
-    // In dev it might redirect; either way clean FE state
-    localStorage.removeItem("activeCompanyId");
-    if (res.redirected) window.location.href = res.url;
 }

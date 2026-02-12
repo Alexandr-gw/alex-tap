@@ -1,4 +1,4 @@
-import { startLogin } from "@/lib/api";
+import { startLogin } from "@/features/auth/api/auth.api.ts";
 
 export default function LoginPage() {
     return (
