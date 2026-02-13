@@ -1,19 +1,21 @@
 // src/app/router.tsx
-import { createBrowserRouter, Navigate } from "react-router-dom";
+import {createBrowserRouter} from "react-router-dom";
 
-import {LandingPage} from "@/features/public/pages/LandingPage.tsx";
+import {LandingPage} from "@/features/public/pages/LandingPage";
 import LoginPage from "@/features/auth/pages/LoginPage";
 import UnauthorizedPage from "@/features/auth/pages/UnauthorizedPage";
 import SelectCompanyPage from "@/features/auth/pages/SelectCompanyPage";
+import NotFoundPage from "@/features/public/pages/NotFoundPage";
 
-import { ProtectedRoute } from "@/features/auth/components/ProtectedRoute";
-import { CompanyGate } from "@/features/auth/components/CompanyGate";
-import { RequireRole } from "@/features/auth/components/RequireRole";
+import {PublicOnlyRoute} from "@/features/auth/components/PublicOnlyRoute";
+import {ProtectedRoute} from "@/features/auth/components/ProtectedRoute";
+import {CompanyGate} from "@/features/auth/components/CompanyGate";
+import {RequireRole} from "@/features/auth/components/RequireRole";
 
-import { DashboardLayout } from "@/components/layouts/DashboardLayout";
+import {DashboardLayout} from "@/components/layouts/DashboardLayout";
 import {DashboardHomePage} from "@/features/dashboard/pages/DashboardHomePage";
 
-function Placeholder({ title }: { title: string }) {
+function Placeholder({title}: { title: string }) {
     return <div className="p-6 text-lg font-semibold">{title}</div>;
 }
 
@@ -21,35 +23,43 @@ export const router = createBrowserRouter([
     // --------------------
     // Public
     // --------------------
-    { path: "/", element: <LandingPage /> },
-    { path: "/login", element: <LoginPage /> },
-    { path: "/401", element: <UnauthorizedPage /> },
+    {path: "/", element: <LandingPage/>},
 
-    // If user has >1 memberships and no activeCompanyId
-    { path: "/select-company", element: <SelectCompanyPage /> },
+    {
+        element: <PublicOnlyRoute/>,
+        children: [{path: "/login", element: <LoginPage/>}],
+    },
+
+    {path: "/401", element: <UnauthorizedPage/>},
 
     // --------------------
-    // Protected App
+    // Protected (session required)
     // --------------------
     {
-        path: "/app",
-        element: <ProtectedRoute />,
+        element: <ProtectedRoute/>,
         children: [
+            // must be logged in to pick a company
+            {path: "/select-company", element: <SelectCompanyPage/>},
+
             {
-                element: <CompanyGate />,
+                path: "/app",
+                element: <CompanyGate/>,
                 children: [
                     {
-                        element: <DashboardLayout />,
+                        element: <DashboardLayout/>,
                         children: [
-                            { index: true, element: <DashboardHomePage /> },
+                            {index: true, element: <DashboardHomePage/>},
 
-                            { path: "schedule", element: <Placeholder title="Schedule" /> },
-                            { path: "tracking", element: <Placeholder title="Tracking" /> },
+                            // Everyone in app
+                            {path: "schedule", element: <Placeholder title="Schedule"/>},
+                            {path: "tracking", element: <Placeholder title="Tracking"/>},
 
+                            // Admin/Manager only
                             {
-                                element: <RequireRole allow={["ADMIN", "MANAGER"]} />,
+                                element: <RequireRole allow={["ADMIN", "MANAGER"]}/>,
                                 children: [
-                                    { path: "services", element: <Placeholder title="Services" /> },
+                                    {path: "services", element: <Placeholder title="Services"/>},
+                                    {path: "users", element: <Placeholder title="Users"/>},
                                 ],
                             },
                         ],
@@ -62,5 +72,5 @@ export const router = createBrowserRouter([
     // --------------------
     // Fallback
     // --------------------
-    { path: "*", element: <Navigate to="/" replace /> },
+    {path: "*", element: <NotFoundPage/>},
 ]);

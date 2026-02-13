@@ -1,5 +1,6 @@
 // Header.tsx
 import { NavLink } from "react-router-dom";
+import { LogoutButton } from "@/features/auth/components/LogoutButton";
 
 export function Header() {
     return (
@@ -17,7 +18,7 @@ export function Header() {
 
                 <nav className="flex items-center gap-2">
                     <NavLink
-                        to="/dashboard"
+                        to="/app"
                         className={({ isActive }) =>
                             [
                                 "rounded-xl px-3 py-2 text-sm font-medium transition",
@@ -29,7 +30,7 @@ export function Header() {
                     </NavLink>
 
                     <NavLink
-                        to="/tracking"
+                        to="/app/tracking"
                         className={({ isActive }) =>
                             [
                                 "rounded-xl px-3 py-2 text-sm font-medium transition",
@@ -46,6 +47,7 @@ export function Header() {
             </span>
                         User
                     </button>
+                    <LogoutButton />
                 </nav>
             </div>
         </header>

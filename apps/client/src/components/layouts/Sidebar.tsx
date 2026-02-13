@@ -2,11 +2,11 @@
 import { NavLink } from "react-router-dom";
 
 const links = [
-    { to: "/dashboard", label: "Dashboard" },
-    { to: "/tracking", label: "Tracking" },
-    { to: "/jobs", label: "Jobs" },
-    { to: "/customers", label: "Customers" },
-    { to: "/settings", label: "Settings" },
+    { to: ".", label: "Dashboard" },       // /app
+    { to: "tracking", label: "Tracking" }, // /app/tracking
+    { to: "jobs", label: "Jobs" },
+    { to: "customers", label: "Customers" },
+    { to: "settings", label: "Settings" },
 ];
 
 export function Sidebar() {
@@ -32,7 +32,7 @@ export function Sidebar() {
                             }
                         >
                             <span>{l.label}</span>
-                            {l.to === "/tracking" ? (
+                            {l.to === "tracking" ? (
                                 <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">
                   Live
                 </span>
