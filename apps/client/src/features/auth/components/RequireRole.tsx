@@ -1,6 +1,6 @@
 import { Navigate, Outlet } from "react-router-dom";
 import type { MembershipRole } from "../api/me";
-import { useMe } from "../hooks/useMe";
+import { useMe } from "@/features/me/hooks/useMe";
 
 export function RequireRole({ allow }: { allow: MembershipRole[] }) {
     const { data, isLoading } = useMe();

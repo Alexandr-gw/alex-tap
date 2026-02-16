@@ -1,5 +1,4 @@
-import { apiFetch } from "@/lib/api";
-
+// src/feat/me/api/me.types.ts
 export type MembershipRole = "ADMIN" | "MANAGER" | "WORKER" | "CLIENT";
 
 export type MeResponse = {
@@ -14,9 +13,6 @@ export type MeResponse = {
         companyName: string;
         role: MembershipRole;
     }>;
+
     activeCompanyId: string | null;
 };
-
-export function fetchMe() {
-    return apiFetch<MeResponse>("/me");
-}

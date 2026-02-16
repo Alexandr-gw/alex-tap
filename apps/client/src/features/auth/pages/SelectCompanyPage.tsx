@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { useMe } from "../hooks/useMe";
+import { useMe } from "@/features/me/hooks/useMe";
 
 export default function SelectCompanyPage() {
     const { data, isLoading } = useMe();

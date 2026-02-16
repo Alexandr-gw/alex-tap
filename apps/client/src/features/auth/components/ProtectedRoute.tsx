@@ -1,5 +1,5 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
-import { useMe } from "@/features/auth/hooks/useMe";
+import { useMe } from "@/features/me/hooks/useMe";
 
 export function ProtectedRoute() {
     const loc = useLocation();

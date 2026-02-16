@@ -1,5 +1,5 @@
 import { Navigate, Outlet } from "react-router-dom";
-import { useMe } from "../hooks/useMe";
+import { useMe } from "@/features/me/hooks/useMe";
 
 export function CompanyGate() {
     const { data, isLoading } = useMe();
