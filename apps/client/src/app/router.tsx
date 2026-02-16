@@ -7,13 +7,13 @@ import UnauthorizedPage from "@/features/auth/pages/UnauthorizedPage";
 import SelectCompanyPage from "@/features/auth/pages/SelectCompanyPage";
 import NotFoundPage from "@/features/public/pages/NotFoundPage";
 
-import {PublicOnlyRoute} from "@/features/auth/components/PublicOnlyRoute";
 import {ProtectedRoute} from "@/features/auth/components/ProtectedRoute";
 import {CompanyGate} from "@/features/auth/components/CompanyGate";
 import {RequireRole} from "@/features/auth/components/RequireRole";
 
 import {DashboardLayout} from "@/components/layouts/DashboardLayout";
 import {DashboardHomePage} from "@/features/dashboard/pages/DashboardHomePage";
+import ServicesAdminPage from "@/features/services/components/ServiceAdminPage.tsx";
 
 function Placeholder({title}: { title: string }) {
     return <div className="p-6 text-lg font-semibold">{title}</div>;
@@ -25,10 +25,7 @@ export const router = createBrowserRouter([
     // --------------------
     {path: "/", element: <LandingPage/>},
 
-    {
-        element: <PublicOnlyRoute/>,
-        children: [{path: "/login", element: <LoginPage/>}],
-    },
+    {path: "/login", element: <LoginPage/>},
 
     {path: "/401", element: <UnauthorizedPage/>},
 
@@ -56,10 +53,10 @@ export const router = createBrowserRouter([
 
                             // Admin/Manager only
                             {
-                                element: <RequireRole allow={["ADMIN", "MANAGER"]}/>,
+                                element: <RequireRole allow={["ADMIN", "MANAGER"]} />,
                                 children: [
-                                    {path: "services", element: <Placeholder title="Services"/>},
-                                    {path: "users", element: <Placeholder title="Users"/>},
+                                    { path: "services", element: <ServicesAdminPage /> },
+                                    { path: "users", element: <Placeholder title="Users" /> },
                                 ],
                             },
                         ],

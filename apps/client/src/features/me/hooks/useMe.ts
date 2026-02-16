@@ -1,16 +1,36 @@
-// src/feat/me/hooks/useMe.ts
+// src/features/me/hooks/useMe.ts
 import { useQuery } from "@tanstack/react-query";
-import { getMe } from "@/features/me/api/me.api.ts";
+import { getMe } from "@/features/me/api/me.api";
 
-export function useMe() {
-    return useQuery({
-        queryKey: ["me"],
-        queryFn: () => getMe(),
+// 🔹 Match backend enum EXACTLY (uppercase)
+export type MembershipRole = "ADMIN" | "MANAGER" | "WORKER" | "CLIENT";
+
+export type MeDto = {
+    sub: string;
+    email: string | null;
+    username: string | null;
+    email_verified: boolean;
+
+    rolesFromToken: string[];
+
+    memberships: Array<{
+        companyId: string;
+        companyName: string;
+        role: MembershipRole; // from DB enum
+    }>;
+
+    activeCompanyId: string | null;
+};
+
+export function useMe(companyId?: string | null) {
+    const normalized = companyId ?? null;
+
+    return useQuery<MeDto>({
+        queryKey: ["me", normalized],
+        queryFn: () => getMe(normalized),
         staleTime: 30_000,
-        retry: (count, err: any) => {
-            const status = typeof err?.status === "number" ? err.status : 0;
-            if (status === 401 || status === 403) return false;
-            return count < 1;
-        },
+        retry: false,
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: false,
     });
 }

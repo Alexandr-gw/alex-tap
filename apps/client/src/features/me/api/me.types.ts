@@ -1,4 +1,3 @@
-// src/feat/me/api/me.types.ts
 export type MembershipRole = "ADMIN" | "MANAGER" | "WORKER" | "CLIENT";
 
 export type MeResponse = {
@@ -8,6 +7,7 @@ export type MeResponse = {
     email_verified: boolean;
 
     rolesFromToken: string[];
+
     memberships: Array<{
         companyId: string;
         companyName: string;
