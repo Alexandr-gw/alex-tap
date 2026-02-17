@@ -10,11 +10,19 @@ function useDebounced<T>(value: T, ms = 300) {
     return v;
 }
 
+export type ServicesToolbarActive = "all" | "active" | "inactive";
+
 export type ServicesToolbarValue = {
     search: string;
-    active: "all" | "active" | "inactive";
+    active: ServicesToolbarActive;
     sort: "name" | "-updatedAt" | "basePriceCents" | "durationMins";
 };
+
+export function toolbarActiveToBool(active: ServicesToolbarActive): boolean | undefined {
+    if (active === "active") return true;
+    if (active === "inactive") return false;
+    return undefined; // "all" => omit query param
+}
 
 export function ServicesToolbar(props: {
     value: ServicesToolbarValue;
@@ -57,7 +65,9 @@ export function ServicesToolbar(props: {
                     <label className="text-xs text-slate-500">Availability</label>
                     <select
                         value={value.active}
-                        onChange={(e) => onChange({ ...value, active: e.target.value as ServicesToolbarValue["active"] })}
+                        onChange={(e) =>
+                            onChange({ ...value, active: e.target.value as ServicesToolbarValue["active"] })
+                        }
                         className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-slate-200"
                     >
                         <option value="all">All</option>
@@ -70,7 +80,9 @@ export function ServicesToolbar(props: {
                     <label className="text-xs text-slate-500">Sort</label>
                     <select
                         value={value.sort}
-                        onChange={(e) => onChange({ ...value, sort: e.target.value as ServicesToolbarValue["sort"] })}
+                        onChange={(e) =>
+                            onChange({ ...value, sort: e.target.value as ServicesToolbarValue["sort"] })
+                        }
                         className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-slate-200"
                     >
                         <option value="name">Name (A→Z)</option>

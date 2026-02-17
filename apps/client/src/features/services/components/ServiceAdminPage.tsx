@@ -12,18 +12,13 @@ import type {
 import {
     ServicesToolbar,
     type ServicesToolbarValue,
+    toolbarActiveToBool,
 } from "@/features/services/components/ServicesToolbar";
 import { ServicesTable } from "@/features/services/components/ServicesTable";
 import { ServicesPagination } from "@/features/services/components/Pagination";
 import { ServiceFormDialog } from "@/features/services/components/ServiceFormDialog";
 import { useMe } from "@/features/me/hooks/useMe";
 import { canManageCompany } from "@/features/me/me.selector";
-
-function toActiveParam(v: ServicesToolbarValue["active"]): boolean | undefined {
-    if (v === "active") return true;
-    if (v === "inactive") return false;
-    return undefined;
-}
 
 function Card({
                   children,
@@ -71,7 +66,7 @@ export default function ServicesAdminPage() {
             page,
             pageSize,
             search: toolbar.search || undefined,
-            active: toActiveParam(toolbar.active),
+            active: toolbarActiveToBool(toolbar.active),
             sort: toolbar.sort,
         }),
         [page, pageSize, toolbar]
