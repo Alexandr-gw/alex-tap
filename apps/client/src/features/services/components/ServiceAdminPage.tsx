@@ -1,5 +1,6 @@
 // src/features/services/ServicesAdminPage.tsx
-import { useMemo, useState } from "react";
+import {useMemo, useState} from "react";
+import {toast} from "sonner";
 import {
     useCreateService,
     useServices,
@@ -14,11 +15,19 @@ import {
     type ServicesToolbarValue,
     toolbarActiveToBool,
 } from "@/features/services/components/ServicesToolbar";
-import { ServicesTable } from "@/features/services/components/ServicesTable";
-import { ServicesPagination } from "@/features/services/components/Pagination";
-import { ServiceFormDialog } from "@/features/services/components/ServiceFormDialog";
-import { useMe } from "@/features/me/hooks/useMe";
-import { canManageCompany } from "@/features/me/me.selector";
+import {ServicesTable} from "@/features/services/components/ServicesTable";
+import {ServicesPagination} from "@/features/services/components/Pagination";
+import {ServiceFormDialog} from "@/features/services/components/ServiceFormDialog";
+import {useMe} from "@/features/me/hooks/useMe";
+import {canManageCompany} from "@/features/me/me.selector";
+
+function getErrorMessage(e: unknown) {
+    if (e instanceof Error) return e.message;
+    if (typeof e === "string") return e;
+
+    const anyE = e as any;
+    return anyE?.response?.data?.message ?? anyE?.message ?? "Something went wrong.";
+}
 
 function Card({
                   children,
@@ -39,18 +48,25 @@ function Card({
     );
 }
 
-function Stat({ label, value }: { label: string; value: number | string }) {
+function Stat({label, value, hint,}: {
+    label: string;
+    value: number | string;
+    hint?: string;
+}) {
     return (
         <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-            <div className="text-xs font-medium text-slate-500">{label}</div>
+            <div className="flex items-center justify-between gap-3">
+                <div className="text-xs font-medium text-slate-500">{label}</div>
+                {hint ? <div className="text-[11px] text-slate-400">{hint}</div> : null}
+            </div>
             <div className="mt-1 text-lg font-semibold text-slate-900">{value}</div>
         </div>
     );
 }
 
 export default function ServicesAdminPage() {
-    const { data: me } = useMe();
-    const canManage = canManageCompany(me ?? null);
+    const {data: me} = useMe();
+    const canManage = useMemo(() => canManageCompany(me ?? null), [me]);
 
     const [page, setPage] = useState(1);
     const pageSize = 20;
@@ -91,6 +107,8 @@ export default function ServicesAdminPage() {
         [items]
     );
 
+    const isSaving = createMut.isPending || updateMut.isPending;
+
     function openCreate() {
         setEditing(null);
         setDialogOpen(true);
@@ -107,16 +125,61 @@ export default function ServicesAdminPage() {
     }
 
     function submit(payload: ServiceCreateInput) {
+        const toastId = toast.loading(editing ? "Saving changes…" : "Creating service…");
+
         if (editing) {
-            updateMut.mutate({ id: editing.id, patch: payload });
-        } else {
-            createMut.mutate(payload);
+            updateMut.mutate(
+                {id: editing.id, patch: payload},
+                {
+                    onSuccess: () => {
+                        toast.success("Service updated", {id: toastId});
+                        closeDialog();
+                    },
+                    onError: (e) => {
+                        toast.error("Update failed", {id: toastId, description: getErrorMessage(e)});
+                    },
+                }
+            );
+            return;
         }
-        closeDialog();
+
+        createMut.mutate(payload, {
+            onSuccess: () => {
+                toast.success("Service created", {id: toastId});
+                closeDialog();
+            },
+            onError: (e) => {
+                toast.error("Create failed", {id: toastId, description: getErrorMessage(e)});
+            },
+        });
     }
 
     function toggleActive(svc: ServiceDto) {
-        updateMut.mutate({ id: svc.id, patch: { active: !svc.active } });
+        if (!canManage) return;
+
+        const nextActive = !svc.active;
+        const toastId = toast.loading(nextActive ? "Activating…" : "Disabling…");
+
+        updateMut.mutate(
+            {id: svc.id, patch: {active: nextActive}},
+            {
+                onSuccess: () => {
+                    toast.success(nextActive ? "Service activated" : "Marked as not available", {
+                        id: toastId,
+                    });
+                },
+                onError: (e) => {
+                    toast.error("Update failed", {id: toastId, description: getErrorMessage(e)});
+                },
+            }
+        );
+    }
+
+    function retry() {
+        const toastId = toast.loading("Retrying…");
+        q.refetch()
+            .then(() => toast.success("Reloaded", {id: toastId}))
+            .catch((e) => toast.error("Retry failed", {id: toastId, description: getErrorMessage(e)}));
     }
 
     return (
@@ -129,8 +192,7 @@ export default function ServicesAdminPage() {
                             Services
                         </h1>
                         <p className="mt-1 text-sm text-slate-600">
-                            Create and manage services. Disable instead of deleting (keeps old
-                            jobs intact).
+                            Create and manage services.
                         </p>
                     </div>
 
@@ -157,9 +219,9 @@ export default function ServicesAdminPage() {
 
                 {/* Stats */}
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                    <Stat label="Total results" value={total} />
-                    <Stat label="Active (this page)" value={activeCount} />
-                    <Stat label="Inactive (this page)" value={inactiveCount} />
+                    <Stat label="Total results" value={total}/>
+                    <Stat label="Active (this page)" value={activeCount} hint="counts current page only"/>
+                    <Stat label="Inactive (this page)" value={inactiveCount} hint="counts current page only"/>
                 </div>
 
                 {/* Toolbar */}
@@ -178,20 +240,17 @@ export default function ServicesAdminPage() {
                     <Card className="p-6">
                         <div className="flex items-center justify-between">
                             <div className="text-sm text-slate-600">Loading services…</div>
-                            <div className="h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-slate-700" />
+                            <div
+                                className="h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-slate-700"/>
                         </div>
                     </Card>
                 ) : q.isError ? (
                     <Card className="border-rose-200 bg-rose-50 p-6">
-                        <div className="text-sm font-medium text-rose-900">
-                            Couldn’t load services
-                        </div>
-                        <div className="mt-1 text-sm text-rose-800">
-                            {(q.error as Error)?.message}
-                        </div>
+                        <div className="text-sm font-medium text-rose-900">Couldn’t load services</div>
+                        <div className="mt-1 text-sm text-rose-800">{getErrorMessage(q.error)}</div>
                         <div className="mt-4">
                             <button
-                                onClick={() => q.refetch()}
+                                onClick={retry}
                                 className="inline-flex h-9 items-center rounded-md border border-rose-200 bg-white px-3 text-sm font-medium text-slate-900 hover:bg-rose-50"
                             >
                                 Retry
@@ -200,9 +259,7 @@ export default function ServicesAdminPage() {
                     </Card>
                 ) : items.length === 0 ? (
                     <Card className="p-10 text-center">
-                        <div className="text-sm font-semibold text-slate-900">
-                            No services found
-                        </div>
+                        <div className="text-sm font-semibold text-slate-900">No services found</div>
                         <div className="mt-1 text-sm text-slate-600">
                             {toolbar.search
                                 ? "Try a different search."
@@ -224,12 +281,16 @@ export default function ServicesAdminPage() {
                         <Card className="overflow-hidden">
                             <div className="border-b border-slate-200 bg-slate-50 p-4">
                                 <div className="flex items-center justify-between">
-                                    <div className="text-sm font-medium text-slate-900">
-                                        Services list
+                                    <div className="text-sm font-medium text-slate-900">Services list</div>
+                                    <div className="flex items-center gap-3">
+                                        {isSaving ? (
+                                            <div className="flex items-center gap-2 text-xs text-slate-600">
+                                                <div
+                                                    className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-700"/>
+                                                Saving…
+                                            </div>
+                                        ) : null}
                                     </div>
-                                    {(createMut.isPending || updateMut.isPending) && (
-                                        <div className="text-xs text-slate-600">Saving…</div>
-                                    )}
                                 </div>
                             </div>
 
@@ -259,7 +320,7 @@ export default function ServicesAdminPage() {
                     initial={editing}
                     onClose={closeDialog}
                     onSubmit={submit}
-                    isSubmitting={createMut.isPending || updateMut.isPending}
+                    isSubmitting={isSaving}
                 />
             </div>
         </div>
