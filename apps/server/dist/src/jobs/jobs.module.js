@@ -12,11 +12,13 @@ const jobs_controller_1 = require("./jobs.controller");
 const jobs_service_1 = require("./jobs.service");
 const prisma_service_1 = require("../prisma/prisma.service");
 const slots_service_1 = require("../slots/slots.service");
+const notification_module_1 = require("../notifications/notification.module");
 let JobsModule = class JobsModule {
 };
 exports.JobsModule = JobsModule;
 exports.JobsModule = JobsModule = __decorate([
     (0, common_1.Module)({
+        imports: [notification_module_1.NotificationModule],
         controllers: [jobs_controller_1.JobsController],
         providers: [jobs_service_1.JobsService, prisma_service_1.PrismaService, slots_service_1.SlotsService],
         exports: [jobs_service_1.JobsService],

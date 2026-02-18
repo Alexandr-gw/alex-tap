@@ -52,7 +52,7 @@ __decorate([
     __param(2, (0, common_1.Query)('page', new common_1.DefaultValuePipe(1), common_1.ParseIntPipe)),
     __param(3, (0, common_1.Query)('pageSize', new common_1.DefaultValuePipe(20), common_1.ParseIntPipe)),
     __param(4, (0, common_1.Query)('sort')),
-    __param(5, (0, common_1.Query)('active', new common_1.DefaultValuePipe(undefined), common_1.ParseBoolPipe)),
+    __param(5, (0, common_1.Query)('active', new common_1.ParseBoolPipe({ optional: true }))),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, String, Number, Number, String, Boolean]),
     __metadata("design:returntype", Promise)

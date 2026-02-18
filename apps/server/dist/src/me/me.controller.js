@@ -27,20 +27,21 @@ let MeController = class MeController {
     }
     async me(claims, companyId) {
         const preferredClient = this.cfg.get('KEYCLOAK_CLIENT_ID') ?? null;
+        const normalizedRoles = claims.roles ?? [];
         const realmRoles = claims.realm_access?.roles ?? [];
         const allClientRoles = Object.values(claims.resource_access ?? {}).flatMap((r) => r?.roles ?? []);
         const preferredRoles = (preferredClient && claims.resource_access?.[preferredClient]?.roles) ?? [];
-        const rolesFromToken = Array.from(new Set([...realmRoles, ...preferredRoles, ...allClientRoles]));
+        const rolesFromToken = Array.from(new Set([...normalizedRoles, ...realmRoles, ...preferredRoles, ...allClientRoles]));
         const user = await this.prisma.user.upsert({
             where: { sub: claims.sub },
             update: {
                 email: claims.email ?? undefined,
-                name: claims.preferred_username ?? undefined,
+                name: claims.preferred_username ?? claims.username ?? undefined,
             },
             create: {
                 sub: claims.sub,
                 email: claims.email ?? null,
-                name: claims.preferred_username ?? null,
+                name: claims.preferred_username ?? claims.username ?? null,
             },
             select: { id: true, sub: true, email: true, name: true },
         });
@@ -65,7 +66,7 @@ let MeController = class MeController {
         return {
             sub: user.sub,
             email: claims.email ?? user.email ?? null,
-            username: claims.preferred_username ?? user.name ?? null,
+            username: claims.preferred_username ?? claims.username ?? user.name ?? null,
             email_verified: claims.email_verified ?? false,
             rolesFromToken,
             memberships: memberships.map((m) => ({

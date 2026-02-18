@@ -1,7 +1,7 @@
 import { Worker, Queue, QueueEvents, JobsOptions } from 'bullmq';
 import { PrismaClient } from '@prisma/client';
 import { ResendEmailProvider } from '../providers/resend.provider';
-import { QUEUE_EMAIL, QUEUE_EMAIL_DLQ, MAX_ATTEMPTS } from '../notifications.constants';
+import { QUEUE_EMAIL, QUEUE_EMAIL_DLQ, MAX_ATTEMPTS } from '../notification.constants';
 import { jobReminder24h } from '../templates/jobReminder24h';
 import { jobReminder2h } from '../templates/jobReminder2h';
 

@@ -2,10 +2,12 @@ import { PrismaService } from '@/prisma/prisma.service';
 import { SlotsService } from '@/slots/slots.service';
 import { ListJobsDto } from './dto/list-jobs.dto';
 import { CreateJobDto } from './dto/create-job.dto';
+import { NotificationService } from "@/notifications/notification.service";
 export declare class JobsService {
     private readonly prisma;
     private readonly slots;
-    constructor(prisma: PrismaService, slots: SlotsService);
+    private readonly notifications;
+    constructor(prisma: PrismaService, slots: SlotsService, notifications: NotificationService);
     findManyForUser(input: {
         companyId: string;
         roles: string[];
@@ -60,6 +62,26 @@ export declare class JobsService {
         clientId: string;
     }>;
     create(dto: CreateJobDto, idempotencyKey?: string): Promise<{
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        deletedAt: Date | null;
+        companyId: string;
+        currency: string;
+        workerId: string | null;
+        status: import("@prisma/client").$Enums.JobStatus;
+        startAt: Date;
+        endAt: Date;
+        location: string | null;
+        subtotalCents: number;
+        taxCents: number;
+        totalCents: number;
+        paidCents: number;
+        balanceCents: number;
+        source: string | null;
+        clientId: string;
+    }>;
+    confirmJob(companyId: string, jobId: string): Promise<{
         id: string;
         createdAt: Date;
         updatedAt: Date;

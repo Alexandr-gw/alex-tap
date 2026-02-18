@@ -37,7 +37,7 @@ export class ServicesController {
         @Query('page', new DefaultValuePipe(1), ParseIntPipe) page?: number,
         @Query('pageSize', new DefaultValuePipe(20), ParseIntPipe) pageSize?: number,
         @Query('sort') sort?: string,
-        @Query('active', new DefaultValuePipe(undefined), ParseBoolPipe) active?: boolean,
+        @Query('active', new ParseBoolPipe({optional: true}), ) active?: boolean,
     ) {
         return this.svc.list(companyId, {search, page, pageSize, sort, active});
     }

@@ -17,12 +17,15 @@ const roles_util_1 = require("../common/utils/roles.util");
 const date_fns_1 = require("date-fns");
 const client_1 = require("@prisma/client");
 const idempotency_util_1 = require("../common/utils/idempotency.util");
+const notification_service_1 = require("../notifications/notification.service");
 let JobsService = class JobsService {
     prisma;
     slots;
-    constructor(prisma, slots) {
+    notifications;
+    constructor(prisma, slots, notifications) {
         this.prisma = prisma;
         this.slots = slots;
+        this.notifications = notifications;
     }
     async findManyForUser(input) {
         const { companyId, roles, userSub, dto } = input;
@@ -208,11 +211,20 @@ let JobsService = class JobsService {
             return job;
         }, { isolationLevel: 'Serializable' });
     }
+    async confirmJob(companyId, jobId) {
+        const job = await this.prisma.job.update({
+            where: { id: jobId },
+            data: { status: client_1.JobStatus.SCHEDULED },
+        });
+        await this.notifications.enqueueJobReminders(companyId, jobId);
+        return job;
+    }
 };
 exports.JobsService = JobsService;
 exports.JobsService = JobsService = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
-        slots_service_1.SlotsService])
+        slots_service_1.SlotsService,
+        notification_service_1.NotificationService])
 ], JobsService);
 //# sourceMappingURL=jobs.service.js.map

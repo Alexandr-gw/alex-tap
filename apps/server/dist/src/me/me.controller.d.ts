@@ -3,8 +3,10 @@ import { PrismaService } from '@/prisma/prisma.service';
 type Claims = {
     sub: string;
     email?: string;
+    username?: string;
     preferred_username?: string;
     email_verified?: boolean;
+    roles?: string[];
     realm_access?: {
         roles?: string[];
     };

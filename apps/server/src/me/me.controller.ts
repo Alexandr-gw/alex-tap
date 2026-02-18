@@ -8,8 +8,12 @@ import { PrismaService } from '@/prisma/prisma.service';
 type Claims = {
     sub: string;
     email?: string;
+    username?: string;
     preferred_username?: string;
     email_verified?: boolean;
+
+    roles?: string[];
+
     realm_access?: { roles?: string[] };
     resource_access?: Record<string, { roles?: string[] }>;
 };
@@ -24,8 +28,11 @@ export class MeController {
 
     @Get()
     async me(@AuthUser() claims: Claims, @CompanyId() companyId: string | null) {
-        // --- 1) Roles from token (realm + resource clients) ---
+        // --- 1) Roles from token
         const preferredClient = this.cfg.get<string>('KEYCLOAK_CLIENT_ID') ?? null;
+
+// normalized roles
+        const normalizedRoles = claims.roles ?? [];
 
         const realmRoles = claims.realm_access?.roles ?? [];
         const allClientRoles = Object.values(claims.resource_access ?? {}).flatMap(
@@ -34,22 +41,22 @@ export class MeController {
         const preferredRoles =
             (preferredClient && claims.resource_access?.[preferredClient]?.roles) ?? [];
 
-        // unique union: realm + preferred client (if any) + all client roles
         const rolesFromToken = Array.from(
-            new Set([...realmRoles, ...preferredRoles, ...allClientRoles]),
+            new Set([...normalizedRoles, ...realmRoles, ...preferredRoles, ...allClientRoles]),
         );
+
 
         // --- 2) Upsert local user mirror by Keycloak sub (first-login friendly) ---
         const user = await this.prisma.user.upsert({
             where: { sub: claims.sub },
             update: {
                 email: claims.email ?? undefined,
-                name: claims.preferred_username ?? undefined,
+                name: claims.preferred_username ?? claims.username ?? undefined,
             },
             create: {
                 sub: claims.sub,
                 email: claims.email ?? null,
-                name: claims.preferred_username ?? null,
+                name: claims.preferred_username ?? claims.username ?? null,
             },
             select: { id: true, sub: true, email: true, name: true },
         });
@@ -76,12 +83,11 @@ export class MeController {
             // sensible default: single-company users get auto-selected
             activeCompanyId = memberships[0].companyId;
         }
-
         // --- 5) Shape response: identity (token) + app context (DB) ---
         return {
             sub: user.sub,
             email: claims.email ?? user.email ?? null,
-            username: claims.preferred_username ?? user.name ?? null,
+            username: claims.preferred_username ?? claims.username ?? user.name ?? null,
             email_verified: claims.email_verified ?? false,
 
             rolesFromToken,

@@ -6,7 +6,7 @@ export const ServiceCreateSchema = z.object({
     description: z.string().max(2000).optional(),
     active: z.boolean().optional(),
     basePriceCents: z.coerce.number().int().min(0).max(1_000_000),
-    durationMinutes: z.coerce.number().int().min(5).max(480),
+    durationMins: z.coerce.number().int().min(5).max(480),
     categoryId: z.string().optional(),
     taxRateId: z.string().optional(),
     color: z.string().max(32).optional(),
