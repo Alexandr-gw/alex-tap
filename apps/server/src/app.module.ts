@@ -13,12 +13,14 @@ import {JobsModule} from "@/jobs/jobs.module";
 import {StripeModule} from "@/stripe/stripe.module";
 import {PaymentsModule} from "@/payments/payments.module";
 import {WebhooksModule} from "@/webhooks/webhooks.module";
+import {PublicBookingModule} from "@/public-booking/public-booking.module";
+import {AlertsModule} from "@/alerts/alerts.module";
 
 @Module({
     imports: [AuthModule, ConfigModule.forRoot({isGlobal: true}), MeModule, PrismaModule, HealthModule,
         ThrottlerModule.forRoot([
             {ttl: 60_000, limit: 20},
-        ]), ServicesModule, SlotsModule, JobsModule,StripeModule,PaymentsModule,WebhooksModule],
+        ]), ServicesModule, SlotsModule, JobsModule,StripeModule,PaymentsModule,WebhooksModule, PublicBookingModule, AlertsModule],
     controllers: [AppController],
     providers: [AppService],
 })

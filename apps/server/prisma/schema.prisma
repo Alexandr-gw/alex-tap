@@ -112,6 +112,7 @@ model Membership {
   userId    String
   role      Role
   createdAt DateTime @default(now())
+  lastSeenPaidJobsAt DateTime?
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Restrict)
   user    User    @relation(fields: [userId], references: [id], onDelete: Restrict)
