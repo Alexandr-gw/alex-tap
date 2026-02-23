@@ -199,7 +199,9 @@ export class JobsService {
                 });
                 clientId = newClient.id;
             }
-
+                const subtotal = service.basePriceCents;
+                const tax = 0;
+                const total = subtotal + tax;
             // Create job
             const job = await tx.job.create({
                 data: {
@@ -209,6 +211,12 @@ export class JobsService {
                     startAt: start,
                     endAt: end,
                     status: JobStatus.SCHEDULED, // or DRAFT if you prefer two-step
+                    subtotalCents: subtotal,
+                    taxCents: tax,
+                    totalCents: total,
+                    paidCents: 0,
+                    balanceCents: total,
+                    currency: service.currency ?? "CAD",
                 },
             });
 

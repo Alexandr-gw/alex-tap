@@ -73,6 +73,7 @@ model Company {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
+  slug      String?   @unique
 
   memberships           Membership[]
   workers               Worker[]
@@ -156,10 +157,12 @@ model Service {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   deletedAt       DateTime?
+  slug            String?
 
   company   Company       @relation(fields: [companyId], references: [id], onDelete: Restrict)
   lineItems JobLineItem[]
 
+  @@unique([companyId, slug])
   // We’ll convert this to a PARTIAL UNIQUE in the migration (active only)
   @@unique([companyId, name], map: "Service_companyId_name_unique")
   @@index([companyId, active])
@@ -236,14 +239,16 @@ model Job {
   updatedAt     DateTime  @updatedAt
   deletedAt     DateTime?
 
+  paidAt DateTime?
+
   company Company       @relation(fields: [companyId], references: [id], onDelete: Restrict)
   client  ClientProfile @relation(fields: [clientId], references: [id], onDelete: Restrict)
   worker  Worker?       @relation(fields: [workerId], references: [id], onDelete: SetNull)
 
-  lineItems JobLineItem[]
-  comments  JobComment[]
-  tasks     Task[]
-  payments  Payment[]
+  lineItems      JobLineItem[]
+  comments       JobComment[]
+  tasks          Task[]
+  payments       Payment[]
   IdempotencyKey IdempotencyKey[]
 
   @@index([companyId, startAt])
@@ -305,29 +310,29 @@ model JobComment {
 }
 
 model Payment {
-  id                  String   @id @default(cuid())
-  companyId           String
-  jobId               String
-  provider            PaymentProvider
-  status              PaymentStatus
-  amountCents         Int
-  currency            String   @default("CAD")
+  id          String          @id @default(cuid())
+  companyId   String
+  jobId       String
+  provider    PaymentProvider
+  status      PaymentStatus
+  amountCents Int
+  currency    String          @default("CAD")
 
-  providerPaymentId   String?  @unique
+  providerPaymentId String? @unique
 
-  stripeSessionId      String? @unique
+  stripeSessionId       String? @unique
   stripePaymentIntentId String? @unique
-  stripeCustomerId     String?
-  receiptUrl           String?
+  stripeCustomerId      String?
+  receiptUrl            String?
 
-  idempotencyKey       String? @unique
-  metadata             Json?
-  raw                  Json?
-  capturedAt           DateTime?
-  refundedAt           DateTime?
+  idempotencyKey String?   @unique
+  metadata       Json?
+  raw            Json?
+  capturedAt     DateTime?
+  refundedAt     DateTime?
 
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Restrict)
   job     Job     @relation(fields: [jobId], references: [id], onDelete: Cascade)
@@ -382,7 +387,7 @@ model IdempotencyKey {
   createdAt   DateTime @default(now())
   expiresAt   DateTime
 
-  job   Job?  @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  job Job? @relation(fields: [jobId], references: [id], onDelete: SetNull)
 
   @@index([companyId, createdAt])
 }
