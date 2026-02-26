@@ -11,6 +11,7 @@ export declare class ServicesService {
     }): Promise<{
         items: {
             id: string;
+            slug: string | null;
             name: string;
             createdAt: Date;
             updatedAt: Date;
@@ -29,6 +30,7 @@ export declare class ServicesService {
     }>;
     getById(companyId: string, id: string): Promise<{
         id: string;
+        slug: string | null;
         name: string;
         createdAt: Date;
         updatedAt: Date;
@@ -43,6 +45,7 @@ export declare class ServicesService {
     }>;
     create(companyId: string, userId: string, dto: any): Promise<{
         id: string;
+        slug: string | null;
         name: string;
         createdAt: Date;
         updatedAt: Date;
@@ -57,6 +60,7 @@ export declare class ServicesService {
     }>;
     update(companyId: string, userId: string, id: string, dto: any): Promise<{
         id: string;
+        slug: string | null;
         name: string;
         createdAt: Date;
         updatedAt: Date;

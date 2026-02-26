@@ -97,13 +97,15 @@ let StripeWebhookController = class StripeWebhookController {
                 return;
             const newPaid = job.paidCents + payment.amountCents;
             const newBalance = Math.max(job.totalCents - newPaid, 0);
-            let newStatus = job.status;
-            if (newBalance === 0) {
-                newStatus = 'DONE';
-            }
+            const becomesFullyPaid = newBalance === 0 && job.balanceCents > 0;
             await tx.job.update({
                 where: { id: jobId },
-                data: { paidCents: newPaid, balanceCents: newBalance, status: newStatus },
+                data: {
+                    paidCents: newPaid,
+                    balanceCents: newBalance,
+                    status: job.status,
+                    ...(becomesFullyPaid ? { paidAt: new Date() } : {}),
+                },
             });
             await tx.auditLog.create({
                 data: {

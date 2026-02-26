@@ -32,6 +32,7 @@ export declare class JobsService {
             paidCents: number;
             balanceCents: number;
             source: string | null;
+            paidAt: Date | null;
             clientId: string;
         }[];
         nextCursor: string | null;
@@ -59,6 +60,7 @@ export declare class JobsService {
         paidCents: number;
         balanceCents: number;
         source: string | null;
+        paidAt: Date | null;
         clientId: string;
     }>;
     create(dto: CreateJobDto, idempotencyKey?: string): Promise<{
@@ -79,6 +81,7 @@ export declare class JobsService {
         paidCents: number;
         balanceCents: number;
         source: string | null;
+        paidAt: Date | null;
         clientId: string;
     }>;
     confirmJob(companyId: string, jobId: string): Promise<{
@@ -99,6 +102,7 @@ export declare class JobsService {
         paidCents: number;
         balanceCents: number;
         source: string | null;
+        paidAt: Date | null;
         clientId: string;
     }>;
 }

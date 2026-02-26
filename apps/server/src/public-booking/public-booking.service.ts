@@ -227,6 +227,47 @@ export class PublicBookingService {
         return { checkoutUrl: session.url, jobId: job.id };
     }
 
+    async listPublicServices(companySlug: string) {
+        console.log("[PublicBooking] companySlug:", companySlug);
+
+        const company = await this.prisma.company.findFirst({
+            where: { slug: companySlug, deletedAt: null },
+            select: { id: true, name: true, slug: true, deletedAt: true },
+        });
+
+        console.log("[PublicBooking] company found:", company);
+
+        if (!company) {
+            console.log("[PublicBooking] ❌ Company NOT found for slug:", companySlug);
+            throw new NotFoundException("Company not found");
+        }
+
+        const services = await this.prisma.service.findMany({
+            where: {
+                companyId: company.id,
+                active: true,
+                deletedAt: null,
+            },
+            select: {
+                id: true,
+                name: true,
+                slug: true,
+                durationMins: true,
+                basePriceCents: true,
+                currency: true,
+            },
+            orderBy: { createdAt: "asc" },
+        });
+
+        console.log(`[PublicBooking] services count: ${services.length}`);
+
+        return {
+            companyId: company.id,
+            companyName: company.name,
+            services,
+        };
+    }
+
     private async pickWorkerForSlot(args: { companyId: string; serviceId: string; start: Date; end: Date }) {
         const workers = await this.prisma.worker.findMany({
             where: { companyId: args.companyId, active: true },

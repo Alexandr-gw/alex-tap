@@ -23,6 +23,7 @@ export declare class JobsController {
         paidCents: number;
         balanceCents: number;
         source: string | null;
+        paidAt: Date | null;
         clientId: string;
     }>;
     list(req: Request & {
@@ -50,6 +51,7 @@ export declare class JobsController {
             paidCents: number;
             balanceCents: number;
             source: string | null;
+            paidAt: Date | null;
             clientId: string;
         }[];
         nextCursor: string | null;
@@ -74,6 +76,7 @@ export declare class JobsController {
         paidCents: number;
         balanceCents: number;
         source: string | null;
+        paidAt: Date | null;
         clientId: string;
     }>;
 }

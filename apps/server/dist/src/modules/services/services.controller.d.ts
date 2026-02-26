@@ -7,6 +7,7 @@ export declare class ServicesController {
     list(companyId: string, search?: string, page?: number, pageSize?: number, sort?: string, active?: boolean): Promise<{
         items: {
             id: string;
+            slug: string | null;
             name: string;
             createdAt: Date;
             updatedAt: Date;
@@ -25,6 +26,7 @@ export declare class ServicesController {
     }>;
     getOne(companyId: string, id: string): Promise<{
         id: string;
+        slug: string | null;
         name: string;
         createdAt: Date;
         updatedAt: Date;
@@ -39,6 +41,7 @@ export declare class ServicesController {
     }>;
     create(companyId: string, user: any, body: unknown): Promise<{
         id: string;
+        slug: string | null;
         name: string;
         createdAt: Date;
         updatedAt: Date;
@@ -53,6 +56,7 @@ export declare class ServicesController {
     }>;
     update(companyId: string, user: any, id: string, body: unknown): Promise<{
         id: string;
+        slug: string | null;
         name: string;
         createdAt: Date;
         updatedAt: Date;

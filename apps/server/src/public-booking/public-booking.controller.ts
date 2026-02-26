@@ -2,7 +2,7 @@ import { Controller, Get, Post, Query, Param, BadRequestException, Body } from "
 import { PublicBookingService } from "./public-booking.service";
 import { PublicCheckoutDto } from "./dto/public-checkout.dto";
 
-@Controller("public")
+@Controller("api/v1/public")
 export class PublicBookingController {
     constructor(private readonly svc: PublicBookingService) {}
 
@@ -27,6 +27,12 @@ export class PublicBookingController {
             throw new BadRequestException("Missing query params: companyId, serviceId, from, to");
         }
         return this.svc.getPublicSlots({ companyId, serviceId, from, to });
+    }
+
+    // GET /public/companies/:companySlug/services
+    @Get("companies/:companySlug/services")
+    async listServices(@Param("companySlug") companySlug: string) {
+        return this.svc.listPublicServices(companySlug);
     }
 
     // POST /public/bookings/checkout
