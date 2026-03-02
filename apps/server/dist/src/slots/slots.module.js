@@ -16,7 +16,7 @@ let SlotsModule = class SlotsModule {
 exports.SlotsModule = SlotsModule;
 exports.SlotsModule = SlotsModule = __decorate([
     (0, common_1.Module)({
-        controllers: [slots_controller_1.SlotsController],
+        controllers: [slots_controller_1.SlotsController, slots_controller_1.PublicSlotsController],
         providers: [slots_service_1.SlotsService, prisma_service_1.PrismaService],
         exports: [slots_service_1.SlotsService],
     })

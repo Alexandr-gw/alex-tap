@@ -8,6 +8,7 @@ import {
     snapToSlots,
 } from './intervals';
 import { JobStatus } from '@prisma/client';
+import { DateTime } from 'luxon';
 
 type GetWorkerSlotsArgs = {
     workerId: string;
@@ -17,22 +18,152 @@ type GetWorkerSlotsArgs = {
     stepOverride?: number;
 };
 
+type WorkerSlotsResult = {
+    workerId: string;
+    serviceId: string;
+    from: string;
+    to: string;
+    timezone: string;
+    slotDurationMins: number;
+    stepMins: number;
+    slots: { start: string; end: string }[];
+};
+
+type CompanySlot = { start: string; end: string; workerIds: string[] };
+
+export type CompanySlotsDayResult = {
+    companyId: string;
+    serviceId: string;
+    day: string;
+    timezone: string;
+    slotDurationMins: number;
+    stepMins: number;
+    slots: CompanySlot[];
+};
+
 @Injectable()
 export class SlotsService {
     constructor(private readonly prisma: PrismaService) {}
 
-    private BLOCKING_STATUSES = [JobStatus.SCHEDULED, JobStatus.IN_PROGRESS] as const;
+    private readonly DEFAULT_TZ = 'America/Edmonton';
+
+    private readonly DEFAULT_STEP_MINS = 15;
+    private readonly MIN_STEP_MINS = 5;
+    private readonly MAX_STEP_MINS = 15;
+
+    private readonly BLOCKING_STATUSES: readonly JobStatus[] = [
+        JobStatus.SCHEDULED,
+        JobStatus.IN_PROGRESS,
+    ] as const;
+
+    async getCompanySlotsForDay(args: {
+        companyId: string;
+        day: string;
+        serviceId: string;
+        stepOverride?: number;
+    }): Promise<CompanySlotsDayResult> {
+        const { companyId, day, serviceId, stepOverride } = args;
+
+        const [company, service] = await Promise.all([
+            this.prisma.company.findUnique({
+                where: { id: companyId },
+                select: { id: true, timezone: true },
+            }),
+            this.prisma.service.findUnique({
+                where: { id: serviceId },
+                select: { id: true, active: true, companyId: true, durationMins: true },
+            }),
+        ]);
+
+        if (!company) throw new NotFoundException('Company not found');
+        if (!service?.active || service.companyId !== company.id) {
+            throw new NotFoundException('Service not found');
+        }
+
+        const timezone = company.timezone || this.DEFAULT_TZ;
+        const slotDurationMins = this.requirePositiveDuration(service.durationMins);
+        const stepMins = this.computeStepMins(slotDurationMins, stepOverride);
+
+        const workers = await this.prisma.worker.findMany({
+            where: { companyId: company.id, active: true },
+            select: { id: true },
+        });
+
+        if (workers.length === 0) {
+            return {
+                companyId: company.id,
+                serviceId,
+                day,
+                timezone,
+                slotDurationMins,
+                stepMins,
+                slots: [],
+            };
+        }
+
+        const { fromUtc, toUtc } = this.dayRangeInTzToUtcExclusive(day, timezone);
+
+        const perWorker = await Promise.all(
+            workers.map(async (w) => {
+                const slots = await this.generateWorkerSlots({
+                    workerId: w.id,
+                    from: fromUtc,
+                    to: toUtc,
+                    timezone,
+                    slotDurationMins,
+                    stepMins,
+                });
+                return { workerId: w.id, slots };
+            }),
+        );
+
+        const map = new Map<string, { startMs: number; endMs: number; workerIds: Set<string> }>();
+
+        for (const r of perWorker) {
+            for (const s of r.slots) {
+                const startMs = Date.parse(s.start);
+                const endMs = Date.parse(s.end);
+                if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) continue;
+
+                const key = `${startMs}|${endMs}`;
+                const existing = map.get(key);
+                if (existing) existing.workerIds.add(r.workerId);
+                else map.set(key, { startMs, endMs, workerIds: new Set([r.workerId]) });
+            }
+        }
+
+        const slots: CompanySlot[] = Array.from(map.values())
+            .sort((a, b) => a.startMs - b.startMs)
+            .map((v) => ({
+                start: new Date(v.startMs).toISOString(),
+                end: new Date(v.endMs).toISOString(),
+                workerIds: Array.from(v.workerIds),
+            }));
+
+        return {
+            companyId: company.id,
+            serviceId,
+            day,
+            timezone,
+            slotDurationMins,
+            stepMins,
+            slots,
+        };
+    }
 
     async isSlotBookable(args: {
         companyId: string;
         workerId: string;
         serviceId: string;
-        start: Date;
-        end: Date;
+        start: Date; // UTC instant
+        end: Date;   // UTC instant
     }): Promise<boolean> {
         const { companyId, workerId, serviceId, start, end } = args;
 
-        // basic sanity + get tz/duration in one go
+        if (!this.isValidDate(start) || !this.isValidDate(end) || start.getTime() >= end.getTime()) {
+            return false;
+        }
+
         const [worker, service] = await Promise.all([
             this.prisma.worker.findUnique({
                 where: { id: workerId },
@@ -40,103 +171,158 @@ export class SlotsService {
             }),
             this.prisma.service.findUnique({
                 where: { id: serviceId },
-                select: {
-                    active: true,
-                    companyId: true,
-                    durationMins: true,
-                },
+                select: { active: true, companyId: true, durationMins: true },
             }),
         ]);
 
         if (!worker?.active || worker.companyId !== companyId) return false;
         if (!service?.active || service.companyId !== companyId) return false;
 
-        const tz = worker.company?.timezone || 'America/Edmonton';
-        const durationMins = service.durationMins;
-        const stepMins = Math.min(15, Math.max(5, durationMins));
+        const timezone = worker.company?.timezone || this.DEFAULT_TZ;
+        const slotDurationMins = this.requirePositiveDuration(service.durationMins);
 
-        // for now: no buffer fields → default to zero
-        const buffers = { before: 0, after: 0 };
+        const mins = (end.getTime() - start.getTime()) / 60_000;
+        if (mins !== slotDurationMins) return false;
 
-        // build a day window around the target to reuse getWorkerSlots
-        const dayStart = new Date(start);
-        dayStart.setUTCHours(0, 0, 0, 0);
-        const dayEnd = new Date(start);
-        dayEnd.setUTCHours(23, 59, 59, 999);
+        const stepMins = this.computeStepMins(slotDurationMins, undefined);
 
-        const day = await this.getWorkerSlots({
+        const day = DateTime.fromJSDate(start, { zone: 'utc' }).setZone(timezone).toISODate();
+        if (!day) return false;
+
+        const { fromUtc, toUtc } = this.dayRangeInTzToUtcExclusive(day, timezone);
+
+        const slots = await this.generateWorkerSlots({
             workerId,
-            serviceId,
-            from: dayStart,
-            to: dayEnd,
-            stepOverride: stepMins,
+            from: fromUtc,
+            to: toUtc,
+            timezone,
+            slotDurationMins,
+            stepMins,
         });
 
-        const targetStartIso = start.toISOString();
-        const targetEndIso = end.toISOString();
+        const targetStartMs = start.getTime();
+        const targetEndMs = end.getTime();
 
-        return day.slots.some(s => s.start === targetStartIso && s.end === targetEndIso);
+        return slots.some((s) => Date.parse(s.start) === targetStartMs && Date.parse(s.end) === targetEndMs);
     }
-    async getWorkerSlots(args: GetWorkerSlotsArgs) {
+
+    async getWorkerSlots(args: GetWorkerSlotsArgs): Promise<WorkerSlotsResult> {
         const { workerId, serviceId, from, to, stepOverride } = args;
 
+        this.assertValidRange(from, to);
+
+        const [worker, service] = await Promise.all([
+            this.prisma.worker.findUnique({
+                where: { id: workerId },
+                select: { id: true, active: true, companyId: true, company: { select: { timezone: true } } },
+            }),
+            this.prisma.service.findUnique({
+                where: { id: serviceId },
+                select: { id: true, active: true, companyId: true, durationMins: true },
+            }),
+        ]);
+
+        if (!worker?.active) throw new NotFoundException('Worker not found');
+        if (!service?.active) throw new NotFoundException('Service not found');
+        if (service.companyId !== worker.companyId) throw new NotFoundException('Service not found');
+
+        const timezone = worker.company?.timezone || this.DEFAULT_TZ;
+        const slotDurationMins = this.requirePositiveDuration(service.durationMins);
+        const stepMins = this.computeStepMins(slotDurationMins, stepOverride);
+
+        const slots = await this.generateWorkerSlots({
+            workerId,
+            from,
+            to,
+            timezone,
+            slotDurationMins,
+            stepMins,
+        });
+
+        return {
+            workerId,
+            serviceId,
+            from: from.toISOString(),
+            to: to.toISOString(),
+            timezone,
+            slotDurationMins,
+            stepMins,
+            slots,
+        };
+    }
+
+    async getWorkerSlotsForDay(args: {
+        workerId: string;
+        serviceId: string;
+        day: string;
+        stepOverride?: number;
+    }): Promise<WorkerSlotsResult> {
         const worker = await this.prisma.worker.findUnique({
-            where: { id: workerId },
-            select: { id: true, active: true, companyId: true, company: { select: { timezone: true } } },
+            where: { id: args.workerId },
+            select: { active: true, company: { select: { timezone: true } } },
         });
-        if (!worker || !worker.active) throw new NotFoundException('Worker not found');
+        if (!worker?.active) throw new NotFoundException('Worker not found');
 
-        const service = await this.prisma.service.findUnique({
-            where: { id: serviceId },
-            select: {
-                id: true,
-                active: true,
-                durationMins: true
-            },
+        const timezone = worker.company?.timezone || this.DEFAULT_TZ;
+        const { fromUtc, toUtc } = this.dayRangeInTzToUtcExclusive(args.day, timezone);
+
+        return this.getWorkerSlots({
+            workerId: args.workerId,
+            serviceId: args.serviceId,
+            from: fromUtc,
+            to: toUtc,
+            stepOverride: args.stepOverride,
         });
-        if (!service || !service.active) throw new NotFoundException('Service not found');
+    }
 
-        const tz = worker.company?.timezone || 'America/Edmonton';
-        const durationMins = service.durationMins;
-        if (!durationMins || durationMins <= 0) throw new BadRequestException('Invalid service duration');
+    private async generateWorkerSlots(args: {
+        workerId: string;
+        from: Date;
+        to: Date;
+        timezone: string;
+        slotDurationMins: number;
+        stepMins: number;
+    }): Promise<{ start: string; end: string }[]> {
+        const { workerId, from, to, timezone, slotDurationMins, stepMins } = args;
 
-        // step: clamp to [5, min(15, duration)]
-        const stepMins = Math.min(15, Math.max(5, stepOverride ?? durationMins));
-
-        const [rules, exceptions] = await Promise.all([
+        const [rules, exceptions, jobs] = await Promise.all([
             this.prisma.availabilityRule.findMany({
                 where: { workerId },
-                select: {
-                    dayOfWeek: true,
-                    startTime: true, // schema: "HH:mm"
-                    endTime: true,   // schema: "HH:mm"
-                },
+                select: { dayOfWeek: true, startTime: true, endTime: true },
             }),
             this.prisma.availabilityException.findMany({
                 where: {
                     workerId,
-                    OR: [{ startAt: { lte: to }, endAt: { gte: from } }],
+                    startAt: { lt: to }, // strict overlap for half-open intervals
+                    endAt: { gt: from },
                 },
                 select: { isOpen: true, startAt: true, endAt: true },
             }),
+            this.prisma.job.findMany({
+                where: {
+                    workerId,
+                    status: { in: [...this.BLOCKING_STATUSES] },
+                    startAt: { lt: to }, // strict overlap
+                    endAt: { gt: from },
+                },
+                select: { startAt: true, endAt: true },
+            }),
         ]);
 
-        // Build base open intervals from daily rules (local wall-clock)
         const baseOpen = expandDailyWindows(
             from,
             to,
-            tz,
+            timezone,
             rules.map((r) => ({
-                dayOfWeek: r.dayOfWeek,     // 0..6
-                startLocal: r.startTime,    // "HH:mm"
-                endLocal: r.endTime,        // "HH:mm"
+                dayOfWeek: r.dayOfWeek,
+                startLocal: r.startTime,
+                endLocal: r.endTime,
             })),
         );
 
-        // Apply exceptions (schema has isOpen:boolean instead of type)
         const withExceptions = applyExceptions(
             baseOpen,
-            tz,
+            timezone,
             exceptions.map((e) => ({
                 type: e.isOpen ? 'open' : 'closed',
                 startsAt: e.startAt,
@@ -144,39 +330,57 @@ export class SlotsService {
             })),
         );
 
-        // Buffers not in schema yet → default to zero (add later if you migrate)
-        const buffers = { before: 0, after: 0 };
 
-        // Busy ranges from jobs (note: schema uses startAt/endAt, and enum is UPPERCASE)
-        const jobs = await this.prisma.job.findMany({
-            where: {
-                workerId,
-                status: { in: [...this.BLOCKING_STATUSES] },
-                OR: [{ startAt: { lte: to }, endAt: { gte: from } }],
-            },
-            select: { startAt: true, endAt: true },
-        });
-
+        const buffers = { beforeMins: 0, afterMins: 0 };
         const busy: OpenInterval[] = jobs.map((j) => ({
-            start: new Date(j.startAt.getTime() - buffers.before * 60_000),
-            end: new Date(j.endAt.getTime() + buffers.after * 60_000),
+            start: new Date(j.startAt.getTime() - buffers.beforeMins * 60_000),
+            end: new Date(j.endAt.getTime() + buffers.afterMins * 60_000),
         }));
 
         const openMinusBusy = subtractIntervals(withExceptions, busy);
 
-        const slots = snapToSlots(openMinusBusy, durationMins, stepMins);
+        return snapToSlots(openMinusBusy, slotDurationMins, stepMins)
+            .sort((a, b) => a.start.getTime() - b.start.getTime())
+            .map((s) => ({ start: s.start.toISOString(), end: s.end.toISOString() }));
+    }
+
+    // ---------- Helpers ----------
+
+    private isValidDate(d: unknown): d is Date {
+        return d instanceof Date && Number.isFinite(d.getTime());
+    }
+
+    private assertValidRange(from: unknown, to: unknown) {
+        if (!this.isValidDate(from) || !this.isValidDate(to) || from.getTime() >= to.getTime()) {
+            throw new BadRequestException('Invalid from/to range');
+        }
+    }
+
+    private requirePositiveDuration(durationMins: number | null | undefined): number {
+        const n = Number(durationMins);
+        if (!Number.isFinite(n) || n <= 0) throw new BadRequestException('Invalid service duration');
+        return n;
+    }
+
+    private computeStepMins(durationMins: number, stepOverride?: number): number {
+        const raw = stepOverride ?? this.DEFAULT_STEP_MINS;
+        const clamped = Math.min(this.MAX_STEP_MINS, Math.max(this.MIN_STEP_MINS, raw));
+        return Math.min(clamped, durationMins);
+    }
+
+    /**
+     * Converting a local calendar day in a timezone to a UTC [from,to) to avoid “endOf day” edge cases.
+     */
+    private dayRangeInTzToUtcExclusive(day: string, timezone: string): { fromUtc: Date; toUtc: Date } {
+        const dt = DateTime.fromISO(day, { zone: timezone });
+        if (!dt.isValid) throw new BadRequestException('Invalid day');
+
+        const startLocal = dt.startOf('day');
+        const endLocalExclusive = startLocal.plus({ days: 1 });
 
         return {
-            workerId,
-            serviceId,
-            from: from.toISOString(),
-            to: to.toISOString(),
-            timezone: tz,
-            slotDurationMins: durationMins,
-            stepMins,
-            slots: slots
-                .sort((a, b) => a.start.getTime() - b.start.getTime())
-                .map((s) => ({ start: s.start.toISOString(), end: s.end.toISOString() })),
+            fromUtc: startLocal.toUTC().toJSDate(),
+            toUtc: endLocalExclusive.toUTC().toJSDate(),
         };
     }
 }

@@ -31,3 +31,35 @@ export class GetWorkerSlotsDto {
     @IsOptional()
     stepMins?: string;
 }
+
+export class GetWorkerSlotsDayDto {
+    @IsString()
+    day!: string; // "YYYY-MM-DD"
+
+    @IsUUID()
+    serviceId!: string;
+
+    @IsString()
+    @IsOptional()
+    stepMins?: string;
+}
+
+export class GetPublicSlotsDayDto {
+    @IsString()
+    companyId!: string;
+
+    @IsString()
+    day!: string; // "YYYY-MM-DD"
+
+    @IsOptional()
+    @IsUUID()
+    serviceId?: string;
+
+    @IsOptional()
+    @IsUUID()
+    workerId?: string;
+
+    @IsOptional()
+    @IsString()
+    stepMins?: string;
+}

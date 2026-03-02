@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
-import { SlotsController } from './slots.controller';
+import { SlotsController, PublicSlotsController } from './slots.controller';
 import { SlotsService } from './slots.service';
 import { PrismaService } from '@/prisma/prisma.service';
 
 @Module({
-    controllers: [SlotsController],
+    controllers: [SlotsController, PublicSlotsController],
     providers: [SlotsService, PrismaService],
     exports: [SlotsService],
 })
