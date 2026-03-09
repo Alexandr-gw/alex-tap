@@ -30,41 +30,73 @@ let PaymentsService = class PaymentsService {
     }
     async createCheckoutSession(companyId, actorUserId, dto) {
         const job = await this.prisma.job.findFirst({
-            where: { id: dto.jobId, companyId },
+            where: {
+                id: dto.jobId,
+                companyId,
+            },
             select: {
-                id: true, companyId: true, status: true,
-                totalCents: true, paidCents: true, balanceCents: true,
+                id: true,
+                companyId: true,
+                balanceCents: true,
+                lineItems: {
+                    select: { description: true },
+                    take: 1,
+                    orderBy: { id: 'asc' },
+                },
             },
         });
-        if (!job)
+        if (!job) {
             throw new common_1.ForbiddenException('Job not found');
-        if (job.balanceCents <= 0)
-            throw new common_1.BadRequestException('Job already fully paid');
-        const idempotencyKey = dto.idempotencyKey ?? `job:${job.id}:bal:${job.balanceCents}:${(0, crypto_1.randomUUID)()}`;
-        let existing = await this.prisma.payment.findUnique({ where: { idempotencyKey } });
-        if (existing?.stripeSessionId) {
-            return { sessionId: existing.stripeSessionId, url: await this.getSessionUrl(existing.stripeSessionId) };
         }
-        const successUrl = dto.successUrl ?? `${process.env.APP_PUBLIC_URL}/payment/success?jobId=${job.id}`;
-        const cancelUrl = dto.cancelUrl ?? `${process.env.APP_PUBLIC_URL}/payment/cancel?jobId=${job.id}`;
+        if (job.balanceCents <= 0) {
+            throw new common_1.BadRequestException('Job already fully paid');
+        }
+        const title = job.lineItems?.[0]?.description ?? `Job ${job.id}`;
+        const idempotencyKey = dto.idempotencyKey ??
+            `job:${job.id}:bal:${job.balanceCents}:${(0, crypto_1.randomUUID)()}`;
+        const existing = await this.prisma.payment.findUnique({
+            where: { idempotencyKey },
+            select: {
+                stripeSessionId: true,
+            },
+        });
+        if (existing?.stripeSessionId) {
+            return {
+                sessionId: existing.stripeSessionId,
+                url: await this.getSessionUrl(existing.stripeSessionId),
+            };
+        }
+        const appPublicUrl = process.env.APP_PUBLIC_URL;
+        if (!appPublicUrl) {
+            throw new common_1.BadRequestException('APP_PUBLIC_URL is not configured');
+        }
+        const successUrl = dto.successUrl ??
+            `${appPublicUrl}/payment/success?session_id={CHECKOUT_SESSION_ID}`;
+        const cancelUrl = dto.cancelUrl ??
+            `${appPublicUrl}/payment/cancel?session_id={CHECKOUT_SESSION_ID}`;
         const session = await this.stripe.checkout.sessions.create({
             mode: 'payment',
             success_url: successUrl,
             cancel_url: cancelUrl,
+            client_reference_id: job.id,
+            metadata: {
+                jobId: job.id,
+                companyId: job.companyId,
+            },
             line_items: [
                 {
                     price_data: {
                         currency: 'cad',
-                        product_data: { name: `Job ${job.id}` },
+                        product_data: {
+                            name: title,
+                        },
                         unit_amount: job.balanceCents,
                     },
                     quantity: 1,
                 },
             ],
-            client_reference_id: job.id,
-            metadata: { jobId: job.id, companyId },
         }, { idempotencyKey });
-        const payment = await this.prisma.payment.upsert({
+        await this.prisma.payment.upsert({
             where: { idempotencyKey },
             create: {
                 companyId: job.companyId,
@@ -75,19 +107,316 @@ let PaymentsService = class PaymentsService {
                 status: client_1.PaymentStatus.REQUIRES_ACTION,
                 idempotencyKey,
                 stripeSessionId: session.id,
-                metadata: { createdBy: actorUserId },
+                metadata: {
+                    createdBy: actorUserId,
+                },
             },
             update: {
-                stripeSessionId: session.id,
                 provider: client_1.PaymentProvider.STRIPE,
+                stripeSessionId: session.id,
                 status: client_1.PaymentStatus.REQUIRES_ACTION,
             },
         });
-        return { sessionId: payment.stripeSessionId, url: session.url };
+        return {
+            sessionId: session.id,
+            url: session.url,
+        };
+    }
+    async getCheckoutSessionSummaryPublic(args) {
+        const payment = await this.prisma.payment.findFirst({
+            where: {
+                stripeSessionId: args.sessionId,
+            },
+            select: {
+                status: true,
+                amountCents: true,
+                currency: true,
+                receiptUrl: true,
+                job: {
+                    select: {
+                        id: true,
+                        source: true,
+                        startAt: true,
+                        client: {
+                            select: { name: true },
+                        },
+                        lineItems: {
+                            where: {
+                                serviceId: { not: null },
+                            },
+                            select: {
+                                description: true,
+                            },
+                            take: 1,
+                        },
+                    },
+                },
+            },
+        });
+        if (!payment || !payment.job || payment.job.source !== 'PUBLIC') {
+            throw new common_1.NotFoundException('Payment not found');
+        }
+        const stripeSession = await this.safeRetrieveCheckoutSession(args.sessionId);
+        const effectiveStatus = this.getEffectivePaymentStatus(payment.status, stripeSession);
+        return {
+            ok: true,
+            status: effectiveStatus,
+            amountCents: payment.amountCents,
+            currency: payment.currency,
+            jobId: payment.job.id,
+            serviceName: payment.job.lineItems?.[0]?.description ?? 'Service',
+            clientName: payment.job.client?.name ?? null,
+            scheduledAt: payment.job.startAt?.toISOString() ?? null,
+            receiptUrl: payment.receiptUrl ?? null,
+            customerMessage: this.getCustomerMessage(effectiveStatus),
+        };
+    }
+    async getCheckoutSessionSummaryPrivate(args) {
+        const payment = await this.prisma.payment.findFirst({
+            where: {
+                companyId: args.companyId,
+                stripeSessionId: args.sessionId,
+            },
+            select: {
+                id: true,
+                status: true,
+                amountCents: true,
+                currency: true,
+                receiptUrl: true,
+                job: {
+                    select: {
+                        id: true,
+                        startAt: true,
+                        client: {
+                            select: { name: true },
+                        },
+                        lineItems: {
+                            select: {
+                                description: true,
+                            },
+                            take: 1,
+                            orderBy: {
+                                id: 'asc',
+                            },
+                        },
+                    },
+                },
+            },
+        });
+        if (!payment || !payment.job) {
+            throw new common_1.NotFoundException('Payment not found');
+        }
+        const stripeSession = await this.safeRetrieveCheckoutSession(args.sessionId);
+        const effectiveStatus = this.getEffectivePaymentStatus(payment.status, stripeSession);
+        return {
+            ok: true,
+            status: effectiveStatus,
+            amountCents: payment.amountCents,
+            currency: payment.currency,
+            jobId: payment.job.id,
+            serviceName: payment.job.lineItems?.[0]?.description ?? 'Service',
+            clientName: payment.job.client?.name ?? null,
+            scheduledAt: payment.job.startAt?.toISOString() ?? null,
+            receiptUrl: payment.receiptUrl ?? null,
+            paymentId: payment.id,
+            customerMessage: this.getCustomerMessage(effectiveStatus),
+        };
+    }
+    async markCheckoutSessionCompleted(session, event) {
+        const jobId = session.client_reference_id;
+        const companyId = session.metadata?.companyId ?? null;
+        const paymentIntentId = typeof session.payment_intent === 'string'
+            ? session.payment_intent
+            : session.payment_intent?.id ?? null;
+        if (!jobId || !companyId) {
+            return;
+        }
+        const payment = await this.prisma.payment.findFirst({
+            where: {
+                stripeSessionId: session.id,
+                jobId,
+                companyId,
+            },
+        });
+        if (!payment || payment.status === client_1.PaymentStatus.SUCCEEDED) {
+            return;
+        }
+        const receiptUrl = await this.getReceiptUrl(paymentIntentId);
+        await this.prisma.$transaction(async (tx) => {
+            await tx.payment.update({
+                where: { id: payment.id },
+                data: {
+                    status: client_1.PaymentStatus.SUCCEEDED,
+                    stripePaymentIntentId: paymentIntentId ?? undefined,
+                    stripeCustomerId: typeof session.customer === 'string'
+                        ? session.customer
+                        : session.customer?.id,
+                    receiptUrl,
+                    raw: event,
+                    capturedAt: new Date(),
+                },
+            });
+            const job = await tx.job.findUnique({
+                where: { id: jobId },
+            });
+            if (!job) {
+                return;
+            }
+            const newPaidCents = job.paidCents + payment.amountCents;
+            const newBalanceCents = Math.max(job.totalCents - newPaidCents, 0);
+            await tx.job.update({
+                where: { id: jobId },
+                data: {
+                    paidCents: newPaidCents,
+                    balanceCents: newBalanceCents,
+                    ...(newBalanceCents === 0 ? { paidAt: new Date() } : {}),
+                },
+            });
+            await tx.auditLog.create({
+                data: {
+                    companyId,
+                    actorUserId: null,
+                    action: 'PAYMENT_SUCCEEDED',
+                    entityType: 'JOB',
+                    entityId: jobId,
+                    changes: {
+                        paymentId: payment.id,
+                        stripePaymentIntentId: paymentIntentId,
+                    },
+                },
+            });
+        });
+    }
+    async markPaymentFailed(paymentIntent, event) {
+        const payment = await this.prisma.payment.findFirst({
+            where: {
+                OR: [
+                    { stripePaymentIntentId: paymentIntent.id },
+                    {
+                        stripeSessionId: typeof paymentIntent.metadata?.checkoutSessionId === 'string'
+                            ? paymentIntent.metadata.checkoutSessionId
+                            : undefined,
+                    },
+                ],
+            },
+        });
+        if (!payment) {
+            return;
+        }
+        await this.prisma.payment.update({
+            where: { id: payment.id },
+            data: {
+                status: client_1.PaymentStatus.FAILED,
+                raw: event,
+            },
+        });
+    }
+    async markChargeRefunded(charge, event) {
+        const paymentIntentId = typeof charge.payment_intent === 'string'
+            ? charge.payment_intent
+            : charge.payment_intent?.id ?? null;
+        if (!paymentIntentId) {
+            return;
+        }
+        const payment = await this.prisma.payment.findFirst({
+            where: {
+                stripePaymentIntentId: paymentIntentId,
+            },
+        });
+        if (!payment) {
+            return;
+        }
+        const refundedCents = charge.amount_refunded ?? 0;
+        if (refundedCents <= 0) {
+            return;
+        }
+        await this.prisma.$transaction(async (tx) => {
+            await tx.payment.update({
+                where: { id: payment.id },
+                data: {
+                    status: client_1.PaymentStatus.REFUNDED,
+                    refundedAt: new Date(),
+                    raw: event,
+                },
+            });
+            const job = await tx.job.findUnique({
+                where: { id: payment.jobId },
+            });
+            if (!job) {
+                return;
+            }
+            const newPaidCents = Math.max(job.paidCents - refundedCents, 0);
+            const newBalanceCents = Math.max(job.totalCents - newPaidCents, 0);
+            await tx.job.update({
+                where: { id: job.id },
+                data: {
+                    paidCents: newPaidCents,
+                    balanceCents: newBalanceCents,
+                },
+            });
+            await tx.auditLog.create({
+                data: {
+                    companyId: payment.companyId,
+                    actorUserId: null,
+                    action: 'PAYMENT_REFUNDED',
+                    entityType: 'JOB',
+                    entityId: payment.jobId,
+                    changes: {
+                        paymentId: payment.id,
+                        stripeChargeId: charge.id,
+                        amount: refundedCents,
+                    },
+                },
+            });
+        });
+    }
+    getCustomerMessage(status) {
+        if (status === client_1.PaymentStatus.SUCCEEDED) {
+            return 'Payment successful. A team member will reach out to you shortly.';
+        }
+        if (status === client_1.PaymentStatus.FAILED) {
+            return 'Payment failed. Please try again or contact support.';
+        }
+        return 'Your payment is still processing. This page will refresh automatically.';
+    }
+    getEffectivePaymentStatus(dbStatus, session) {
+        if (!session) {
+            return dbStatus;
+        }
+        if (session.payment_status === 'paid') {
+            return client_1.PaymentStatus.SUCCEEDED;
+        }
+        if (session.status === 'expired') {
+            return client_1.PaymentStatus.FAILED;
+        }
+        return dbStatus;
+    }
+    async safeRetrieveCheckoutSession(sessionId) {
+        try {
+            return await this.stripe.checkout.sessions.retrieve(sessionId);
+        }
+        catch {
+            return null;
+        }
     }
     async getSessionUrl(sessionId) {
-        const s = await this.stripe.checkout.sessions.retrieve(sessionId);
-        return s.url;
+        const session = await this.stripe.checkout.sessions.retrieve(sessionId);
+        if (!session.url) {
+            throw new common_1.NotFoundException('Stripe session URL not available');
+        }
+        return session.url;
+    }
+    async getReceiptUrl(paymentIntentId) {
+        if (!paymentIntentId) {
+            return null;
+        }
+        const paymentIntent = await this.stripe.paymentIntents.retrieve(paymentIntentId, {
+            expand: ['latest_charge'],
+        });
+        const latestCharge = typeof paymentIntent.latest_charge === 'string'
+            ? null
+            : paymentIntent.latest_charge;
+        return latestCharge?.receipt_url ?? null;
     }
 };
 exports.PaymentsService = PaymentsService;

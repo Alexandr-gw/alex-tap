@@ -26,6 +26,9 @@ let PaymentsController = class PaymentsController {
     async checkout(companyId, claims, dto) {
         return this.payments.createCheckoutSession(companyId, claims.sub, dto);
     }
+    async getCheckoutSessionSummary(companyId, claims, sessionId) {
+        return this.payments.getCheckoutSessionSummaryPrivate({ companyId, sessionId });
+    }
 };
 exports.PaymentsController = PaymentsController;
 __decorate([
@@ -37,6 +40,15 @@ __decorate([
     __metadata("design:paramtypes", [String, Object, create_checkout_dto_1.CreateCheckoutDto]),
     __metadata("design:returntype", Promise)
 ], PaymentsController.prototype, "checkout", null);
+__decorate([
+    (0, common_1.Get)("checkout-session/:sessionId"),
+    __param(0, (0, auth_user_decorator_1.CompanyId)()),
+    __param(1, (0, auth_user_decorator_1.AuthUser)()),
+    __param(2, (0, common_1.Param)("sessionId")),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object, String]),
+    __metadata("design:returntype", Promise)
+], PaymentsController.prototype, "getCheckoutSessionSummary", null);
 exports.PaymentsController = PaymentsController = __decorate([
     (0, common_1.Controller)('api/v1/payments'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),

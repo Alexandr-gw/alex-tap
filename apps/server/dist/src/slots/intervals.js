@@ -73,14 +73,14 @@ function strictlyInside(slot, range) {
 function expandDailyWindows(from, to, tz, windows) {
     const res = [];
     let cur = luxon_1.DateTime.fromJSDate(from).setZone(tz).startOf('day');
-    const end = luxon_1.DateTime.fromJSDate(to).setZone(tz).endOf('day');
+    const endExclusive = luxon_1.DateTime.fromJSDate(to).setZone(tz).startOf('day');
     const byDow = new Map();
     for (const w of windows) {
         if (!byDow.has(w.dayOfWeek))
             byDow.set(w.dayOfWeek, []);
         byDow.get(w.dayOfWeek).push({ startLocal: w.startLocal, endLocal: w.endLocal });
     }
-    while (cur <= end) {
+    while (cur < endExclusive) {
         const dow = cur.weekday % 7;
         const todays = byDow.get(dow) ?? [];
         for (const tw of todays) {

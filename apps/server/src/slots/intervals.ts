@@ -73,7 +73,7 @@ export function expandDailyWindows(
 ): OpenInterval[] {
     const res: OpenInterval[] = [];
     let cur = DateTime.fromJSDate(from).setZone(tz).startOf('day');
-    const end = DateTime.fromJSDate(to).setZone(tz).endOf('day');
+    const endExclusive = DateTime.fromJSDate(to).setZone(tz).startOf('day');
 
     const byDow = new Map<number, Array<{ startLocal: string; endLocal: string }>>();
     for (const w of windows) {
@@ -81,8 +81,8 @@ export function expandDailyWindows(
         byDow.get(w.dayOfWeek)!.push({ startLocal: w.startLocal, endLocal: w.endLocal });
     }
 
-    while (cur <= end) {
-        const dow = cur.weekday % 7; // Luxon: Monday=1..Sunday=7 → map Sunday=0
+    while (cur < endExclusive) {
+        const dow = cur.weekday % 7; // Luxon: Monday=1..Sunday=7 -> map Sunday=0
         const todays = byDow.get(dow) ?? [];
         for (const tw of todays) {
             const [sh, sm] = tw.startLocal.split(':').map(Number);
@@ -130,7 +130,6 @@ export function snapToSlots(
     for (const o of open) {
         const startTs = o.start.getTime();
         const endTs = o.end.getTime();
-        // align first candidate to the nearest step >= start
         const alignedStart = startTs + ((stepMs - (startTs % stepMs)) % stepMs);
         for (let t = alignedStart; t + durMs <= endTs; t += stepMs) {
             res.push({ start: new Date(t), end: new Date(t + durMs) });

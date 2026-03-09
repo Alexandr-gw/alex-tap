@@ -1,4 +1,4 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Post, UseGuards, Param, Get } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
 import { CreateCheckoutDto } from './dto/create-checkout.dto';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
@@ -15,7 +15,15 @@ export class PaymentsController {
         @AuthUser() claims: any,
         @Body() dto: CreateCheckoutDto,
     ) {
-        // Add proper RBAC here: admin/manager or job's client.
         return this.payments.createCheckoutSession(companyId, claims.sub, dto);
+    }
+
+    @Get("checkout-session/:sessionId")
+    async getCheckoutSessionSummary(
+        @CompanyId() companyId: string,
+        @AuthUser() claims: any,
+        @Param("sessionId") sessionId: string
+    ) {
+        return this.payments.getCheckoutSessionSummaryPrivate({ companyId, sessionId });
     }
 }

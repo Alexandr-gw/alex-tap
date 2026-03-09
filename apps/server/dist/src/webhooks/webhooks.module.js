@@ -10,12 +10,13 @@ exports.WebhooksModule = void 0;
 const common_1 = require("@nestjs/common");
 const stripe_webhook_controller_1 = require("./stripe.webhook.controller");
 const stripe_module_1 = require("../stripe/stripe.module");
+const payments_module_1 = require("../payments/payments.module");
 let WebhooksModule = class WebhooksModule {
 };
 exports.WebhooksModule = WebhooksModule;
 exports.WebhooksModule = WebhooksModule = __decorate([
     (0, common_1.Module)({
-        imports: [stripe_module_1.StripeModule],
+        imports: [stripe_module_1.StripeModule, payments_module_1.PaymentsModule],
         controllers: [stripe_webhook_controller_1.StripeWebhookController],
     })
 ], WebhooksModule);

@@ -7,4 +7,17 @@ export declare class PaymentsController {
         sessionId: string;
         url: string;
     }>;
+    getCheckoutSessionSummary(companyId: string, claims: any, sessionId: string): Promise<{
+        ok: true;
+        status: import("@prisma/client").PaymentStatus;
+        amountCents: number;
+        currency: string;
+        jobId: string;
+        serviceName: string;
+        clientName: string | null;
+        scheduledAt: string | null;
+        receiptUrl?: string | null;
+        paymentId?: string;
+        customerMessage?: string | null;
+    }>;
 }

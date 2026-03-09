@@ -1,8 +1,10 @@
 import { PublicBookingService } from "./public-booking.service";
 import { PublicCheckoutDto } from "./dto/public-checkout.dto";
+import { PaymentsService } from "@/payments/payments.service";
 export declare class PublicBookingController {
     private readonly svc;
-    constructor(svc: PublicBookingService);
+    private readonly payments;
+    constructor(svc: PublicBookingService, payments: PaymentsService);
     getService(companySlug: string, serviceSlug: string): Promise<{
         companyId: string;
         companyName: string;
@@ -31,5 +33,18 @@ export declare class PublicBookingController {
     checkout(dto: PublicCheckoutDto): Promise<{
         checkoutUrl: string;
         jobId: string;
+    }>;
+    getPublicCheckoutSessionSummary(sessionId: string): Promise<{
+        ok: true;
+        status: import("@prisma/client").PaymentStatus;
+        amountCents: number;
+        currency: string;
+        jobId: string;
+        serviceName: string;
+        clientName: string | null;
+        scheduledAt: string | null;
+        receiptUrl?: string | null;
+        paymentId?: string;
+        customerMessage?: string | null;
     }>;
 }

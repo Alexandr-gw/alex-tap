@@ -1,9 +1,9 @@
 import Stripe from 'stripe';
-import { PrismaService } from '@/prisma/prisma.service';
+import { PaymentsService } from '@/payments/payments.service';
 export declare class StripeWebhookController {
     private readonly stripe;
-    private readonly prisma;
-    constructor(stripe: Stripe, prisma: PrismaService);
+    private readonly paymentsService;
+    constructor(stripe: Stripe, paymentsService: PaymentsService);
     handle(req: any, signature: string): Promise<{
         ok: boolean;
         received?: undefined;
@@ -11,8 +11,4 @@ export declare class StripeWebhookController {
         received: boolean;
         ok?: undefined;
     }>;
-    private onCheckoutCompleted;
-    private onPaymentFailed;
-    private onChargeRefunded;
-    private getReceiptUrl;
 }

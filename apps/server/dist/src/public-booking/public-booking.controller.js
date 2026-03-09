@@ -16,10 +16,13 @@ exports.PublicBookingController = void 0;
 const common_1 = require("@nestjs/common");
 const public_booking_service_1 = require("./public-booking.service");
 const public_checkout_dto_1 = require("./dto/public-checkout.dto");
+const payments_service_1 = require("../payments/payments.service");
 let PublicBookingController = class PublicBookingController {
     svc;
-    constructor(svc) {
+    payments;
+    constructor(svc, payments) {
         this.svc = svc;
+        this.payments = payments;
     }
     async getService(companySlug, serviceSlug) {
         return this.svc.getPublicService(companySlug, serviceSlug);
@@ -35,6 +38,9 @@ let PublicBookingController = class PublicBookingController {
     }
     async checkout(dto) {
         return this.svc.createPublicCheckout(dto);
+    }
+    async getPublicCheckoutSessionSummary(sessionId) {
+        return this.payments.getCheckoutSessionSummaryPublic({ sessionId });
     }
 };
 exports.PublicBookingController = PublicBookingController;
@@ -70,8 +76,16 @@ __decorate([
     __metadata("design:paramtypes", [public_checkout_dto_1.PublicCheckoutDto]),
     __metadata("design:returntype", Promise)
 ], PublicBookingController.prototype, "checkout", null);
+__decorate([
+    (0, common_1.Get)("payments/checkout-session/:sessionId"),
+    __param(0, (0, common_1.Param)("sessionId")),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], PublicBookingController.prototype, "getPublicCheckoutSessionSummary", null);
 exports.PublicBookingController = PublicBookingController = __decorate([
     (0, common_1.Controller)("api/v1/public"),
-    __metadata("design:paramtypes", [public_booking_service_1.PublicBookingService])
+    __metadata("design:paramtypes", [public_booking_service_1.PublicBookingService,
+        payments_service_1.PaymentsService])
 ], PublicBookingController);
 //# sourceMappingURL=public-booking.controller.js.map

@@ -1,10 +1,13 @@
-import { Controller, Get, Post, Query, Param, BadRequestException, Body } from "@nestjs/common";
-import { PublicBookingService } from "./public-booking.service";
-import { PublicCheckoutDto } from "./dto/public-checkout.dto";
+import {Controller, Get, Post, Query, Param, BadRequestException, Body} from "@nestjs/common";
+import {PublicBookingService} from "./public-booking.service";
+import {PublicCheckoutDto} from "./dto/public-checkout.dto";
+import {PaymentsService} from "@/payments/payments.service";
 
 @Controller("api/v1/public")
 export class PublicBookingController {
-    constructor(private readonly svc: PublicBookingService) {}
+    constructor(private readonly svc: PublicBookingService,
+                private readonly payments: PaymentsService,) {
+    }
 
     // GET /public/companies/:companySlug/services/:serviceSlug
     @Get("companies/:companySlug/services/:serviceSlug")
@@ -26,7 +29,7 @@ export class PublicBookingController {
         if (!companyId || !serviceId || !from || !to) {
             throw new BadRequestException("Missing query params: companyId, serviceId, from, to");
         }
-        return this.svc.getPublicSlots({ companyId, serviceId, from, to });
+        return this.svc.getPublicSlots({companyId, serviceId, from, to});
     }
 
     // GET /public/companies/:companySlug/services
@@ -39,5 +42,10 @@ export class PublicBookingController {
     @Post("bookings/checkout")
     async checkout(@Body() dto: PublicCheckoutDto) {
         return this.svc.createPublicCheckout(dto);
+    }
+
+    @Get("payments/checkout-session/:sessionId")
+    async getPublicCheckoutSessionSummary(@Param("sessionId") sessionId: string) {
+        return this.payments.getCheckoutSessionSummaryPublic({ sessionId });
     }
 }
