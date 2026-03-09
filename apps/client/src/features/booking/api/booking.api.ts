@@ -24,24 +24,28 @@ export type GetPublicSlotsParams = {
     to: string;   // ISO date
 };
 
-export function getPublicSlots(params: GetPublicSlotsParams) {
-    const qs = new URLSearchParams({
-        companyId: params.companyId,
-        serviceId: params.serviceId,
-        from: params.from,
-        to: params.to,
-    }).toString();
-
-    return api<PublicSlotsResponse>(`/api/api/v1/public/slots?${qs}`, {
-        // optional: prevent x-company-id header being added for public calls
-        companyId: null,
-    });
-}
-
 export function createCheckout(input: CreateCheckoutInput) {
     return api<CreateCheckoutResponse>(`/api/api/v1/public/bookings/checkout`, {
         method: "POST",
         body: input,
-        companyId: null, // optional (same reason)
+        companyId: null,
+    });
+}
+
+export type GetPublicSlotsDayParams = {
+    companyId: string;
+    serviceId: string;
+    day: string;
+};
+
+export function getPublicSlotsDay(params: GetPublicSlotsDayParams) {
+    const qs = new URLSearchParams({
+        companyId: params.companyId,
+        serviceId: params.serviceId,
+        day: params.day,
+    }).toString();
+
+    return api<PublicSlotsResponse>(`/api/api/v1/public/slots/day?${qs}`, {
+        companyId: null,
     });
 }

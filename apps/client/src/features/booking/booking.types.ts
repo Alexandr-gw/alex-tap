@@ -19,9 +19,11 @@ export type BookingClientDraft = {
 };
 
 export type BookingDraft = {
+    day: ISODate | null; // "YYYY-MM-DD"
     stepIndex: number;
     serviceId: string | null;
 
+    // keep for now (legacy / optional)
     range: BookingRange;
     slot: BookingSlot | null;
     client: BookingClientDraft;
@@ -29,15 +31,13 @@ export type BookingDraft = {
 
 export type WizardStepId =
     | "service"
-    | "range"
-    | "slot"
+    | "datetime"
     | "client"
     | "confirm";
 
 export const WIZARD_STEPS: WizardStepId[] = [
     "service",
-    "range",
-    "slot",
+    "datetime",
     "client",
     "confirm",
 ];

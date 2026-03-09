@@ -1,34 +1,106 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
     createCheckout,
-    getPublicSlots,
-    type GetPublicSlotsParams,
-} from "../api/booking.api";
-import { listPublicServices } from "../api/booking.api";
+    getPublicSlotsDay,
+    listPublicServices,
+} from "@/features/booking/api/booking.api";
+import type {
+    CreateCheckoutInput,
+    CreateCheckoutResponse,
+    PaymentSessionSummaryDto,
+    PublicServicesListDto,
+    PublicSlotsResponse,
+} from "@/features/booking/api/booking.types";
+import {
+    getPrivateCheckoutSessionSummary,
+    getPublicCheckoutSessionSummary,
+} from "@/features/booking/api/payment.api";
 
-export function usePublicServices(companySlug: string) {
-    return useQuery({
+type CheckoutSessionSummaryMode = "auto" | "public" | "private";
+
+function isAuthError(e: any) {
+    const status = e?.status ?? e?.response?.status;
+    return status === 401 || status === 403;
+}
+
+function isTerminalPaymentStatus(status?: string) {
+    return (
+        status === "SUCCEEDED" ||
+        status === "FAILED" ||
+        status === "REFUNDED"
+    );
+}
+
+export function usePublicServices(companySlug: string | null | undefined) {
+    return useQuery<PublicServicesListDto>({
         queryKey: ["publicServices", companySlug],
-        queryFn: () => listPublicServices(companySlug),
-        enabled: Boolean(companySlug),
+        enabled: !!companySlug,
+        queryFn: () => {
+            if (!companySlug) throw new Error("Missing companySlug");
+            return listPublicServices(companySlug);
+        },
     });
 }
 
-export function usePublicSlots(params: GetPublicSlotsParams | null) {
-    return useQuery({
-        queryKey: params
-            ? ["publicSlots", params.companyId, params.serviceId, params.from, params.to]
-            : ["publicSlots", "disabled"],
+export function usePublicSlotsDay(
+    params: { companyId: string; serviceId: string; day: string } | null
+) {
+    return useQuery<PublicSlotsResponse>({
+        queryKey: [
+            "publicSlotsDay",
+            params?.companyId,
+            params?.serviceId,
+            params?.day,
+        ],
+        enabled: !!params,
         queryFn: () => {
-            if (!params) throw new Error("Slots query called without params");
-            return getPublicSlots(params);
+            if (!params) throw new Error("Missing slots params");
+            return getPublicSlotsDay(params);
         },
-        enabled: Boolean(params?.companyId && params?.serviceId && params?.from && params?.to),
     });
 }
 
 export function useCreateCheckout() {
-    return useMutation({
-        mutationFn: createCheckout,
+    return useMutation<CreateCheckoutResponse, Error, CreateCheckoutInput>({
+        mutationFn: (input) => createCheckout(input),
+    });
+}
+
+export function useCheckoutSessionSummary(
+    sessionId: string | null,
+    mode: CheckoutSessionSummaryMode = "auto"
+) {
+    return useQuery<PaymentSessionSummaryDto>({
+        queryKey: ["paymentSessionSummary", sessionId, mode],
+        enabled: !!sessionId,
+        queryFn: async () => {
+            if (!sessionId) throw new Error("Missing sessionId");
+
+            if (mode === "public") {
+                return await getPublicCheckoutSessionSummary(sessionId);
+            }
+
+            if (mode === "private") {
+                return await getPrivateCheckoutSessionSummary(sessionId);
+            }
+
+            try {
+                return await getPrivateCheckoutSessionSummary(sessionId);
+            } catch (e) {
+                if (isAuthError(e)) {
+                    return await getPublicCheckoutSessionSummary(sessionId);
+                }
+                throw e;
+            }
+        },
+        refetchInterval: (query) => {
+            const data = query.state.data;
+            if (!data) return 2000;
+            return isTerminalPaymentStatus(data.status) ? false : 2000;
+        },
+        retry: (count, err) => {
+            if (isAuthError(err)) return false;
+            return count < 2;
+        },
     });
 }

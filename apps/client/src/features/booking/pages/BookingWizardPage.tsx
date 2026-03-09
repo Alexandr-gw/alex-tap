@@ -3,8 +3,7 @@ import {useParams} from "react-router-dom";
 import {useBookingWizard} from "../hooks/useBookingWizard";
 import {usePublicServices} from "../hooks/booking.queries";
 import {StepService} from "../steps/StepService";
-import {StepDateRange} from "../steps/StepDateRange";
-import {StepSlotPicker} from "../steps/StepSlotPicker";
+import {StepDateTimePicker} from "../steps/StepDateTimePicker.tsx";
 import {StepClientDetails} from "../steps/StepClientDetails";
 import {StepConfirm} from "../steps/StepConfirm";
 
@@ -32,15 +31,9 @@ export function BookingWizardPage() {
                         servicesQ={servicesQ}
                     />
                 );
-
-            case "range":
-                if (!serviceId) return <div>Please select a service first.</div>;
-                return <StepDateRange wizard={wizard}/>;
-
-            case "slot":
+            case "datetime":
                 if (!companyId || !serviceId) return <div>Loading…</div>;
-                return <StepSlotPicker wizard={wizard} companyId={companyId} serviceId={serviceId}/>;
-
+                return <StepDateTimePicker wizard={wizard} companyId={companyId} serviceId={serviceId}/>;
             case "client":
                 return <StepClientDetails wizard={wizard}/>;
 

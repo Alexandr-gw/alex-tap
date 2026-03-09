@@ -47,3 +47,17 @@ export type CreateCheckoutResponse = {
     checkoutUrl: string; // Stripe hosted checkout URL
     sessionId?: string;
 };
+
+export type PaymentSessionSummaryDto = {
+    ok: true;
+    status: "REQUIRES_ACTION" | "SUCCEEDED" | "FAILED" | "REFUNDED";
+    amountCents: number;
+    currency: string;
+    jobId: string;
+    serviceName: string;
+    clientName: string | null;
+    scheduledAt: string | null;
+    receiptUrl?: string | null;
+    paymentId?: string;
+    customerMessage?: string | null;
+};

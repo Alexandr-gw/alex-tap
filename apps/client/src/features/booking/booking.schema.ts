@@ -1,8 +1,25 @@
 import { z } from "zod";
 
-export const BookingRangeSchema = z.object({
-    from: z.string().min(1).nullable(),
-    to: z.string().min(1).nullable(),
+const EmailOptionalOrEmpty = z
+    .union([z.string().email({ message: "Invalid email" }), z.literal("")])
+    .optional();
+
+const EmailDraft = z
+    .union([z.string().email({ message: "Invalid email" }), z.literal("")])
+    .default("");
+
+export const BookingClientSchema = z.object({
+    name: z.string().min(1, "Name is required").max(120),
+    email: EmailOptionalOrEmpty,
+    phone: z.string().max(50).optional().or(z.literal("")),
+    notes: z.string().max(2000).optional().or(z.literal("")),
+});
+
+export const BookingClientDraftSchema = z.object({
+    name: z.string().max(120).default(""),
+    email: EmailDraft,
+    phone: z.string().optional().or(z.literal("")).default(""),
+    notes: z.string().optional().or(z.literal("")).default(""),
 });
 
 export const BookingSlotSchema = z
@@ -12,16 +29,26 @@ export const BookingSlotSchema = z
     })
     .nullable();
 
-export const BookingClientSchema = z.object({
-    name: z.string().min(1, "Name is required").max(120),
-    email: z.string().email("Invalid email").optional().or(z.literal("")),
-    phone: z.string().max(50).optional().or(z.literal("")),
-    notes: z.string().max(2000).optional().or(z.literal("")),
-});
-
 export const BookingDraftSchema = z.object({
     stepIndex: z.number().int().min(0),
-    range: BookingRangeSchema,
-    slot: BookingSlotSchema,
-    client: BookingClientSchema,
+
+    day: z.string().nullable().optional().default(null),
+    serviceId: z.string().nullable().optional().default(null),
+
+    range: z
+        .object({
+            from: z.string().nullable().optional().default(null),
+            to: z.string().nullable().optional().default(null),
+        })
+        .optional()
+        .default({ from: null, to: null }),
+
+    slot: BookingSlotSchema.optional().default(null),
+
+    client: BookingClientDraftSchema.optional().default({
+        name: "",
+        email: "",
+        phone: "",
+        notes: "",
+    }),
 });

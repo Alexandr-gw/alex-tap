@@ -30,8 +30,9 @@ export const router = createBrowserRouter([
     { path: "/", element: <LandingPage /> },
 
     { path: "/book/:companySlug", element: <BookingWizardPage /> },
-    { path: "/book/success", element: <BookingSuccessPage /> },
-    { path: "/book/cancel", element: <BookingCancelPage /> },
+
+    { path: "/payment/success", element: <BookingSuccessPage /> },
+    { path: "/payment/cancel", element: <BookingCancelPage /> },
 
     { path: "/login", element: <LoginPage /> },
     { path: "/401", element: <UnauthorizedPage /> },

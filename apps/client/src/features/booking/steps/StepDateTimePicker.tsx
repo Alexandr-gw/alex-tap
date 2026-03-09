@@ -56,7 +56,7 @@ export function StepDateTimePicker({
                         type="date"
                         className="rounded-xl border border-slate-200 px-3 py-2"
                         value={day ?? ""}
-                        min={todayKey} // ✅ no past days
+                        min={todayKey}
                         onChange={(e) => wizard.dispatch({ type: "SET_DAY", day: e.target.value || null })}
                     />
                 </label>
