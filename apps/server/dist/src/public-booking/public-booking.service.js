@@ -115,7 +115,7 @@ let PublicBookingService = class PublicBookingService {
                 where: {
                     companyId: dto.companyId,
                     workerId: worker.id,
-                    status: { in: [client_1.JobStatus.SCHEDULED, client_1.JobStatus.IN_PROGRESS] },
+                    status: { in: [client_1.JobStatus.PENDING_CONFIRMATION, client_1.JobStatus.SCHEDULED, client_1.JobStatus.IN_PROGRESS] },
                     NOT: [{ endAt: { lte: start } }, { startAt: { gte: end } }],
                 },
                 select: { id: true },
@@ -179,7 +179,7 @@ let PublicBookingService = class PublicBookingService {
                     workerId: worker.id,
                     startAt: start,
                     endAt: end,
-                    status: client_1.JobStatus.SCHEDULED,
+                    status: client_1.JobStatus.PENDING_CONFIRMATION,
                     location: dto.client.address ?? null,
                     source: "PUBLIC",
                     subtotalCents: subtotal,

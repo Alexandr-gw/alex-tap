@@ -25,6 +25,7 @@ let SlotsService = class SlotsService {
     MIN_STEP_MINS = 5;
     MAX_STEP_MINS = 15;
     BLOCKING_STATUSES = [
+        client_1.JobStatus.PENDING_CONFIRMATION,
         client_1.JobStatus.SCHEDULED,
         client_1.JobStatus.IN_PROGRESS,
     ];

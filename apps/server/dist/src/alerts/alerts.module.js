@@ -18,6 +18,7 @@ exports.AlertsModule = AlertsModule = __decorate([
     (0, common_1.Module)({
         controllers: [alerts_controller_1.AlertsController],
         providers: [alerts_service_1.AlertsService, prisma_service_1.PrismaService],
+        exports: [alerts_service_1.AlertsService],
     })
 ], AlertsModule);
 //# sourceMappingURL=alerts.module.js.map

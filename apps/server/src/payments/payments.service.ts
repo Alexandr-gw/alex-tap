@@ -6,7 +6,8 @@ import {
     NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
-import { PaymentProvider, PaymentStatus } from '@prisma/client';
+import { AlertsService } from '@/alerts/alerts.service';
+import { PaymentProvider, PaymentStatus, JobStatus } from '@prisma/client';
 import { CreateCheckoutDto } from './dto/create-checkout.dto';
 import { randomUUID } from 'crypto';
 import Stripe from 'stripe';
@@ -29,6 +30,7 @@ type CheckoutSummaryDto = {
 export class PaymentsService {
     constructor(
         private readonly prisma: PrismaService,
+        private readonly alerts: AlertsService,
         @Inject('STRIPE') private readonly stripe: Stripe,
     ) {}
 
@@ -151,6 +153,8 @@ export class PaymentsService {
     async getCheckoutSessionSummaryPublic(args: {
         sessionId: string;
     }): Promise<CheckoutSummaryDto> {
+        await this.reconcileCheckoutSessionIfPaid(args.sessionId);
+
         const payment = await this.prisma.payment.findFirst({
             where: {
                 stripeSessionId: args.sessionId,
@@ -210,6 +214,8 @@ export class PaymentsService {
         companyId: string;
         sessionId: string;
     }): Promise<CheckoutSummaryDto> {
+        await this.reconcileCheckoutSessionIfPaid(args.sessionId);
+
         const payment = await this.prisma.payment.findFirst({
             where: {
                 companyId: args.companyId,
@@ -269,7 +275,7 @@ export class PaymentsService {
 
     async markCheckoutSessionCompleted(
         session: Stripe.Checkout.Session,
-        event: Stripe.Event,
+        event?: Stripe.Event | null,
     ) {
         const jobId = session.client_reference_id as string | null;
         const companyId = session.metadata?.companyId ?? null;
@@ -295,6 +301,7 @@ export class PaymentsService {
         }
 
         const receiptUrl = await this.getReceiptUrl(paymentIntentId);
+        let shouldCreateBookingAlert = false;
 
         await this.prisma.$transaction(async (tx) => {
             await tx.payment.update({
@@ -307,13 +314,20 @@ export class PaymentsService {
                             ? session.customer
                             : session.customer?.id,
                     receiptUrl,
-                    raw: event as any,
+                    raw: event ? (event as any) : undefined,
                     capturedAt: new Date(),
                 },
             });
 
             const job = await tx.job.findUnique({
                 where: { id: jobId },
+                select: {
+                    id: true,
+                    source: true,
+                    status: true,
+                    paidCents: true,
+                    totalCents: true,
+                },
             });
 
             if (!job) {
@@ -332,6 +346,8 @@ export class PaymentsService {
                 },
             });
 
+            shouldCreateBookingAlert = job.source === 'PUBLIC' || job.status === JobStatus.PENDING_CONFIRMATION;
+
             await tx.auditLog.create({
                 data: {
                     companyId,
@@ -346,6 +362,10 @@ export class PaymentsService {
                 },
             });
         });
+
+        if (shouldCreateBookingAlert) {
+            await this.alerts.createBookingReviewAlerts({ companyId, jobId });
+        }
     }
 
     async markPaymentFailed(
@@ -410,7 +430,7 @@ export class PaymentsService {
                 data: {
                     status: PaymentStatus.REFUNDED,
                     refundedAt: new Date(),
-                    raw: event as any,
+                    raw: event ? (event as any) : undefined,
                 },
             });
 
@@ -450,6 +470,23 @@ export class PaymentsService {
         });
     }
 
+
+    private async reconcileCheckoutSessionIfPaid(sessionId: string) {
+        const payment = await this.prisma.payment.findFirst({
+            where: { stripeSessionId: sessionId },
+            select: { id: true, status: true },
+        });
+        if (!payment || payment.status === PaymentStatus.SUCCEEDED) {
+            return;
+        }
+
+        const session = await this.safeRetrieveCheckoutSession(sessionId);
+        if (!session || session.payment_status !== 'paid') {
+            return;
+        }
+
+        await this.markCheckoutSessionCompleted(session, null);
+    }
     private getCustomerMessage(status: PaymentStatus): string | null {
         if (status === PaymentStatus.SUCCEEDED) {
             return 'Payment successful. A team member will reach out to you shortly.';
@@ -521,3 +558,6 @@ export class PaymentsService {
         return latestCharge?.receipt_url ?? null;
     }
 }
+
+
+

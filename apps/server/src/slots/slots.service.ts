@@ -52,6 +52,7 @@ export class SlotsService {
     private readonly MAX_STEP_MINS = 15;
 
     private readonly BLOCKING_STATUSES: readonly JobStatus[] = [
+        JobStatus.PENDING_CONFIRMATION,
         JobStatus.SCHEDULED,
         JobStatus.IN_PROGRESS,
     ] as const;
@@ -384,3 +385,5 @@ export class SlotsService {
         };
     }
 }
+
+

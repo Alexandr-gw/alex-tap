@@ -17,6 +17,7 @@ const common_1 = require("@nestjs/common");
 const jobs_service_1 = require("./jobs.service");
 const create_job_dto_1 = require("./dto/create-job.dto");
 const list_jobs_dto_1 = require("./dto/list-jobs.dto");
+const review_job_dto_1 = require("./dto/review-job.dto");
 const jwt_auth_guard_1 = require("../common/guards/jwt-auth.guard");
 let JobsController = class JobsController {
     jobs;
@@ -38,12 +39,18 @@ let JobsController = class JobsController {
             dto,
         });
     }
+    async listReviewWorkers(req, companyHeader) {
+        const companyId = req.user?.companyId ?? req.user?.company?.id ?? companyHeader;
+        const userSub = req.user?.sub ?? null;
+        if (!companyId) {
+            throw new common_1.BadRequestException('companyId is required (token or x-company-id header)');
+        }
+        return this.jobs.listCompanyWorkers({ companyId, userSub });
+    }
     async getOne(req, id, companyHeader) {
         const roles = req.user?.roles ?? [];
         const userSub = req.user?.sub ?? null;
-        const companyId = req.user?.companyId ??
-            req.user?.company?.id ??
-            companyHeader;
+        const companyId = req.user?.companyId ?? req.user?.company?.id ?? companyHeader;
         if (!companyId) {
             throw new common_1.BadRequestException('companyId is required (token or x-company-id header)');
         }
@@ -52,6 +59,19 @@ let JobsController = class JobsController {
             roles,
             userSub,
             id,
+        });
+    }
+    async review(req, id, companyHeader, body) {
+        const companyId = req.user?.companyId ?? req.user?.company?.id ?? companyHeader;
+        const userSub = req.user?.sub ?? null;
+        if (!companyId) {
+            throw new common_1.BadRequestException('companyId is required (token or x-company-id header)');
+        }
+        return this.jobs.reviewJob({
+            companyId,
+            userSub,
+            jobId: id,
+            dto: body,
         });
     }
 };
@@ -74,6 +94,14 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], JobsController.prototype, "list", null);
 __decorate([
+    (0, common_1.Get)('review/workers'),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Headers)('x-company-id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", Promise)
+], JobsController.prototype, "listReviewWorkers", null);
+__decorate([
     (0, common_1.Get)(':id'),
     __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Param)('id')),
@@ -82,6 +110,16 @@ __decorate([
     __metadata("design:paramtypes", [Object, String, String]),
     __metadata("design:returntype", Promise)
 ], JobsController.prototype, "getOne", null);
+__decorate([
+    (0, common_1.Patch)(':id/review'),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Param)('id')),
+    __param(2, (0, common_1.Headers)('x-company-id')),
+    __param(3, (0, common_1.Body)(new common_1.ValidationPipe({ whitelist: true, transform: true }))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, Object, review_job_dto_1.ReviewJobDto]),
+    __metadata("design:returntype", Promise)
+], JobsController.prototype, "review", null);
 exports.JobsController = JobsController = __decorate([
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     (0, common_1.Controller)('api/v1/jobs'),

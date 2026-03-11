@@ -118,7 +118,7 @@ export class PublicBookingService {
                     where: {
                         companyId: dto.companyId,
                         workerId: worker.id,
-                        status: { in: [JobStatus.SCHEDULED, JobStatus.IN_PROGRESS] },
+                        status: { in: [JobStatus.PENDING_CONFIRMATION, JobStatus.SCHEDULED, JobStatus.IN_PROGRESS] },
                         NOT: [{ endAt: { lte: start } }, { startAt: { gte: end } }],
                     },
                     select: { id: true },
@@ -186,7 +186,7 @@ export class PublicBookingService {
                         workerId: worker.id,
                         startAt: start,
                         endAt: end,
-                        status: JobStatus.SCHEDULED,
+                        status: JobStatus.PENDING_CONFIRMATION,
                         location: dto.client.address ?? null,
                         source: "PUBLIC",
 

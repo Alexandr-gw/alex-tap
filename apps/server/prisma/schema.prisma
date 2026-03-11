@@ -18,11 +18,21 @@ enum Role {
 
 enum JobStatus {
   DRAFT
+  PENDING_CONFIRMATION
   SCHEDULED
   IN_PROGRESS
   DONE
   CANCELED
   NO_SHOW
+}
+
+enum AlertStatus {
+  OPEN
+  RESOLVED
+}
+
+enum AlertType {
+  BOOKING_REVIEW
 }
 
 enum TaskStatus {
@@ -83,6 +93,7 @@ model Company {
   tasks                 Task[]
   payments              Payment[]
   notifications         Notification[]
+  alerts                Alert[]
   auditLogs             AuditLog[]
   AvailabilityRule      AvailabilityRule[]
   AvailabilityException AvailabilityException[]
@@ -100,10 +111,11 @@ model User {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  memberships Membership[]
-  comments    JobComment[]
-  auditActor  AuditLog[]   @relation("AuditActor")
-  Worker      Worker[]
+  memberships    Membership[]
+  comments       JobComment[]
+  auditActor     AuditLog[]   @relation("AuditActor")
+  resolvedAlerts Alert[]     @relation("AlertResolvedBy")
+  Worker         Worker[]
 }
 
 model Membership {
@@ -116,6 +128,7 @@ model Membership {
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Restrict)
   user    User    @relation(fields: [userId], references: [id], onDelete: Restrict)
+  alerts  Alert[]
 
   @@unique([companyId, userId])
   @@index([companyId, role])
@@ -250,6 +263,7 @@ model Job {
   comments       JobComment[]
   tasks          Task[]
   payments       Payment[]
+  alerts         Alert[]
   IdempotencyKey IdempotencyKey[]
 
   @@index([companyId, startAt])
@@ -362,6 +376,32 @@ model Notification {
   @@index([companyId, status, scheduledAt])
 }
 
+model Alert {
+  id               String      @id @default(cuid())
+  companyId        String
+  jobId            String
+  membershipId     String
+  type             AlertType   @default(BOOKING_REVIEW)
+  status           AlertStatus @default(OPEN)
+  title            String
+  message          String?
+  payload          Json?
+  readAt           DateTime?
+  resolvedAt       DateTime?
+  resolvedByUserId String?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  company    Company    @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  job        Job        @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  membership Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  resolvedBy User?      @relation("AlertResolvedBy", fields: [resolvedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([jobId, membershipId, type], map: "Alert_jobId_membershipId_type_key")
+  @@index([companyId, membershipId, status, createdAt])
+  @@index([companyId, jobId, status])
+}
+
 model AuditLog {
   id          String   @id @default(cuid())
   companyId   String
@@ -392,3 +432,5 @@ model IdempotencyKey {
 
   @@index([companyId, createdAt])
 }
+
+

@@ -18,14 +18,17 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.PaymentsService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
+const alerts_service_1 = require("../alerts/alerts.service");
 const client_1 = require("@prisma/client");
 const crypto_1 = require("crypto");
 const stripe_1 = __importDefault(require("stripe"));
 let PaymentsService = class PaymentsService {
     prisma;
+    alerts;
     stripe;
-    constructor(prisma, stripe) {
+    constructor(prisma, alerts, stripe) {
         this.prisma = prisma;
+        this.alerts = alerts;
         this.stripe = stripe;
     }
     async createCheckoutSession(companyId, actorUserId, dto) {
@@ -123,6 +126,7 @@ let PaymentsService = class PaymentsService {
         };
     }
     async getCheckoutSessionSummaryPublic(args) {
+        await this.reconcileCheckoutSessionIfPaid(args.sessionId);
         const payment = await this.prisma.payment.findFirst({
             where: {
                 stripeSessionId: args.sessionId,
@@ -172,6 +176,7 @@ let PaymentsService = class PaymentsService {
         };
     }
     async getCheckoutSessionSummaryPrivate(args) {
+        await this.reconcileCheckoutSessionIfPaid(args.sessionId);
         const payment = await this.prisma.payment.findFirst({
             where: {
                 companyId: args.companyId,
@@ -242,6 +247,7 @@ let PaymentsService = class PaymentsService {
             return;
         }
         const receiptUrl = await this.getReceiptUrl(paymentIntentId);
+        let shouldCreateBookingAlert = false;
         await this.prisma.$transaction(async (tx) => {
             await tx.payment.update({
                 where: { id: payment.id },
@@ -252,12 +258,19 @@ let PaymentsService = class PaymentsService {
                         ? session.customer
                         : session.customer?.id,
                     receiptUrl,
-                    raw: event,
+                    raw: event ? event : undefined,
                     capturedAt: new Date(),
                 },
             });
             const job = await tx.job.findUnique({
                 where: { id: jobId },
+                select: {
+                    id: true,
+                    source: true,
+                    status: true,
+                    paidCents: true,
+                    totalCents: true,
+                },
             });
             if (!job) {
                 return;
@@ -272,6 +285,7 @@ let PaymentsService = class PaymentsService {
                     ...(newBalanceCents === 0 ? { paidAt: new Date() } : {}),
                 },
             });
+            shouldCreateBookingAlert = job.source === 'PUBLIC' || job.status === client_1.JobStatus.PENDING_CONFIRMATION;
             await tx.auditLog.create({
                 data: {
                     companyId,
@@ -286,6 +300,9 @@ let PaymentsService = class PaymentsService {
                 },
             });
         });
+        if (shouldCreateBookingAlert) {
+            await this.alerts.createBookingReviewAlerts({ companyId, jobId });
+        }
     }
     async markPaymentFailed(paymentIntent, event) {
         const payment = await this.prisma.payment.findFirst({
@@ -336,7 +353,7 @@ let PaymentsService = class PaymentsService {
                 data: {
                     status: client_1.PaymentStatus.REFUNDED,
                     refundedAt: new Date(),
-                    raw: event,
+                    raw: event ? event : undefined,
                 },
             });
             const job = await tx.job.findUnique({
@@ -369,6 +386,20 @@ let PaymentsService = class PaymentsService {
                 },
             });
         });
+    }
+    async reconcileCheckoutSessionIfPaid(sessionId) {
+        const payment = await this.prisma.payment.findFirst({
+            where: { stripeSessionId: sessionId },
+            select: { id: true, status: true },
+        });
+        if (!payment || payment.status === client_1.PaymentStatus.SUCCEEDED) {
+            return;
+        }
+        const session = await this.safeRetrieveCheckoutSession(sessionId);
+        if (!session || session.payment_status !== 'paid') {
+            return;
+        }
+        await this.markCheckoutSessionCompleted(session, null);
     }
     getCustomerMessage(status) {
         if (status === client_1.PaymentStatus.SUCCEEDED) {
@@ -422,8 +453,9 @@ let PaymentsService = class PaymentsService {
 exports.PaymentsService = PaymentsService;
 exports.PaymentsService = PaymentsService = __decorate([
     (0, common_1.Injectable)(),
-    __param(1, (0, common_1.Inject)('STRIPE')),
+    __param(2, (0, common_1.Inject)('STRIPE')),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        alerts_service_1.AlertsService,
         stripe_1.default])
 ], PaymentsService);
 //# sourceMappingURL=payments.service.js.map

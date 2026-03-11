@@ -7,6 +7,7 @@ import {
     HttpCode,
     HttpStatus,
     Param,
+    Patch,
     Post,
     Query,
     Req,
@@ -17,6 +18,7 @@ import { Request } from 'express';
 import { JobsService } from './jobs.service';
 import { CreateJobDto } from './dto/create-job.dto';
 import { ListJobsDto } from './dto/list-jobs.dto';
+import { ReviewJobDto } from './dto/review-job.dto';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 
 @UseGuards(JwtAuthGuard)
@@ -24,7 +26,6 @@ import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 export class JobsController {
     constructor(private readonly jobs: JobsService) {}
 
-    // ------- CREATE -------
     @Post()
     @HttpCode(HttpStatus.CREATED)
     async create(
@@ -35,14 +36,13 @@ export class JobsController {
         return job;
     }
 
-    // ------- LIST -------
     @Get()
     async list(
         @Req() req: Request & { user: { roles: string[]; companyId: string | null; sub: string | null } },
         @Query(new ValidationPipe({ whitelist: true, transform: true, transformOptions: { enableImplicitConversion: true } }))
         dto: ListJobsDto,
     ) {
-        const companyId = req.user.companyId ?? dto.companyId; // allow query fallback during dev
+        const companyId = req.user.companyId ?? dto.companyId;
         if (!companyId) throw new BadRequestException('companyId is required');
         return this.jobs.findManyForUser({
             companyId,
@@ -52,21 +52,31 @@ export class JobsController {
         });
     }
 
+    @Get('review/workers')
+    async listReviewWorkers(
+        @Req() req: Request & { user?: any },
+        @Headers('x-company-id') companyHeader?: string,
+    ) {
+        const companyId = req.user?.companyId ?? req.user?.company?.id ?? companyHeader;
+        const userSub: string | null = req.user?.sub ?? null;
 
-    // ------- GET ONE -------
+        if (!companyId) {
+            throw new BadRequestException('companyId is required (token or x-company-id header)');
+        }
+
+        return this.jobs.listCompanyWorkers({ companyId, userSub });
+    }
+
     @Get(':id')
     async getOne(
         @Req() req: Request & { user?: any },
-        @Param('id') id: string, // cuid/string (do NOT use ParseUUIDPipe)
+        @Param('id') id: string,
         @Headers('x-company-id') companyHeader?: string,
     ) {
         const roles: string[] = req.user?.roles ?? [];
         const userSub: string | null = req.user?.sub ?? null;
 
-        const companyId =
-            req.user?.companyId ??
-            req.user?.company?.id ??
-            companyHeader;
+        const companyId = req.user?.companyId ?? req.user?.company?.id ?? companyHeader;
 
         if (!companyId) {
             throw new BadRequestException('companyId is required (token or x-company-id header)');
@@ -77,6 +87,28 @@ export class JobsController {
             roles,
             userSub,
             id,
+        });
+    }
+
+    @Patch(':id/review')
+    async review(
+        @Req() req: Request & { user?: any },
+        @Param('id') id: string,
+        @Headers('x-company-id') companyHeader: string | undefined,
+        @Body(new ValidationPipe({ whitelist: true, transform: true })) body: ReviewJobDto,
+    ) {
+        const companyId = req.user?.companyId ?? req.user?.company?.id ?? companyHeader;
+        const userSub: string | null = req.user?.sub ?? null;
+
+        if (!companyId) {
+            throw new BadRequestException('companyId is required (token or x-company-id header)');
+        }
+
+        return this.jobs.reviewJob({
+            companyId,
+            userSub,
+            jobId: id,
+            dto: body,
         });
     }
 }
