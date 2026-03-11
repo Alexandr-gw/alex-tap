@@ -1,7 +1,12 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { useCheckoutSessionSummary } from "@/features/booking/hooks/payment.queries";
 import { useMe } from "@/features/me/hooks/useMe";
+import {
+    clearLastActiveBookingDraftKey,
+    getLastActiveBookingDraftKey,
+    markBookingDraftCompleted,
+} from "@/features/booking/draft.utils";
 
 function formatMoney(cents: number, currency: string) {
     const amount = cents / 100;
@@ -60,6 +65,16 @@ export function BookingSuccessPage() {
     );
     const meQ = useMe(null);
     const canOpenDashboard = !!meQ.data && !meQ.isError;
+
+    useEffect(() => {
+        if (data?.status !== "SUCCEEDED") return;
+
+        const lastKey = getLastActiveBookingDraftKey();
+        if (!lastKey) return;
+
+        markBookingDraftCompleted(lastKey);
+        clearLastActiveBookingDraftKey();
+    }, [data?.status]);
 
     const title = useMemo(() => {
         if (!sessionId) return "Missing session_id";

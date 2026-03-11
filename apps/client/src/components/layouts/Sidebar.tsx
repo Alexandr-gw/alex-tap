@@ -6,12 +6,10 @@ import { canManageCompany } from "@/features/me/me.selector.ts";
 const links = [
     { to: ".", label: "Dashboard" },
     { to: "tracking", label: "Tracking" },
-    { to: "jobs", label: "Jobs" },
-    { to: "customers", label: "Customers" },
-    { to: "settings", label: "Settings" },
 ];
 
 const adminLinks = [
+    { to: "jobs", label: "Jobs" },
     { to: "services", label: "Services" },
     { to: "users", label: "Users" },
 ];
@@ -47,8 +45,8 @@ export function Sidebar() {
 
                             {l.to === "tracking" ? (
                                 <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">
-                  Live
-                </span>
+                                    Live
+                                </span>
                             ) : null}
                         </NavLink>
                     ))}

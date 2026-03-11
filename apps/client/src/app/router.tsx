@@ -14,6 +14,7 @@ import { RequireRole } from "@/features/auth/components/RequireRole";
 import { DashboardLayout } from "@/components/layouts/DashboardLayout";
 import { DashboardHomePage } from "@/features/dashboard/pages/DashboardHomePage";
 import ServicesAdminPage from "@/features/services/components/ServiceAdminPage.tsx";
+import { AlertsInboxPage } from "@/features/alerts/pages/AlertsInboxPage";
 
 import { BookingWizardPage } from "@/features/booking/pages/BookingWizardPage";
 import { BookingSuccessPage } from "@/features/booking/pages/BookingSuccessPage";
@@ -24,27 +25,16 @@ function Placeholder({ title }: { title: string }) {
 }
 
 export const router = createBrowserRouter([
-    // --------------------
-    // Public
-    // --------------------
     { path: "/", element: <LandingPage /> },
-
     { path: "/book/:companySlug", element: <BookingWizardPage /> },
-
     { path: "/payment/success", element: <BookingSuccessPage /> },
     { path: "/payment/cancel", element: <BookingCancelPage /> },
-
     { path: "/login", element: <LoginPage /> },
     { path: "/401", element: <UnauthorizedPage /> },
-
-    // --------------------
-    // Protected (session required)
-    // --------------------
     {
         element: <ProtectedRoute />,
         children: [
             { path: "/select-company", element: <SelectCompanyPage /> },
-
             {
                 path: "/app",
                 element: <CompanyGate />,
@@ -53,13 +43,12 @@ export const router = createBrowserRouter([
                         element: <DashboardLayout />,
                         children: [
                             { index: true, element: <DashboardHomePage /> },
-
                             { path: "schedule", element: <Placeholder title="Schedule" /> },
                             { path: "tracking", element: <Placeholder title="Tracking" /> },
-
                             {
                                 element: <RequireRole allow={["ADMIN", "MANAGER"]} />,
                                 children: [
+                                    { path: "jobs", element: <AlertsInboxPage /> },
                                     { path: "services", element: <ServicesAdminPage /> },
                                     { path: "users", element: <Placeholder title="Users" /> },
                                 ],
@@ -70,9 +59,5 @@ export const router = createBrowserRouter([
             },
         ],
     },
-
-    // --------------------
-    // Fallback
-    // --------------------
     { path: "*", element: <NotFoundPage /> },
 ]);

@@ -1,5 +1,6 @@
 import { useCreateCheckout } from "../hooks/booking.queries";
 import type { PublicServiceListItemDto } from "../api/booking.types";
+import { setLastActiveBookingDraftKey } from "../draft.utils";
 
 export function StepConfirm({
                                 wizard,
@@ -32,6 +33,7 @@ export function StepConfirm({
             },
         });
 
+        setLastActiveBookingDraftKey(wizard.key);
         window.location.href = res.checkoutUrl;
     }
 
@@ -45,7 +47,7 @@ export function StepConfirm({
                 </div>
 
                 <div className="text-sm text-slate-700">
-                    Slot: {slot ? new Date(slot.start).toLocaleString() : "—"}
+                    Slot: {slot ? new Date(slot.start).toLocaleString() : "-"}
                 </div>
 
                 <div className="text-sm text-slate-700">Client: {client.name}</div>
@@ -65,7 +67,7 @@ export function StepConfirm({
                     disabled={checkoutM.isPending || !slot}
                     onClick={onPayAndBook}
                 >
-                    {checkoutM.isPending ? "Redirecting…" : "Pay & Book"}
+                    {checkoutM.isPending ? "Redirecting..." : "Pay & Book"}
                 </button>
             </div>
         </div>

@@ -51,4 +51,8 @@ export const BookingDraftSchema = z.object({
         phone: "",
         notes: "",
     }),
+
+    status: z.enum(["active", "completed"]).optional().default("active"),
+    updatedAt: z.number().int().optional(),
+    completedAt: z.number().int().nullable().optional().default(null),
 });

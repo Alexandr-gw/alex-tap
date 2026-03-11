@@ -18,6 +18,8 @@ export type BookingClientDraft = {
     notes?: string;
 };
 
+export type BookingDraftStatus = "active" | "completed";
+
 export type BookingDraft = {
     day: ISODate | null; // "YYYY-MM-DD"
     stepIndex: number;
@@ -27,6 +29,10 @@ export type BookingDraft = {
     range: BookingRange;
     slot: BookingSlot | null;
     client: BookingClientDraft;
+
+    status?: BookingDraftStatus;
+    updatedAt?: number;
+    completedAt?: number | null;
 };
 
 export type WizardStepId =

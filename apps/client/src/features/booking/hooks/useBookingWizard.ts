@@ -12,8 +12,7 @@ import type { BookingDraft, WizardStepId } from "../booking.types";
 const DRAFT_TTL_MS = 24 * 60 * 60 * 1000; // 24h
 
 function isDraftFresh(draft: BookingDraft) {
-    if (!("updatedAt" in draft)) return true;
-    const updatedAt = (draft as any).updatedAt as number | undefined;
+    const updatedAt = draft.updatedAt;
     if (!updatedAt) return true;
     return Date.now() - updatedAt < DRAFT_TTL_MS;
 }
@@ -21,28 +20,31 @@ function isDraftFresh(draft: BookingDraft) {
 export function useBookingWizard(companySlug: string) {
     const key = useMemo(() => bookingDraftKey(companySlug), [companySlug]);
 
-    const saved = useMemo(() => loadBookingDraft(key), [key]);
-    const savedIsUsable = Boolean(saved) && isDraftFresh(saved as BookingDraft);
+    const savedDraft = useMemo(() => loadBookingDraft(key), [key]);
+    const savedDraftIsFresh = Boolean(savedDraft) && isDraftFresh(savedDraft as BookingDraft);
+    const savedDraftIsCompleted = savedDraft?.status === "completed";
+    const savedDraftCanResume = Boolean(savedDraft) && savedDraftIsFresh && !savedDraftIsCompleted;
 
-    const [hadSavedDraft] = useState(() => savedIsUsable);
-
-    const [draft, dispatch] = useReducer(
-        bookingReducer,
-        bookingInitialDraft,
-        (initial): BookingDraft => {
-            if (saved && savedIsUsable) return saved as BookingDraft;
-            return initial;
-        }
-    );
+    const [resumeChoiceRequired, setResumeChoiceRequired] = useState(savedDraftCanResume);
+    const [draft, dispatch] = useReducer(bookingReducer, bookingInitialDraft);
 
     useEffect(() => {
-        const toSave =
-            "updatedAt" in draft
-                ? ({ ...draft, updatedAt: Date.now() } as BookingDraft)
-                : draft;
+        if (savedDraft && (!savedDraftIsFresh || savedDraftIsCompleted)) {
+            clearBookingDraft(key);
+        }
+    }, [key, savedDraft, savedDraftIsFresh, savedDraftIsCompleted]);
+
+    useEffect(() => {
+        if (resumeChoiceRequired) return;
+
+        const toSave: BookingDraft = {
+            ...draft,
+            status: draft.status ?? "active",
+            updatedAt: Date.now(),
+        };
 
         saveBookingDraft(key, toSave);
-    }, [key, draft]);
+    }, [key, draft, resumeChoiceRequired]);
 
     const stepId: WizardStepId =
         WIZARD_STEPS[Math.min(draft.stepIndex, WIZARD_STEPS.length - 1)];
@@ -61,7 +63,35 @@ export function useBookingWizard(companySlug: string) {
 
     function reset() {
         clearBookingDraft(key);
+        setResumeChoiceRequired(false);
         dispatch({ type: "RESET" });
+    }
+
+    function continueSavedDraft() {
+        if (!savedDraftCanResume || !savedDraft) {
+            setResumeChoiceRequired(false);
+            return;
+        }
+
+        dispatch({
+            type: "RESET",
+            draft: {
+                ...savedDraft,
+                status: "active",
+                completedAt: null,
+            },
+        });
+        setResumeChoiceRequired(false);
+    }
+
+    function startFresh() {
+        clearBookingDraft(key);
+        dispatch({ type: "RESET" });
+        setResumeChoiceRequired(false);
+    }
+
+    function markCompleted() {
+        dispatch({ type: "MARK_COMPLETED" });
     }
 
     return {
@@ -74,6 +104,10 @@ export function useBookingWizard(companySlug: string) {
         back,
         reset,
         setStep,
-        hadSavedDraft,
+        markCompleted,
+        savedDraft: savedDraftCanResume ? savedDraft : null,
+        resumeChoiceRequired,
+        continueSavedDraft,
+        startFresh,
     };
 }
