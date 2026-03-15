@@ -15,11 +15,11 @@ import {
     ValidationPipe,
 } from '@nestjs/common';
 import { Request } from 'express';
+import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 import { JobsService } from './jobs.service';
 import { CreateJobDto } from './dto/create-job.dto';
 import { ListJobsDto } from './dto/list-jobs.dto';
 import { ReviewJobDto } from './dto/review-job.dto';
-import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 
 @UseGuards(JwtAuthGuard)
 @Controller('api/v1/jobs')
@@ -29,11 +29,17 @@ export class JobsController {
     @Post()
     @HttpCode(HttpStatus.CREATED)
     async create(
+        @Req() req: Request & { user: { roles: string[]; companyId: string | null; sub: string | null } },
         @Body(new ValidationPipe({ whitelist: true, transform: true })) body: CreateJobDto,
         @Headers('idempotency-key') idem?: string,
     ) {
-        const job = await this.jobs.create(body, idem ?? undefined);
-        return job;
+        return this.jobs.create({
+            dto: body,
+            idempotencyKey: idem ?? undefined,
+            roles: req.user.roles,
+            userSub: req.user.sub,
+            companyId: req.user.companyId,
+        });
     }
 
     @Get()
@@ -75,7 +81,6 @@ export class JobsController {
     ) {
         const roles: string[] = req.user?.roles ?? [];
         const userSub: string | null = req.user?.sub ?? null;
-
         const companyId = req.user?.companyId ?? req.user?.company?.id ?? companyHeader;
 
         if (!companyId) {

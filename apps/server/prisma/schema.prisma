@@ -152,7 +152,7 @@ model Worker {
   availabilityRules      AvailabilityRule[]
   availabilityExceptions AvailabilityException[]
   jobs                   Job[]
-  tasks                  Task[]
+  taskAssignments        TaskAssignment[]
 
   @@unique([companyId, userId]) // OK with NULL userId on Postgres
   @@index([companyId, active])
@@ -196,6 +196,7 @@ model ClientProfile {
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Restrict)
   jobs    Job[]
+  tasks   Task[]
 
   @@index([companyId, createdAt])
 }
@@ -261,7 +262,6 @@ model Job {
 
   lineItems      JobLineItem[]
   comments       JobComment[]
-  tasks          Task[]
   payments       Payment[]
   alerts         Alert[]
   IdempotencyKey IdempotencyKey[]
@@ -289,25 +289,36 @@ model JobLineItem {
 }
 
 model Task {
-  id               String     @id @default(cuid())
-  companyId        String
-  jobId            String
-  assigneeWorkerId String?
-  status           TaskStatus @default(OPEN)
-  title            String
-  notes            String?
-  dueAt            DateTime?
-  createdAt        DateTime   @default(now())
-  updatedAt        DateTime   @updatedAt
+  id          String   @id @default(cuid())
+  companyId   String
+  customerId  String?
+  subject     String
+  description String?
+  scheduledAt DateTime
+  completed   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  company  Company @relation(fields: [companyId], references: [id], onDelete: Restrict)
-  job      Job     @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  assignee Worker? @relation(fields: [assigneeWorkerId], references: [id], onDelete: SetNull)
+  company     Company        @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  customer    ClientProfile? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  assignments TaskAssignment[]
 
-  @@index([companyId, status])
-  @@index([companyId, assigneeWorkerId])
-  @@index([companyId, jobId])
-  @@index([companyId, dueAt])
+  @@index([companyId, scheduledAt])
+  @@index([companyId, completed])
+  @@index([companyId, customerId])
+}
+
+model TaskAssignment {
+  id        String   @id @default(cuid())
+  taskId    String
+  workerId  String
+  createdAt DateTime @default(now())
+
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  worker Worker @relation(fields: [workerId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, workerId])
+  @@index([workerId])
 }
 
 model JobComment {
@@ -432,5 +443,8 @@ model IdempotencyKey {
 
   @@index([companyId, createdAt])
 }
+
+
+
 
 

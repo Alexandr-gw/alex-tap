@@ -1,15 +1,13 @@
 import { Module } from '@nestjs/common';
 import { JobsController } from './jobs.controller';
 import { JobsService } from './jobs.service';
-import { PrismaService } from '@/prisma/prisma.service';
-import { SlotsService } from '@/slots/slots.service';
-import { NotificationModule } from '@/notifications/notification.module';
-import { AlertsModule } from '@/alerts/alerts.module';
+import { SlotsModule } from '@/slots/slots.module';
+import { ScheduleModule } from '@/schedule/schedule.module';
 
 @Module({
-    imports: [NotificationModule, AlertsModule],
+    imports: [SlotsModule, ScheduleModule],
     controllers: [JobsController],
-    providers: [JobsService, PrismaService, SlotsService],
+    providers: [JobsService],
     exports: [JobsService],
 })
 export class JobsModule {}

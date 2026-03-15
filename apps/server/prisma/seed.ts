@@ -2,7 +2,6 @@ import {
     PrismaClient,
     Role,
     JobStatus,
-    TaskStatus,
     PaymentProvider,
     PaymentStatus,
     NotificationChannel,
@@ -223,12 +222,13 @@ async function main() {
     await prisma.task.create({
         data: {
             companyId: company.id,
-            jobId: job1.id,
-            assigneeWorkerId: w1.id,
-            status: TaskStatus.OPEN,
-            title: "Bring eco supplies",
-            notes: "No bleach",
-            dueAt: new Date(now.getTime() + 45 * 60 * 1000)
+            customerId: c1.id,
+            subject: "Bring eco supplies",
+            description: "No bleach",
+            scheduledAt: new Date(now.getTime() + 45 * 60 * 1000),
+            assignments: {
+                create: [{ workerId: w1.id }],
+            },
         }
     });
 
@@ -305,3 +305,4 @@ main()
     .finally(async () => {
         await prisma.$disconnect();
     });
+

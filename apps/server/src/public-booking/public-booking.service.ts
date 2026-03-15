@@ -1,10 +1,11 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException, UnprocessableEntityException } from "@nestjs/common";
-import { PrismaService } from "@/prisma/prisma.service";
-import { SlotsService } from "@/slots/slots.service";
-import { PaymentsService } from "@/payments/payments.service";
-import { addMinutes, parseISO } from "date-fns";
-import { Prisma, JobStatus } from "@prisma/client";
-import { PublicCheckoutDto } from "./dto/public-checkout.dto";
+import { BadRequestException, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import { Prisma, JobStatus } from '@prisma/client';
+import { addMinutes, parseISO } from 'date-fns';
+import { DateTime } from 'luxon';
+import { PrismaService } from '@/prisma/prisma.service';
+import { SlotsService } from '@/slots/slots.service';
+import { PaymentsService } from '@/payments/payments.service';
+import { PublicCheckoutDto } from './dto/public-checkout.dto';
 
 @Injectable()
 export class PublicBookingService {
@@ -19,7 +20,7 @@ export class PublicBookingService {
             where: { slug: companySlug, deletedAt: null },
             select: { id: true, name: true },
         });
-        if (!company) throw new NotFoundException("Company not found");
+        if (!company) throw new NotFoundException('Company not found');
 
         const service = await this.prisma.service.findFirst({
             where: {
@@ -37,7 +38,7 @@ export class PublicBookingService {
                 companyId: true,
             },
         });
-        if (!service) throw new NotFoundException("Service not found");
+        if (!service) throw new NotFoundException('Service not found');
 
         return {
             companyId: company.id,
@@ -54,104 +55,128 @@ export class PublicBookingService {
         const fromDate = parseISO(args.from);
         const toDate = parseISO(args.to);
         if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime()) || toDate <= fromDate) {
-            throw new BadRequestException("Invalid from/to");
+            throw new BadRequestException('Invalid from/to');
         }
 
-        // fetch active workers for company
-        const workers = await this.prisma.worker.findMany({
-            where: { companyId: args.companyId, active: true },
-            select: { id: true },
-            orderBy: { createdAt: "asc" },
+        const company = await this.prisma.company.findUnique({
+            where: { id: args.companyId },
+            select: { timezone: true },
         });
-        if (!workers.length) return [];
+        if (!company) throw new NotFoundException('Company not found');
 
-        // get slots per worker -> union unique by start|end
-        const results = await Promise.allSettled(
-            workers.map((w) =>
-                this.slots.getWorkerSlots({
-                    workerId: w.id,
+        const timezone = company.timezone ?? 'America/Edmonton';
+        const dayKeys: string[] = [];
+        let cursor = new Date(fromDate.getTime());
+        while (cursor < toDate) {
+            const dayKey = new Intl.DateTimeFormat('en-CA', {
+                timeZone: timezone,
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+            }).format(cursor);
+            if (!dayKeys.includes(dayKey)) dayKeys.push(dayKey);
+            cursor = new Date(cursor.getTime() + 24 * 60 * 60 * 1000);
+        }
+
+        const results = await Promise.all(
+            dayKeys.map((day) =>
+                this.slots.getCompanySlotsForDay({
+                    companyId: args.companyId,
                     serviceId: args.serviceId,
-                    from: fromDate,
-                    to: toDate,
+                    day,
                 }),
             ),
         );
 
-        const map = new Map<string, { start: string; end: string }>();
-        for (const r of results) {
-            if (r.status !== "fulfilled") continue;
-            for (const s of r.value.slots) {
-                const key = `${s.start}|${s.end}`;
-                if (!map.has(key)) map.set(key, s);
-            }
-        }
-
-        return Array.from(map.values()).sort((a, b) => a.start.localeCompare(b.start));
+        return results
+            .flatMap((result) => result.slots)
+            .filter((slot) => {
+                const start = Date.parse(slot.start);
+                const end = Date.parse(slot.end);
+                return start >= fromDate.getTime() && end <= toDate.getTime();
+            })
+            .map((slot) => ({ start: slot.start, end: slot.end }));
     }
 
     async createPublicCheckout(dto: PublicCheckoutDto) {
         const start = parseISO(dto.start);
-        if (isNaN(start.getTime())) throw new BadRequestException("Invalid start");
+        if (isNaN(start.getTime())) throw new BadRequestException('Invalid start');
 
-        const service = await this.prisma.service.findFirst({
-            where: { id: dto.serviceId, companyId: dto.companyId, active: true, deletedAt: null },
-            select: { id: true, companyId: true, name: true, durationMins: true, basePriceCents: true, currency: true },
-        });
-        if (!service) throw new BadRequestException("Invalid service/company");
+        const [company, service] = await Promise.all([
+            this.prisma.company.findUnique({
+                where: { id: dto.companyId },
+                select: { id: true, timezone: true },
+            }),
+            this.prisma.service.findFirst({
+                where: { id: dto.serviceId, companyId: dto.companyId, active: true, deletedAt: null },
+                select: { id: true, companyId: true, name: true, durationMins: true, basePriceCents: true, currency: true },
+            }),
+        ]);
+
+        if (!company) throw new BadRequestException('Invalid company');
+        if (!service) throw new BadRequestException('Invalid service/company');
 
         const end = addMinutes(start, service.durationMins);
+        const timezone = company.timezone ?? 'America/Edmonton';
+        const bookingDay = DateTime.fromJSDate(start, { zone: 'utc' }).setZone(timezone).toISODate();
+        if (!bookingDay) throw new BadRequestException('Invalid start');
 
-        // pick an available worker (MVP: first active worker who can book that slot)
-        const worker = await this.pickWorkerForSlot({
-            companyId: dto.companyId,
-            serviceId: dto.serviceId,
-            start,
-            end,
-        });
-        if (!worker) throw new UnprocessableEntityException("No available worker for that time");
+        const job = await this.withSerializableRetry(() =>
+            this.prisma.$transaction(
+                async (tx: Prisma.TransactionClient) => {
+                    await this.acquireCompanyDayBookingLock(tx, dto.companyId, bookingDay);
 
-        // Transaction: upsert client + create job + line item + totals
-        const job = await this.prisma.$transaction(
-            async (tx: Prisma.TransactionClient) => {
-                // overlap guard (same as JobsService, but internal pick)
-                const conflicting = await tx.job.findFirst({
-                    where: {
-                        companyId: dto.companyId,
-                        workerId: worker.id,
-                        status: { in: [JobStatus.PENDING_CONFIRMATION, JobStatus.SCHEDULED, JobStatus.IN_PROGRESS] },
-                        NOT: [{ endAt: { lte: start } }, { startAt: { gte: end } }],
-                    },
-                    select: { id: true },
-                });
-                if (conflicting) throw new ConflictException("Overlapping booking");
+                    const slotAllowed = await this.slots.isCompanySlotBookable(
+                        {
+                            companyId: dto.companyId,
+                            serviceId: dto.serviceId,
+                            start,
+                            end,
+                        },
+                        tx,
+                    );
+                    if (!slotAllowed) {
+                        throw new UnprocessableEntityException('Selected slot is no longer available');
+                    }
 
-                // client upsert by email if present
-                let clientId: string;
-                if (dto.client.email) {
-                    const existing = await tx.clientProfile.findFirst({
-                        where: { companyId: dto.companyId, email: dto.client.email },
-                        select: { id: true },
-                    });
-
-                    if (existing) {
-                        clientId = existing.id;
-
-                        // keep fresh details (optional but useful)
-                        await tx.clientProfile.update({
-                            where: { id: clientId },
-                            data: {
-                                name: dto.client.name,
-                                phone: dto.client.phone ?? undefined,
-                                address: dto.client.address ?? undefined,
-                                notes: dto.client.notes ?? undefined,
-                            },
+                    let clientId: string;
+                    if (dto.client.email) {
+                        const existing = await tx.clientProfile.findFirst({
+                            where: { companyId: dto.companyId, email: dto.client.email },
+                            select: { id: true },
                         });
+
+                        if (existing) {
+                            clientId = existing.id;
+                            await tx.clientProfile.update({
+                                where: { id: clientId },
+                                data: {
+                                    name: dto.client.name,
+                                    phone: dto.client.phone ?? undefined,
+                                    address: dto.client.address ?? undefined,
+                                    notes: dto.client.notes ?? undefined,
+                                },
+                            });
+                        } else {
+                            const created = await tx.clientProfile.create({
+                                data: {
+                                    companyId: dto.companyId,
+                                    name: dto.client.name,
+                                    email: dto.client.email,
+                                    phone: dto.client.phone ?? null,
+                                    address: dto.client.address ?? null,
+                                    notes: dto.client.notes ?? null,
+                                },
+                                select: { id: true },
+                            });
+                            clientId = created.id;
+                        }
                     } else {
                         const created = await tx.clientProfile.create({
                             data: {
                                 companyId: dto.companyId,
                                 name: dto.client.name,
-                                email: dto.client.email,
+                                email: null,
                                 phone: dto.client.phone ?? null,
                                 address: dto.client.address ?? null,
                                 notes: dto.client.notes ?? null,
@@ -160,64 +185,49 @@ export class PublicBookingService {
                         });
                         clientId = created.id;
                     }
-                } else {
-                    const created = await tx.clientProfile.create({
+
+                    const subtotal = service.basePriceCents;
+                    const tax = 0;
+                    const total = subtotal + tax;
+
+                    const job = await tx.job.create({
                         data: {
                             companyId: dto.companyId,
-                            name: dto.client.name,
-                            email: null,
-                            phone: dto.client.phone ?? null,
-                            address: dto.client.address ?? null,
-                            notes: dto.client.notes ?? null,
+                            clientId,
+                            workerId: null,
+                            startAt: start,
+                            endAt: end,
+                            status: JobStatus.PENDING_CONFIRMATION,
+                            location: dto.client.address ?? null,
+                            source: 'PUBLIC',
+                            subtotalCents: subtotal,
+                            taxCents: tax,
+                            totalCents: total,
+                            paidCents: 0,
+                            balanceCents: total,
+                            currency: service.currency ?? 'CAD',
                         },
-                        select: { id: true },
                     });
-                    clientId = created.id;
-                }
 
-                const subtotal = service.basePriceCents;
-                const tax = 0;
-                const total = subtotal + tax;
+                    await tx.jobLineItem.create({
+                        data: {
+                            jobId: job.id,
+                            serviceId: service.id,
+                            description: service.name,
+                            quantity: 1,
+                            unitPriceCents: service.basePriceCents,
+                            taxRateBps: 0,
+                            totalCents: service.basePriceCents,
+                        },
+                    });
 
-                const job = await tx.job.create({
-                    data: {
-                        companyId: dto.companyId,
-                        clientId,
-                        workerId: worker.id,
-                        startAt: start,
-                        endAt: end,
-                        status: JobStatus.PENDING_CONFIRMATION,
-                        location: dto.client.address ?? null,
-                        source: "PUBLIC",
-
-                        subtotalCents: subtotal,
-                        taxCents: tax,
-                        totalCents: total,
-                        paidCents: 0,
-                        balanceCents: total,
-                        currency: service.currency ?? "CAD",
-                    },
-                });
-
-                await tx.jobLineItem.create({
-                    data: {
-                        jobId: job.id,
-                        serviceId: service.id,
-                        description: service.name,
-                        quantity: 1,
-                        unitPriceCents: service.basePriceCents,
-                        taxRateBps: 0,
-                        totalCents: service.basePriceCents,
-                    },
-                });
-
-                return job;
-            },
-            { isolationLevel: "Serializable" },
+                    return job;
+                },
+                { isolationLevel: 'Serializable' },
+            ),
         );
 
-        // Create Stripe checkout session (public actor => null/"public")
-        const session = await this.payments.createCheckoutSession(dto.companyId, "public", {
+        const session = await this.payments.createCheckoutSession(dto.companyId, 'public', {
             jobId: job.id,
             successUrl: process.env.PUBLIC_BOOKING_SUCCESS_URL,
             cancelUrl: process.env.PUBLIC_BOOKING_CANCEL_URL,
@@ -228,18 +238,13 @@ export class PublicBookingService {
     }
 
     async listPublicServices(companySlug: string) {
-        console.log("[PublicBooking] companySlug:", companySlug);
-
         const company = await this.prisma.company.findFirst({
             where: { slug: companySlug, deletedAt: null },
-            select: { id: true, name: true, slug: true, deletedAt: true },
+            select: { id: true, name: true },
         });
 
-        console.log("[PublicBooking] company found:", company);
-
         if (!company) {
-            console.log("[PublicBooking] ❌ Company NOT found for slug:", companySlug);
-            throw new NotFoundException("Company not found");
+            throw new NotFoundException('Company not found');
         }
 
         const services = await this.prisma.service.findMany({
@@ -256,10 +261,8 @@ export class PublicBookingService {
                 basePriceCents: true,
                 currency: true,
             },
-            orderBy: { createdAt: "asc" },
+            orderBy: { createdAt: 'asc' },
         });
-
-        console.log(`[PublicBooking] services count: ${services.length}`);
 
         return {
             companyId: company.id,
@@ -268,23 +271,32 @@ export class PublicBookingService {
         };
     }
 
-    private async pickWorkerForSlot(args: { companyId: string; serviceId: string; start: Date; end: Date }) {
-        const workers = await this.prisma.worker.findMany({
-            where: { companyId: args.companyId, active: true },
-            select: { id: true },
-            orderBy: { createdAt: "asc" },
-        });
+    private async acquireCompanyDayBookingLock(
+        tx: Prisma.TransactionClient,
+        companyId: string,
+        bookingDay: string,
+    ) {
+        await tx.$executeRaw`
+            SELECT pg_advisory_xact_lock(hashtext(${companyId}), hashtext(${`public-booking:${bookingDay}`}))
+        `;
+    }
 
-        for (const w of workers) {
-            const ok = await this.slots.isSlotBookable({
-                companyId: args.companyId,
-                workerId: w.id,
-                serviceId: args.serviceId,
-                start: args.start,
-                end: args.end,
-            });
-            if (ok) return w;
+    private async withSerializableRetry<T>(operation: () => Promise<T>, maxAttempts = 3): Promise<T> {
+        for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+            try {
+                return await operation();
+            } catch (error) {
+                const canRetry = this.isRetryableTransactionError(error) && attempt < maxAttempts;
+                if (!canRetry) throw error;
+            }
         }
-        return null;
+
+        throw new BadRequestException('Booking could not be completed');
+    }
+
+    private isRetryableTransactionError(error: unknown) {
+        return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2034';
     }
 }
+
+
