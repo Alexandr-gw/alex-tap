@@ -28,7 +28,7 @@ export function Header() {
 
     return (
         <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/80 backdrop-blur">
-            <div className="mx-auto flex h-14 max-w-screen-2xl items-center justify-between px-4">
+            <div className="flex h-14 w-full items-center justify-between px-4">
                 <div className="flex items-center gap-3">
                     <div className="grid h-9 w-9 place-items-center rounded-xl bg-indigo-600 text-sm font-semibold text-white shadow-sm">
                         A

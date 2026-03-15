@@ -1,4 +1,3 @@
-// Sidebar.tsx
 import { NavLink } from "react-router-dom";
 import { useMe } from "@/features/me/hooks/useMe";
 import { canManageCompany } from "@/features/me/me.selector.ts";
@@ -9,6 +8,7 @@ const links = [
 ];
 
 const adminLinks = [
+    { to: "schedule", label: "Schedule" },
     { to: "jobs", label: "Jobs" },
     { to: "services", label: "Services" },
     { to: "users", label: "Users" },
@@ -21,17 +21,17 @@ export function Sidebar() {
     const finalLinks = canManage ? [...links, ...adminLinks] : links;
 
     return (
-        <aside className="hidden w-72 border-r border-slate-200 bg-white md:block">
+        <aside className="hidden w-64 shrink-0 border-r border-slate-200 bg-white md:block xl:w-72">
             <div className="flex h-14 items-center border-b border-slate-200 px-4">
                 <div className="text-sm font-semibold text-slate-900">Navigation</div>
             </div>
 
             <div className="p-3">
                 <div className="space-y-1">
-                    {finalLinks.map((l) => (
+                    {finalLinks.map((link) => (
                         <NavLink
-                            key={l.to}
-                            to={l.to}
+                            key={link.to}
+                            to={link.to}
                             className={({ isActive }) =>
                                 [
                                     "flex items-center justify-between rounded-xl px-3 py-2 text-sm font-medium transition",
@@ -41,9 +41,9 @@ export function Sidebar() {
                                 ].join(" ")
                             }
                         >
-                            <span>{l.label}</span>
+                            <span>{link.label}</span>
 
-                            {l.to === "tracking" ? (
+                            {link.to === "tracking" ? (
                                 <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">
                                     Live
                                 </span>

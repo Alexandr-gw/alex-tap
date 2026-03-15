@@ -20,6 +20,8 @@ import { BookingWizardPage } from "@/features/booking/pages/BookingWizardPage";
 import { BookingSuccessPage } from "@/features/booking/pages/BookingSuccessPage";
 import { BookingCancelPage } from "@/features/booking/pages/BookingCancelPage";
 
+import { SchedulePage } from "@/features/schedule/pages/SchedulePage";
+
 function Placeholder({ title }: { title: string }) {
     return <div className="p-6 text-lg font-semibold">{title}</div>;
 }
@@ -43,7 +45,7 @@ export const router = createBrowserRouter([
                         element: <DashboardLayout />,
                         children: [
                             { index: true, element: <DashboardHomePage /> },
-                            { path: "schedule", element: <Placeholder title="Schedule" /> },
+                            { path: "schedule", element: <SchedulePage /> },
                             { path: "tracking", element: <Placeholder title="Tracking" /> },
                             {
                                 element: <RequireRole allow={["ADMIN", "MANAGER"]} />,

@@ -1,4 +1,5 @@
 import { getActiveCompanyId } from "@/lib/session/company";
+import { isAuthRefreshPath, refreshAccessSession } from "@/lib/session/refresh";
 import { toApiError } from "./apiError";
 
 type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -8,7 +9,7 @@ type ApiRequestOptions<TBody> = {
     body?: TBody;
     headers?: Record<string, string | undefined>;
     signal?: AbortSignal;
-    credentials?: RequestCredentials; // default include
+    credentials?: RequestCredentials;
     companyId?: string | null;
 };
 
@@ -25,7 +26,7 @@ function cleanHeaders(h?: Record<string, string | undefined>): Record<string, st
 
 function buildUrl(path: string) {
     if (/^https?:\/\//i.test(path)) return path;
-    if (path.startsWith("/api")) return path; // proxy style
+    if (path.startsWith("/api")) return path;
     if (API_ORIGIN) return `${API_ORIGIN}${path.startsWith("/") ? "" : "/"}${path}`;
     return path;
 }
@@ -45,18 +46,26 @@ export async function api<TResp, TBody = unknown>(
 
     let body: BodyInit | undefined;
     if (opts.body !== undefined && opts.body !== null && method !== "GET") {
-        // Don’t overwrite if caller provided content-type (e.g. multipart)
         headers["content-type"] = headers["content-type"] ?? "application/json";
-        body = headers["content-type"] === "application/json" ? JSON.stringify(opts.body) : (opts.body as any);
+        body = headers["content-type"] === "application/json" ? JSON.stringify(opts.body) : (opts.body as BodyInit);
     }
 
-    const res = await fetch(buildUrl(path), {
+    const request = () => fetch(buildUrl(path), {
         method,
         headers,
         body,
         signal: opts.signal,
         credentials: opts.credentials ?? "include",
     });
+
+    let res = await request();
+
+    if (res.status === 401 && !isAuthRefreshPath(path)) {
+        try {
+            await refreshAccessSession();
+            res = await request();
+        } catch {}
+    }
 
     if (!res.ok) throw await toApiError(res);
 

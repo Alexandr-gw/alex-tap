@@ -1,4 +1,3 @@
-// src/features/me/hooks/useMe.ts
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getMe } from "@/features/me/api/me.api";
@@ -18,6 +17,7 @@ export type MeDto = {
         role: MembershipRole;
     }>;
     activeCompanyId: string | null;
+    activeCompanyTimezone: string | null;
 };
 
 export function useMe(companyId?: string | null) {
