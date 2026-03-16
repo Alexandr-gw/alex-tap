@@ -225,7 +225,8 @@ async function main() {
             customerId: c1.id,
             subject: "Bring eco supplies",
             description: "No bleach",
-            scheduledAt: new Date(now.getTime() + 45 * 60 * 1000),
+            startAt: new Date(now.getTime() + 45 * 60 * 1000),
+            endAt: new Date(now.getTime() + 105 * 60 * 1000),
             assignments: {
                 create: [{ workerId: w1.id }],
             },
@@ -305,4 +306,5 @@ main()
     .finally(async () => {
         await prisma.$disconnect();
     });
+
 

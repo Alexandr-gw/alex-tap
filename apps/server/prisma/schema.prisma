@@ -151,7 +151,8 @@ model Worker {
 
   availabilityRules      AvailabilityRule[]
   availabilityExceptions AvailabilityException[]
-  jobs                   Job[]
+  jobs                   Job[]           @relation("PrimaryJobWorker")
+  jobAssignments         JobAssignment[]
   taskAssignments        TaskAssignment[]
 
   @@unique([companyId, userId]) // OK with NULL userId on Postgres
@@ -233,11 +234,27 @@ model AvailabilityException {
   @@index([companyId, workerId, startAt])
 }
 
+model JobAssignment {
+  id        String   @id @default(cuid())
+  jobId     String
+  workerId  String
+  createdAt DateTime @default(now())
+
+  job    Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  worker Worker @relation(fields: [workerId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, workerId])
+  @@index([workerId])
+}
+
 model Job {
   id            String    @id @default(cuid())
   companyId     String
   clientId      String
   workerId      String?
+  title         String?
+  description   String?
+  internalNotes String?
   status        JobStatus @default(SCHEDULED)
   startAt       DateTime
   endAt         DateTime
@@ -258,8 +275,9 @@ model Job {
 
   company Company       @relation(fields: [companyId], references: [id], onDelete: Restrict)
   client  ClientProfile @relation(fields: [clientId], references: [id], onDelete: Restrict)
-  worker  Worker?       @relation(fields: [workerId], references: [id], onDelete: SetNull)
+  worker  Worker?       @relation("PrimaryJobWorker", fields: [workerId], references: [id], onDelete: SetNull)
 
+  assignments    JobAssignment[]
   lineItems      JobLineItem[]
   comments       JobComment[]
   payments       Payment[]
@@ -294,7 +312,8 @@ model Task {
   customerId  String?
   subject     String
   description String?
-  scheduledAt DateTime
+  startAt     DateTime
+  endAt       DateTime
   completed   Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -303,7 +322,7 @@ model Task {
   customer    ClientProfile? @relation(fields: [customerId], references: [id], onDelete: SetNull)
   assignments TaskAssignment[]
 
-  @@index([companyId, scheduledAt])
+  @@index([companyId, startAt])
   @@index([companyId, completed])
   @@index([companyId, customerId])
 }
@@ -443,6 +462,11 @@ model IdempotencyKey {
 
   @@index([companyId, createdAt])
 }
+
+
+
+
+
 
 
 

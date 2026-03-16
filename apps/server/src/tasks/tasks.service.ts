@@ -48,18 +48,25 @@ export class TasksService {
             companyId: input.companyId,
         };
 
-        if (input.query.from) {
-            where.scheduledAt = {
-                ...(where.scheduledAt as Prisma.DateTimeFilter | undefined),
-                gte: new Date(input.query.from),
-            };
-        }
+        if (input.query.from && input.query.to) {
+            where.AND = [
+                { startAt: { lt: new Date(input.query.to) } },
+                { endAt: { gt: new Date(input.query.from) } },
+            ];
+        } else {
+            if (input.query.from) {
+                where.endAt = {
+                    ...(where.endAt as Prisma.DateTimeFilter | undefined),
+                    gt: new Date(input.query.from),
+                };
+            }
 
-        if (input.query.to) {
-            where.scheduledAt = {
-                ...(where.scheduledAt as Prisma.DateTimeFilter | undefined),
-                lt: new Date(input.query.to),
-            };
+            if (input.query.to) {
+                where.startAt = {
+                    ...(where.startAt as Prisma.DateTimeFilter | undefined),
+                    lt: new Date(input.query.to),
+                };
+            }
         }
 
         if (typeof input.query.completed === 'boolean') {
@@ -87,7 +94,7 @@ export class TasksService {
         const items = await this.prisma.task.findMany({
             where,
             include: this.taskInclude,
-            orderBy: [{ scheduledAt: 'asc' }, { createdAt: 'asc' }],
+            orderBy: [{ startAt: 'asc' }, { createdAt: 'asc' }],
         });
 
         return {
@@ -124,7 +131,7 @@ export class TasksService {
     }) {
         await this.requireManager(input.companyId, input.roles, input.userSub);
 
-        const scheduledAt = this.parseDate(input.dto.scheduledAt, 'scheduledAt');
+        const range = this.parseRange(input.dto.startAt, input.dto.endAt);
         const customerId = await this.validateCustomerId(input.companyId, input.dto.customerId);
         const assigneeIds = await this.validateAssigneeIds(input.companyId, input.dto.assigneeIds ?? []);
 
@@ -135,7 +142,8 @@ export class TasksService {
                     customerId,
                     subject: this.normalizeSubject(input.dto.subject),
                     description: this.normalizeText(input.dto.description),
-                    scheduledAt,
+                    startAt: range.startAt,
+                    endAt: range.endAt,
                     completed: input.dto.completed ?? false,
                 },
             });
@@ -163,7 +171,7 @@ export class TasksService {
         dto: UpdateTaskDto;
     }) {
         await this.requireManager(input.companyId, input.roles, input.userSub);
-        await this.findTaskOrThrow(this.prisma, input.companyId, input.taskId);
+        const existing = await this.findTaskOrThrow(this.prisma, input.companyId, input.taskId);
 
         const data: Prisma.TaskUpdateInput = {};
 
@@ -175,10 +183,6 @@ export class TasksService {
             data.description = this.normalizeText(input.dto.description);
         }
 
-        if (typeof input.dto.scheduledAt === 'string') {
-            data.scheduledAt = this.parseDate(input.dto.scheduledAt, 'scheduledAt');
-        }
-
         if (typeof input.dto.completed === 'boolean') {
             data.completed = input.dto.completed;
         }
@@ -188,6 +192,15 @@ export class TasksService {
             data.customer = nextCustomerId
                 ? { connect: { id: nextCustomerId } }
                 : { disconnect: true };
+        }
+
+        if (typeof input.dto.startAt !== 'undefined' || typeof input.dto.endAt !== 'undefined') {
+            const range = this.parseRange(
+                input.dto.startAt ?? existing.startAt.toISOString(),
+                input.dto.endAt ?? existing.endAt.toISOString(),
+            );
+            data.startAt = range.startAt;
+            data.endAt = range.endAt;
         }
 
         const nextAssigneeIds =
@@ -281,7 +294,8 @@ export class TasksService {
             companyId: task.companyId,
             subject: task.subject,
             description: task.description,
-            scheduledAt: task.scheduledAt.toISOString(),
+            startAt: task.startAt.toISOString(),
+            endAt: task.endAt.toISOString(),
             completed: task.completed,
             customerId: task.customerId,
             customerName: task.customer?.name ?? null,
@@ -312,6 +326,17 @@ export class TasksService {
             throw new BadRequestException(`Invalid ${field}`);
         }
         return parsed;
+    }
+
+    private parseRange(startAtValue: string, endAtValue: string) {
+        const startAt = this.parseDate(startAtValue, 'startAt');
+        const endAt = this.parseDate(endAtValue, 'endAt');
+
+        if (endAt.getTime() <= startAt.getTime()) {
+            throw new BadRequestException('Task end time must be after start time');
+        }
+
+        return { startAt, endAt };
     }
 
     private async validateCustomerId(companyId: string, customerId: string | null | undefined) {
@@ -382,6 +407,3 @@ export class TasksService {
         return { isManager: false as const, workerId: worker.id };
     }
 }
-
-
-

@@ -20,6 +20,18 @@ import { JobsService } from './jobs.service';
 import { CreateJobDto } from './dto/create-job.dto';
 import { ListJobsDto } from './dto/list-jobs.dto';
 import { ReviewJobDto } from './dto/review-job.dto';
+import { UpdateJobDto } from './dto/update-job.dto';
+import { CreateJobCommentDto } from './dto/create-job-comment.dto';
+import { UpdateJobInternalNotesDto } from './dto/update-job-internal-notes.dto';
+import { RequestJobPaymentDto } from './dto/request-job-payment.dto';
+
+type JobsRequest = Request & {
+    user: {
+        roles: string[];
+        companyId: string | null;
+        sub: string | null;
+    };
+};
 
 @UseGuards(JwtAuthGuard)
 @Controller('api/v1/jobs')
@@ -29,7 +41,7 @@ export class JobsController {
     @Post()
     @HttpCode(HttpStatus.CREATED)
     async create(
-        @Req() req: Request & { user: { roles: string[]; companyId: string | null; sub: string | null } },
+        @Req() req: JobsRequest,
         @Body(new ValidationPipe({ whitelist: true, transform: true })) body: CreateJobDto,
         @Headers('idempotency-key') idem?: string,
     ) {
@@ -44,8 +56,14 @@ export class JobsController {
 
     @Get()
     async list(
-        @Req() req: Request & { user: { roles: string[]; companyId: string | null; sub: string | null } },
-        @Query(new ValidationPipe({ whitelist: true, transform: true, transformOptions: { enableImplicitConversion: true } }))
+        @Req() req: JobsRequest,
+        @Query(
+            new ValidationPipe({
+                whitelist: true,
+                transform: true,
+                transformOptions: { enableImplicitConversion: true },
+            }),
+        )
         dto: ListJobsDto,
     ) {
         const companyId = req.user.companyId ?? dto.companyId;
@@ -92,6 +110,117 @@ export class JobsController {
             roles,
             userSub,
             id,
+        });
+    }
+
+    @Patch(':id')
+    async update(
+        @Req() req: JobsRequest,
+        @Param('id') id: string,
+        @Body(new ValidationPipe({ whitelist: true, transform: true })) body: UpdateJobDto,
+    ) {
+        const companyId = req.user.companyId;
+        if (!companyId) throw new BadRequestException('companyId is required');
+
+        return this.jobs.updateJob({
+            companyId,
+            roles: req.user.roles,
+            userSub: req.user.sub,
+            id,
+            dto: body,
+        });
+    }
+
+    @Post(':id/complete')
+    async complete(@Req() req: JobsRequest, @Param('id') id: string) {
+        const companyId = req.user.companyId;
+        if (!companyId) throw new BadRequestException('companyId is required');
+
+        return this.jobs.completeJob({
+            companyId,
+            roles: req.user.roles,
+            userSub: req.user.sub,
+            id,
+        });
+    }
+
+    @Post(':id/cancel')
+    async cancel(@Req() req: JobsRequest, @Param('id') id: string) {
+        const companyId = req.user.companyId;
+        if (!companyId) throw new BadRequestException('companyId is required');
+
+        return this.jobs.cancelJob({
+            companyId,
+            roles: req.user.roles,
+            userSub: req.user.sub,
+            id,
+        });
+    }
+
+    @Post(':id/reopen')
+    async reopen(@Req() req: JobsRequest, @Param('id') id: string) {
+        const companyId = req.user.companyId;
+        if (!companyId) throw new BadRequestException('companyId is required');
+
+        return this.jobs.reopenJob({
+            companyId,
+            roles: req.user.roles,
+            userSub: req.user.sub,
+            id,
+        });
+    }
+
+    @Post(':id/comments')
+    async createComment(
+        @Req() req: JobsRequest,
+        @Param('id') id: string,
+        @Body(new ValidationPipe({ whitelist: true, transform: true })) body: CreateJobCommentDto,
+    ) {
+        const companyId = req.user.companyId;
+        if (!companyId) throw new BadRequestException('companyId is required');
+
+        return this.jobs.createComment({
+            companyId,
+            roles: req.user.roles,
+            userSub: req.user.sub,
+            id,
+            dto: body,
+        });
+    }
+
+    @Patch(':id/internal-notes')
+    async updateInternalNotes(
+        @Req() req: JobsRequest,
+        @Param('id') id: string,
+        @Body(new ValidationPipe({ whitelist: true, transform: true })) body: UpdateJobInternalNotesDto,
+    ) {
+        const companyId = req.user.companyId;
+        if (!companyId) throw new BadRequestException('companyId is required');
+
+        return this.jobs.updateInternalNotes({
+            companyId,
+            roles: req.user.roles,
+            userSub: req.user.sub,
+            id,
+            dto: body,
+        });
+    }
+
+    @Post(':id/request-payment')
+    async requestPayment(
+        @Req() req: JobsRequest,
+        @Param('id') id: string,
+        @Body(new ValidationPipe({ whitelist: true, transform: true })) body: RequestJobPaymentDto,
+    ) {
+        const companyId = req.user.companyId;
+        if (!companyId) throw new BadRequestException('companyId is required');
+
+        return this.jobs.requestPaymentLink({
+            companyId,
+            roles: req.user.roles,
+            userSub: req.user.sub,
+            id,
+            dto: body,
         });
     }
 

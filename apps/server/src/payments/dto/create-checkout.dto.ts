@@ -1,15 +1,18 @@
-import { IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsOptional, IsString } from 'class-validator';
 
 export class CreateCheckoutDto {
-    @IsString() @IsUUID()
+    @IsString()
     jobId!: string;
 
-    @IsOptional() @IsString()
+    @IsOptional()
+    @IsString()
     successUrl?: string;
 
-    @IsOptional() @IsString()
+    @IsOptional()
+    @IsString()
     cancelUrl?: string;
 
-    @IsOptional() @IsString()
+    @IsOptional()
+    @IsString()
     idempotencyKey?: string;
 }

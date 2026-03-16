@@ -17,6 +17,7 @@ import {WebhooksModule} from "@/webhooks/webhooks.module";
 import {PublicBookingModule} from "@/public-booking/public-booking.module";
 import {AlertsModule} from "@/alerts/alerts.module";
 import { TasksModule } from '@/tasks/tasks.module';
+import { ClientsModule } from '@/clients/clients.module';
 
 @Module({
     imports: [
@@ -36,8 +37,10 @@ import { TasksModule } from '@/tasks/tasks.module';
         PublicBookingModule,
         AlertsModule,
         TasksModule,
+        ClientsModule,
     ],
     controllers: [AppController],
     providers: [AppService],
 })
 export class AppModule {}
+

@@ -83,3 +83,4 @@ ALTER TABLE "public"."Task"
     DROP COLUMN "title",
     DROP COLUMN "notes",
     DROP COLUMN "dueAt";
+

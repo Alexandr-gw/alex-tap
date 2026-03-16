@@ -6,10 +6,12 @@ import {
     IsOptional,
     IsString,
     MaxLength,
+    MinLength,
 } from 'class-validator';
 
 export class CreateTaskDto {
     @IsString()
+    @MinLength(1)
     @MaxLength(160)
     subject!: string;
 
@@ -19,7 +21,10 @@ export class CreateTaskDto {
     description?: string;
 
     @IsDateString()
-    scheduledAt!: string;
+    startAt!: string;
+
+    @IsDateString()
+    endAt!: string;
 
     @IsOptional()
     @IsString()
@@ -35,4 +40,3 @@ export class CreateTaskDto {
     @IsBoolean()
     completed?: boolean;
 }
-

@@ -3,9 +3,10 @@ import { JobsController } from './jobs.controller';
 import { JobsService } from './jobs.service';
 import { SlotsModule } from '@/slots/slots.module';
 import { ScheduleModule } from '@/schedule/schedule.module';
+import { PaymentsModule } from '@/payments/payments.module';
 
 @Module({
-    imports: [SlotsModule, ScheduleModule],
+    imports: [SlotsModule, ScheduleModule, PaymentsModule],
     controllers: [JobsController],
     providers: [JobsService],
     exports: [JobsService],

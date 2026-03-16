@@ -48,9 +48,14 @@ export class PaymentsService {
                 id: true,
                 companyId: true,
                 balanceCents: true,
+                currency: true,
                 lineItems: {
-                    select: { description: true },
-                    take: 1,
+                    select: {
+                        description: true,
+                        quantity: true,
+                        unitPriceCents: true,
+                        totalCents: true,
+                    },
                     orderBy: { id: 'asc' },
                 },
             },
@@ -64,7 +69,33 @@ export class PaymentsService {
             throw new BadRequestException('Job already fully paid');
         }
 
-        const title = job.lineItems?.[0]?.description ?? `Job ${job.id}`;
+        const displayServiceName = job.lineItems?.[0]?.description ?? `Job ${job.id}`;
+        const currency = (job.currency || 'CAD').toUpperCase();
+        const lineItemTotal = job.lineItems.reduce((sum, item) => sum + item.totalCents, 0);
+        const useDetailedLineItems = job.lineItems.length > 0 && lineItemTotal === job.balanceCents;
+        const stripeLineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = useDetailedLineItems
+            ? job.lineItems.map((item) => ({
+                price_data: {
+                    currency: currency.toLowerCase(),
+                    product_data: {
+                        name: item.description,
+                    },
+                    unit_amount: item.unitPriceCents,
+                },
+                quantity: item.quantity,
+            }))
+            : [
+                {
+                    price_data: {
+                        currency: currency.toLowerCase(),
+                        product_data: {
+                            name: `${displayServiceName} payment`,
+                        },
+                        unit_amount: job.balanceCents,
+                    },
+                    quantity: 1,
+                },
+            ];
         const idempotencyKey =
             dto.idempotencyKey ??
             `job:${job.id}:bal:${job.balanceCents}:${randomUUID()}`;
@@ -106,18 +137,7 @@ export class PaymentsService {
                     jobId: job.id,
                     companyId: job.companyId,
                 },
-                line_items: [
-                    {
-                        price_data: {
-                            currency: 'cad',
-                            product_data: {
-                                name: title,
-                            },
-                            unit_amount: job.balanceCents,
-                        },
-                        quantity: 1,
-                    },
-                ],
+                line_items: stripeLineItems,
             },
             { idempotencyKey },
         );
@@ -129,7 +149,7 @@ export class PaymentsService {
                 jobId: job.id,
                 provider: PaymentProvider.STRIPE,
                 amountCents: job.balanceCents,
-                currency: 'CAD',
+                currency,
                 status: PaymentStatus.REQUIRES_ACTION,
                 idempotencyKey,
                 stripeSessionId: session.id,
@@ -558,6 +578,8 @@ export class PaymentsService {
         return latestCharge?.receipt_url ?? null;
     }
 }
+
+
 
 
 
