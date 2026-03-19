@@ -102,6 +102,7 @@ export declare class JobsController {
         phone: string | null;
         colorTag: string | null;
     }[]>;
+    getNotifications(req: JobsRequest, id: string): Promise<import("../notifications/notification.dto").JobNotificationDto[]>;
     getOne(req: Request & {
         user?: any;
     }, id: string, companyHeader?: string): Promise<{
@@ -581,6 +582,7 @@ export declare class JobsController {
             phone: string | null;
             address: string | null;
             notes: string | null;
+            internalNotes: string | null;
         };
     } & {
         id: string;
@@ -590,9 +592,9 @@ export declare class JobsController {
         companyId: string;
         currency: string;
         workerId: string | null;
+        internalNotes: string | null;
         title: string | null;
         description: string | null;
-        internalNotes: string | null;
         status: import("@prisma/client").$Enums.JobStatus;
         startAt: Date;
         endAt: Date;

@@ -1,4 +1,4 @@
-import { Worker, Queue } from 'bullmq';
+import { Queue, Worker } from 'bullmq';
 export type EmailJobPayload = {
     companyId: string;
     notificationId: string;

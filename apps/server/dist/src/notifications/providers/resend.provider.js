@@ -20,7 +20,7 @@ let ResendEmailProvider = class ResendEmailProvider {
     }
     async sendEmail(input) {
         if (!this.client) {
-            return { ok: true, messageId: 'skipped:no-resend-key' };
+            return { ok: false, errorMessage: 'RESEND_API_KEY not set' };
         }
         try {
             const res = await this.client.emails.send({

@@ -33,7 +33,14 @@ let ScheduleService = class ScheduleService {
             throw new common_1.BadRequestException('Invalid start');
         const service = await this.prisma.service.findUnique({
             where: { id: input.dto.serviceId },
-            select: { id: true, companyId: true, name: true, durationMins: true, basePriceCents: true, currency: true },
+            select: {
+                id: true,
+                companyId: true,
+                name: true,
+                durationMins: true,
+                basePriceCents: true,
+                currency: true,
+            },
         });
         if (!service || service.companyId !== input.companyId) {
             throw new common_1.BadRequestException('Invalid service');
@@ -56,9 +63,11 @@ let ScheduleService = class ScheduleService {
             end: end.toISOString(),
         });
         const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
-        return this.prisma.$transaction(async (tx) => {
+        const job = await this.prisma.$transaction(async (tx) => {
             if (input.idempotencyKey) {
-                const existing = await tx.idempotencyKey.findUnique({ where: { key: input.idempotencyKey } });
+                const existing = await tx.idempotencyKey.findUnique({
+                    where: { key: input.idempotencyKey },
+                });
                 if (!existing) {
                     await tx.idempotencyKey.create({
                         data: {
@@ -74,7 +83,9 @@ let ScheduleService = class ScheduleService {
                         throw new common_1.ConflictException('Idempotency key re-used with different payload');
                     }
                     if (existing.jobId) {
-                        const existingJob = await tx.job.findUnique({ where: { id: existing.jobId } });
+                        const existingJob = await tx.job.findUnique({
+                            where: { id: existing.jobId },
+                        });
                         if (existingJob)
                             return existingJob;
                     }
@@ -83,7 +94,10 @@ let ScheduleService = class ScheduleService {
             let clientId = null;
             if (input.dto.client?.email) {
                 const existingClient = await tx.clientProfile.findFirst({
-                    where: { companyId: input.companyId, email: input.dto.client.email },
+                    where: {
+                        companyId: input.companyId,
+                        email: input.dto.client.email,
+                    },
                     select: { id: true },
                 });
                 if (existingClient)
@@ -156,6 +170,8 @@ let ScheduleService = class ScheduleService {
             }
             return job;
         }, { isolationLevel: 'Serializable' });
+        await this.notifications.scheduleJobReminders(input.companyId, job.id);
+        return job;
     }
     async listCompanyWorkers(input) {
         await this.requireManagerActor(input.companyId, input.userSub);
@@ -209,9 +225,12 @@ let ScheduleService = class ScheduleService {
             const serviceLine = job.lineItems.find((item) => item.serviceId && item.service?.durationMins);
             const defaultDurationMins = serviceLine?.service?.durationMins ?? currentDurationMins;
             const workerIdProvided = typeof input.dto.workerId !== 'undefined';
-            const targetWorkerId = workerIdProvided ? input.dto.workerId ?? null : job.workerId;
+            const targetWorkerId = workerIdProvided
+                ? (input.dto.workerId ?? null)
+                : job.workerId;
             const targetStart = nextStart ?? job.startAt;
-            const targetEnd = nextEnd ?? (nextStart ? (0, date_fns_1.addMinutes)(targetStart, defaultDurationMins) : job.endAt);
+            const targetEnd = nextEnd ??
+                (nextStart ? (0, date_fns_1.addMinutes)(targetStart, defaultDurationMins) : job.endAt);
             const shouldConfirm = input.dto.confirm === true;
             if (targetEnd.getTime() <= targetStart.getTime()) {
                 throw new common_1.BadRequestException('End time must be after start time');
@@ -244,8 +263,14 @@ let ScheduleService = class ScheduleService {
                 updates.startAt = targetStart;
                 updates.endAt = targetEnd;
                 auditChanges.schedule = {
-                    from: { startAt: job.startAt.toISOString(), endAt: job.endAt.toISOString() },
-                    to: { startAt: targetStart.toISOString(), endAt: targetEnd.toISOString() },
+                    from: {
+                        startAt: job.startAt.toISOString(),
+                        endAt: job.endAt.toISOString(),
+                    },
+                    to: {
+                        startAt: targetStart.toISOString(),
+                        endAt: targetEnd.toISOString(),
+                    },
                 };
             }
             if (shouldConfirm && job.status !== client_1.JobStatus.SCHEDULED) {
@@ -301,8 +326,8 @@ let ScheduleService = class ScheduleService {
             });
             return updatedJob;
         });
+        await this.notifications.rescheduleJobReminders(input.companyId, result.id);
         if (input.dto.confirm) {
-            await this.notifications.enqueueJobReminders(input.companyId, result.id);
             await this.alerts.resolveBookingReviewAlerts({
                 companyId: input.companyId,
                 jobId: result.id,
@@ -316,8 +341,12 @@ let ScheduleService = class ScheduleService {
             where: { id: jobId },
             data: { status: client_1.JobStatus.SCHEDULED },
         });
-        await this.notifications.enqueueJobReminders(companyId, jobId);
-        await this.alerts.resolveBookingReviewAlerts({ companyId, jobId, resolvedByUserId });
+        await this.notifications.scheduleJobReminders(companyId, jobId);
+        await this.alerts.resolveBookingReviewAlerts({
+            companyId,
+            jobId,
+            resolvedByUserId,
+        });
         return job;
     }
     async requireManagerActor(companyId, userSub) {

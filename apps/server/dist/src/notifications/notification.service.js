@@ -5,101 +5,165 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.NotificationService = void 0;
 const common_1 = require("@nestjs/common");
 const client_1 = require("@prisma/client");
+const prisma_service_1 = require("../prisma/prisma.service");
 const email_worker_1 = require("./workers/email.worker");
-const sms_worker_1 = require("./workers/sms.worker");
 const notification_constants_1 = require("./notification.constants");
-const prisma = new client_1.PrismaClient();
-function bullBackoff(attempt) {
-    const waits = [5_000, 30_000, 120_000, 600_000, 1_800_000];
-    return waits[Math.min(attempt - 1, waits.length - 1)];
-}
+const EMAIL_REMINDER_DEFINITIONS = [
+    { key: '24h', type: notification_constants_1.TYPE_JOB_REMINDER_24H, offsetMs: 24 * 60 * 60 * 1000 },
+    { key: '1h', type: notification_constants_1.TYPE_JOB_REMINDER_1H, offsetMs: 60 * 60 * 1000 },
+];
 let NotificationService = class NotificationService {
-    async enqueueJobReminders(companyId, jobId) {
-        const job = await prisma.job.findUnique({
-            where: { id: jobId },
+    prisma;
+    constructor(prisma) {
+        this.prisma = prisma;
+    }
+    async scheduleJobReminders(companyId, jobId) {
+        const job = (await this.prisma.job.findFirst({
+            where: {
+                id: jobId,
+                companyId,
+            },
             include: {
                 company: true,
                 client: true,
                 worker: true,
             },
-        });
-        if (!job)
-            throw new Error('job not found');
-        const t24 = new Date(job.startAt.getTime() - 24 * 60 * 60 * 1000);
-        const t2 = new Date(job.startAt.getTime() - 2 * 60 * 60 * 1000);
-        const emailEnabled = process.env.NOTIFICATIONS_EMAIL_ENABLED === 'true';
-        const smsEnabled = process.env.NOTIFICATIONS_SMS_ENABLED === 'true';
+        }));
+        if (!job) {
+            throw new common_1.NotFoundException('Job not found');
+        }
+        await this.cancelJobReminders(companyId, jobId, 'Reminder schedule refreshed');
+        if (!this.shouldScheduleEmailReminders(job.status, job.client.email)) {
+            return [];
+        }
+        const notifications = [];
         const basePayload = {
             jobId: job.id,
             clientId: job.clientId,
             workerId: job.workerId ?? null,
             manageUrl: null,
         };
-        const createAndEnqueue = async (type, channel, scheduledAt) => {
-            const notifType = type === '24h' ? notification_constants_1.TYPE_JOB_REMINDER_24H : notification_constants_1.TYPE_JOB_REMINDER_2H;
-            const existing = await prisma.notification.findFirst({
-                where: {
-                    companyId,
-                    type: notifType,
-                    channel,
-                    targetType: 'JOB',
-                    targetId: job.id,
-                    status: 'QUEUED',
-                    scheduledAt,
-                },
-            });
-            if (existing)
-                return existing;
-            const notification = await prisma.notification.create({
+        const recipient = job.client.email?.trim().toLowerCase() ?? null;
+        const now = Date.now();
+        for (const reminder of EMAIL_REMINDER_DEFINITIONS) {
+            const scheduledAt = new Date(job.startAt.getTime() - reminder.offsetMs);
+            if (scheduledAt.getTime() <= now) {
+                continue;
+            }
+            const notification = (await this.prisma.notification.create({
                 data: {
                     companyId,
-                    type: notifType,
-                    channel,
-                    status: 'QUEUED',
+                    type: reminder.type,
+                    channel: client_1.NotificationChannel.EMAIL,
+                    status: client_1.NotificationStatus.QUEUED,
                     targetType: 'JOB',
                     targetId: job.id,
                     payload: basePayload,
+                    recipient,
+                    providerMessageId: null,
                     scheduledAt,
+                    error: null,
                 },
-            });
-            const jobIdKey = `job:${job.id}:${channel.toLowerCase()}:${type}`;
-            const opts = {
-                jobId: jobIdKey,
-                delay: Math.max(0, scheduledAt.getTime() - Date.now()),
-                attempts: notification_constants_1.MAX_ATTEMPTS,
-                backoff: {
-                    type: 'exponential',
-                    delay: 5_000,
+            }));
+            try {
+                await email_worker_1.emailQueue.add('send', { companyId, notificationId: notification.id }, {
+                    jobId: this.buildEmailReminderQueueJobId(job.id, reminder.key),
+                    delay: Math.max(0, scheduledAt.getTime() - now),
+                    attempts: notification_constants_1.MAX_ATTEMPTS,
+                    backoff: {
+                        type: 'exponential',
+                        delay: 5_000,
+                    },
+                    removeOnComplete: true,
+                    removeOnFail: false,
+                });
+                notifications.push(this.mapNotification(notification));
+            }
+            catch (error) {
+                const failed = (await this.prisma.notification.update({
+                    where: { id: notification.id },
+                    data: {
+                        status: 'FAILED',
+                        error: error?.message?.slice(0, 500) ?? 'Failed to enqueue reminder',
+                    },
+                }));
+                notifications.push(this.mapNotification(failed));
+            }
+        }
+        return notifications;
+    }
+    async cancelJobReminders(companyId, jobId, reason = 'Reminder canceled') {
+        await Promise.all(EMAIL_REMINDER_DEFINITIONS.map((reminder) => email_worker_1.emailQueue
+            .remove(this.buildEmailReminderQueueJobId(jobId, reminder.key))
+            .catch(() => undefined)));
+        await this.prisma.notification.updateMany({
+            where: {
+                companyId,
+                targetType: 'JOB',
+                targetId: jobId,
+                channel: client_1.NotificationChannel.EMAIL,
+                type: {
+                    in: EMAIL_REMINDER_DEFINITIONS.map((reminder) => reminder.type),
                 },
-                removeOnComplete: true,
-                removeOnFail: false,
-            };
-            if (channel === 'EMAIL') {
-                await email_worker_1.emailQueue.add('send', { companyId, notificationId: notification.id }, opts);
-            }
-            else if (channel === 'SMS') {
-                await sms_worker_1.smsQueue.add('send', { companyId, notificationId: notification.id }, opts);
-            }
-            return notification;
+                status: client_1.NotificationStatus.QUEUED,
+            },
+            data: {
+                status: 'CANCELED',
+                error: reason,
+                providerMessageId: null,
+            },
+        });
+    }
+    async rescheduleJobReminders(companyId, jobId) {
+        return this.scheduleJobReminders(companyId, jobId);
+    }
+    async listJobNotifications(companyId, jobId) {
+        const notifications = (await this.prisma.notification.findMany({
+            where: {
+                companyId,
+                targetType: 'JOB',
+                targetId: jobId,
+                channel: client_1.NotificationChannel.EMAIL,
+                type: {
+                    in: EMAIL_REMINDER_DEFINITIONS.map((reminder) => reminder.type),
+                },
+            },
+            orderBy: [{ scheduledAt: 'asc' }, { createdAt: 'asc' }],
+        }));
+        return notifications.map((notification) => this.mapNotification(notification));
+    }
+    shouldScheduleEmailReminders(status, clientEmail) {
+        return (process.env.NOTIFICATIONS_EMAIL_ENABLED === 'true' &&
+            status === client_1.JobStatus.SCHEDULED &&
+            Boolean(clientEmail?.trim()));
+    }
+    buildEmailReminderQueueJobId(jobId, reminderKey) {
+        return `job:${jobId}:email:${reminderKey}`;
+    }
+    mapNotification(notification) {
+        return {
+            id: notification.id,
+            type: notification.type,
+            channel: notification.channel,
+            status: notification.status,
+            scheduledAt: notification.scheduledAt?.toISOString() ?? null,
+            sentAt: notification.sentAt?.toISOString() ?? null,
+            recipient: notification.recipient,
+            providerMessageId: notification.providerMessageId,
+            errorMessage: notification.error,
         };
-        const promises = [];
-        if (emailEnabled && job.client.email) {
-            promises.push(createAndEnqueue('24h', 'EMAIL', t24));
-            promises.push(createAndEnqueue('2h', 'EMAIL', t2));
-        }
-        if (smsEnabled && job.client.phone) {
-            promises.push(createAndEnqueue('24h', 'SMS', t24));
-            promises.push(createAndEnqueue('2h', 'SMS', t2));
-        }
-        await Promise.all(promises);
     }
 };
 exports.NotificationService = NotificationService;
 exports.NotificationService = NotificationService = __decorate([
-    (0, common_1.Injectable)()
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
 ], NotificationService);
 //# sourceMappingURL=notification.service.js.map

@@ -27,6 +27,7 @@ const public_booking_module_1 = require("./public-booking/public-booking.module"
 const alerts_module_1 = require("./alerts/alerts.module");
 const tasks_module_1 = require("./tasks/tasks.module");
 const clients_module_1 = require("./clients/clients.module");
+const settings_module_1 = require("./settings/settings.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -50,6 +51,7 @@ exports.AppModule = AppModule = __decorate([
             alerts_module_1.AlertsModule,
             tasks_module_1.TasksModule,
             clients_module_1.ClientsModule,
+            settings_module_1.SettingsModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [app_service_1.AppService],

@@ -18,6 +18,7 @@ const jwt_auth_guard_1 = require("../common/guards/jwt-auth.guard");
 const clients_service_1 = require("./clients.service");
 const list_clients_dto_1 = require("./dto/list-clients.dto");
 const create_client_dto_1 = require("./dto/create-client.dto");
+const update_client_dto_1 = require("./dto/update-client.dto");
 let ClientsController = class ClientsController {
     clients;
     constructor(clients) {
@@ -56,6 +57,18 @@ let ClientsController = class ClientsController {
             dto: body,
         });
     }
+    async update(req, id, body) {
+        const companyId = req.user.companyId;
+        if (!companyId)
+            throw new common_1.BadRequestException('companyId is required');
+        return this.clients.update({
+            companyId,
+            roles: req.user.roles,
+            userSub: req.user.sub,
+            clientId: id,
+            dto: body,
+        });
+    }
 };
 exports.ClientsController = ClientsController;
 __decorate([
@@ -82,6 +95,15 @@ __decorate([
     __metadata("design:paramtypes", [Object, create_client_dto_1.CreateClientDto]),
     __metadata("design:returntype", Promise)
 ], ClientsController.prototype, "create", null);
+__decorate([
+    (0, common_1.Patch)(':id'),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Param)('id')),
+    __param(2, (0, common_1.Body)(new common_1.ValidationPipe({ whitelist: true, transform: true }))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, update_client_dto_1.UpdateClientDto]),
+    __metadata("design:returntype", Promise)
+], ClientsController.prototype, "update", null);
 exports.ClientsController = ClientsController = __decorate([
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     (0, common_1.Controller)('api/v1/clients'),

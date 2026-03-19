@@ -19,6 +19,7 @@ class CreateClientDto {
     phone;
     address;
     notes;
+    internalNotes;
 }
 exports.CreateClientDto = CreateClientDto;
 __decorate([
@@ -62,4 +63,10 @@ __decorate([
     (0, class_validator_1.MaxLength)(2000),
     __metadata("design:type", String)
 ], CreateClientDto.prototype, "notes", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(2000),
+    __metadata("design:type", String)
+], CreateClientDto.prototype, "internalNotes", void 0);
 //# sourceMappingURL=create-client.dto.js.map

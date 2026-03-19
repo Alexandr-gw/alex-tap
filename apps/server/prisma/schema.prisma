@@ -67,6 +67,8 @@ enum NotificationStatus {
   QUEUED
   SENT
   FAILED
+  CANCELED
+  SKIPPED
 }
 
 enum NotificationTargetType {
@@ -178,7 +180,7 @@ model Service {
   lineItems JobLineItem[]
 
   @@unique([companyId, slug])
-  // We’ll convert this to a PARTIAL UNIQUE in the migration (active only)
+  // Weâ€™ll convert this to a PARTIAL UNIQUE in the migration (active only)
   @@unique([companyId, name], map: "Service_companyId_name_unique")
   @@index([companyId, active])
 }
@@ -190,7 +192,8 @@ model ClientProfile {
   email     String?
   phone     String?
   address   String?
-  notes     String?
+  notes         String?
+  internalNotes String?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
@@ -395,15 +398,18 @@ model Notification {
   status      NotificationStatus     @default(QUEUED)
   targetType  NotificationTargetType
   targetId    String
-  payload     Json
-  scheduledAt DateTime?
-  sentAt      DateTime?
-  error       String?
-  createdAt   DateTime               @default(now())
+  payload           Json
+  recipient         String?
+  providerMessageId String?
+  scheduledAt       DateTime?
+  sentAt            DateTime?
+  error             String?
+  createdAt         DateTime               @default(now())
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Restrict)
 
   @@index([companyId, status, scheduledAt])
+  @@index([targetType, targetId, channel, type])
 }
 
 model Alert {
@@ -462,6 +468,7 @@ model IdempotencyKey {
 
   @@index([companyId, createdAt])
 }
+
 
 
 

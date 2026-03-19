@@ -19,16 +19,19 @@ const roles_util_1 = require("../common/utils/roles.util");
 const idempotency_util_1 = require("../common/utils/idempotency.util");
 const schedule_service_1 = require("../schedule/schedule.service");
 const payments_service_1 = require("../payments/payments.service");
+const notification_service_1 = require("../notifications/notification.service");
 let JobsService = class JobsService {
     prisma;
     slots;
     schedule;
     payments;
-    constructor(prisma, slots, schedule, payments) {
+    notifications;
+    constructor(prisma, slots, schedule, payments, notifications) {
         this.prisma = prisma;
         this.slots = slots;
         this.schedule = schedule;
         this.payments = payments;
+        this.notifications = notifications;
     }
     async findManyForUser(input) {
         const { companyId, roles, userSub, dto } = input;
@@ -56,9 +59,15 @@ let JobsService = class JobsService {
         }
         else {
             if (dto.from)
-                whereBase.startAt = { ...whereBase.startAt, gte: (0, date_fns_1.parseISO)(dto.from) };
+                whereBase.startAt = {
+                    ...whereBase.startAt,
+                    gte: (0, date_fns_1.parseISO)(dto.from),
+                };
             if (dto.to)
-                whereBase.startAt = { ...whereBase.startAt, lt: (0, date_fns_1.parseISO)(dto.to) };
+                whereBase.startAt = {
+                    ...whereBase.startAt,
+                    lt: (0, date_fns_1.parseISO)(dto.to),
+                };
         }
         const appendWorkerScope = (workerId) => {
             const nextAnd = Array.isArray(whereBase.AND)
@@ -67,10 +76,7 @@ let JobsService = class JobsService {
                     ? [whereBase.AND]
                     : [];
             nextAnd.push({
-                OR: [
-                    { workerId },
-                    { assignments: { some: { workerId } } },
-                ],
+                OR: [{ workerId }, { assignments: { some: { workerId } } }],
             });
             whereBase.AND = nextAnd;
         };
@@ -168,7 +174,10 @@ let JobsService = class JobsService {
                     location: job.location ?? job.client.address,
                     clientName: job.client.name,
                     clientEmail: job.client.email,
-                    serviceName: job.title ?? job.lineItems[0]?.service?.name ?? job.lineItems[0]?.description ?? 'Job',
+                    serviceName: job.title ??
+                        job.lineItems[0]?.service?.name ??
+                        job.lineItems[0]?.description ??
+                        'Job',
                     workerName: job.worker?.displayName ?? assignedWorkers[0]?.name ?? null,
                     colorTag: job.worker?.colorTag ?? assignedWorkers[0]?.colorTag ?? null,
                 };
@@ -183,6 +192,12 @@ let JobsService = class JobsService {
         this.assertCanAccessJob(job, access);
         return this.mapJobDetails(job);
     }
+    async listNotifications(input) {
+        const access = await this.resolveAccess(input.companyId, input.roles, input.userSub);
+        const job = await this.findDetailedJobOrThrow(this.prisma, input.companyId, input.id);
+        this.assertCanAccessJob(job, access);
+        return this.notifications.listJobNotifications(input.companyId, input.id);
+    }
     async updateJob(input) {
         const access = await this.resolveAccess(input.companyId, input.roles, input.userSub);
         if (!access.isManager)
@@ -193,7 +208,8 @@ let JobsService = class JobsService {
             const auditChanges = {};
             const nextWorkerIds = await this.resolveNextWorkerIds(tx, input.companyId, input.dto.workerIds, input.dto.workerId);
             const existingWorkerIds = this.getAssignedWorkerIds(existing);
-            const workerIdsChanged = nextWorkerIds !== null && !this.areStringArraysEqual(existingWorkerIds, nextWorkerIds);
+            const workerIdsChanged = nextWorkerIds !== null &&
+                !this.areStringArraysEqual(existingWorkerIds, nextWorkerIds);
             if (typeof input.dto.title === 'string') {
                 data.title = this.normalizeOptionalText(input.dto.title);
                 auditChanges.title = input.dto.title;
@@ -210,7 +226,10 @@ let JobsService = class JobsService {
                         : { disconnect: true };
                 }
                 if (workerIdsChanged) {
-                    auditChanges.workerIds = { from: existingWorkerIds, to: nextWorkerIds };
+                    auditChanges.workerIds = {
+                        from: existingWorkerIds,
+                        to: nextWorkerIds,
+                    };
                 }
             }
             if (input.dto.lineItems) {
@@ -220,7 +239,10 @@ let JobsService = class JobsService {
                 data.taxCents = totals.taxCents;
                 data.totalCents = totals.totalCents;
                 data.balanceCents = totals.balanceCents;
-                data.paidAt = totals.balanceCents === 0 && totals.totalCents > 0 ? existing.paidAt ?? new Date() : null;
+                data.paidAt =
+                    totals.balanceCents === 0 && totals.totalCents > 0
+                        ? (existing.paidAt ?? new Date())
+                        : null;
                 auditChanges.lineItems = normalized.map((item) => ({
                     name: item.name,
                     quantity: item.quantity,
@@ -239,7 +261,8 @@ let JobsService = class JobsService {
                     })),
                 });
             }
-            if (typeof input.dto.status !== 'undefined' && input.dto.status !== existing.status) {
+            if (typeof input.dto.status !== 'undefined' &&
+                input.dto.status !== existing.status) {
                 data.status = input.dto.status;
                 auditChanges.status = { from: existing.status, to: input.dto.status };
             }
@@ -266,6 +289,9 @@ let JobsService = class JobsService {
             }
             return this.findDetailedJobOrThrow(tx, input.companyId, existing.id);
         });
+        if (typeof input.dto.status !== 'undefined') {
+            await this.syncJobReminderLifecycle(input.companyId, updatedJob.id, updatedJob.status);
+        }
         return this.mapJobDetails(updatedJob);
     }
     async completeJob(input) {
@@ -289,6 +315,7 @@ let JobsService = class JobsService {
             });
             return this.findDetailedJobOrThrow(tx, input.companyId, input.id);
         });
+        await this.notifications.cancelJobReminders(input.companyId, updated.id, 'Job completed');
         return this.mapJobDetails(updated);
     }
     async cancelJob(input) {
@@ -313,6 +340,7 @@ let JobsService = class JobsService {
             });
             return this.findDetailedJobOrThrow(tx, input.companyId, input.id);
         });
+        await this.notifications.cancelJobReminders(input.companyId, updated.id, 'Job canceled');
         return this.mapJobDetails(updated);
     }
     async reopenJob(input) {
@@ -337,6 +365,7 @@ let JobsService = class JobsService {
             });
             return this.findDetailedJobOrThrow(tx, input.companyId, input.id);
         });
+        await this.notifications.scheduleJobReminders(input.companyId, updated.id);
         return this.mapJobDetails(updated);
     }
     async createComment(input) {
@@ -476,8 +505,7 @@ let JobsService = class JobsService {
             ? await this.findService(input.companyId, input.dto.serviceId)
             : null;
         const end = this.resolveJobEnd(start, input.dto.end, service?.durationMins ?? null);
-        const targetWorkerIds = (await this.resolveNextWorkerIds(this.prisma, input.companyId, input.dto.workerIds, input.dto.workerId))
-            ?? [];
+        const targetWorkerIds = (await this.resolveNextWorkerIds(this.prisma, input.companyId, input.dto.workerIds, input.dto.workerId)) ?? [];
         const targetWorkerId = targetWorkerIds[0] ?? null;
         const normalizedLineItems = this.resolveCreateLineItems(input.dto, service);
         const totals = this.calculateTotals(normalizedLineItems, 0);
@@ -501,7 +529,9 @@ let JobsService = class JobsService {
         const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
         const job = await this.prisma.$transaction(async (tx) => {
             if (input.idempotencyKey) {
-                const existing = await tx.idempotencyKey.findUnique({ where: { key: input.idempotencyKey } });
+                const existing = await tx.idempotencyKey.findUnique({
+                    where: { key: input.idempotencyKey },
+                });
                 if (!existing) {
                     await tx.idempotencyKey.create({
                         data: {
@@ -577,6 +607,7 @@ let JobsService = class JobsService {
             }
             return this.findDetailedJobOrThrow(tx, input.companyId, created.id);
         }, { isolationLevel: 'Serializable' });
+        await this.notifications.scheduleJobReminders(input.companyId, job.id);
         return this.mapJobDetails(job);
     }
     async createWorkerJob(input) {
@@ -588,15 +619,20 @@ let JobsService = class JobsService {
             throw new common_1.BadRequestException('Invalid start');
         const service = await this.findService(input.companyId, input.dto.serviceId);
         const end = (0, date_fns_1.addMinutes)(start, service.durationMins);
-        const requestedWorkerIds = (await this.resolveNextWorkerIds(this.prisma, input.companyId, input.dto.workerIds, input.dto.workerId))
-            ?? [];
+        const requestedWorkerIds = (await this.resolveNextWorkerIds(this.prisma, input.companyId, input.dto.workerIds, input.dto.workerId)) ?? [];
         const actorWorker = await this.prisma.worker.findFirst({
-            where: { companyId: input.companyId, active: true, user: { sub: input.userSub ?? '' } },
+            where: {
+                companyId: input.companyId,
+                active: true,
+                user: { sub: input.userSub ?? '' },
+            },
             select: { id: true },
         });
         if (!actorWorker)
             throw new common_1.ForbiddenException();
-        const targetWorkerIds = requestedWorkerIds.length ? requestedWorkerIds : [actorWorker.id];
+        const targetWorkerIds = requestedWorkerIds.length
+            ? requestedWorkerIds
+            : [actorWorker.id];
         if (targetWorkerIds.length !== 1 || targetWorkerIds[0] !== actorWorker.id) {
             throw new common_1.ForbiddenException('Workers can only create jobs for themselves');
         }
@@ -620,10 +656,17 @@ let JobsService = class JobsService {
         const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
         const job = await this.prisma.$transaction(async (tx) => {
             if (input.idempotencyKey) {
-                const existing = await tx.idempotencyKey.findUnique({ where: { key: input.idempotencyKey } });
+                const existing = await tx.idempotencyKey.findUnique({
+                    where: { key: input.idempotencyKey },
+                });
                 if (!existing) {
                     await tx.idempotencyKey.create({
-                        data: { key: input.idempotencyKey, companyId: input.companyId, requestHash, expiresAt },
+                        data: {
+                            key: input.idempotencyKey,
+                            companyId: input.companyId,
+                            requestHash,
+                            expiresAt,
+                        },
                     });
                 }
                 else {
@@ -677,6 +720,7 @@ let JobsService = class JobsService {
             }
             return this.findDetailedJobOrThrow(tx, input.companyId, created.id);
         }, { isolationLevel: 'Serializable' });
+        await this.notifications.scheduleJobReminders(input.companyId, job.id);
         return this.mapJobDetails(job);
     }
     async resolveAccess(companyId, roles, userSub) {
@@ -706,7 +750,9 @@ let JobsService = class JobsService {
         if (!user)
             throw new common_1.ForbiddenException();
         const isManagerRole = (0, roles_util_1.hasAnyRole)(roles, ['admin', 'manager']);
-        const isManager = Boolean(isManagerRole && membership && (membership.role === client_1.Role.ADMIN || membership.role === client_1.Role.MANAGER));
+        const isManager = Boolean(isManagerRole &&
+            membership &&
+            (membership.role === client_1.Role.ADMIN || membership.role === client_1.Role.MANAGER));
         return {
             isManager,
             workerId: worker?.id ?? null,
@@ -913,7 +959,13 @@ let JobsService = class JobsService {
         const conflicting = await db.job.findFirst({
             where: {
                 companyId,
-                status: { in: [client_1.JobStatus.PENDING_CONFIRMATION, client_1.JobStatus.SCHEDULED, client_1.JobStatus.IN_PROGRESS] },
+                status: {
+                    in: [
+                        client_1.JobStatus.PENDING_CONFIRMATION,
+                        client_1.JobStatus.SCHEDULED,
+                        client_1.JobStatus.IN_PROGRESS,
+                    ],
+                },
                 NOT: [{ endAt: { lte: start } }, { startAt: { gte: end } }],
                 OR: [
                     { workerId: { in: workerIds } },
@@ -925,6 +977,17 @@ let JobsService = class JobsService {
         if (conflicting) {
             throw new common_1.ConflictException('Overlapping booking');
         }
+    }
+    async syncJobReminderLifecycle(companyId, jobId, status) {
+        if (status === client_1.JobStatus.CANCELED) {
+            await this.notifications.cancelJobReminders(companyId, jobId, 'Job canceled');
+            return;
+        }
+        if (status === client_1.JobStatus.DONE) {
+            await this.notifications.cancelJobReminders(companyId, jobId, 'Job completed');
+            return;
+        }
+        await this.notifications.scheduleJobReminders(companyId, jobId);
     }
     buildJobNumber(jobId) {
         return `JOB-${jobId.slice(-6).toUpperCase()}`;
@@ -984,10 +1047,10 @@ let JobsService = class JobsService {
         return (0, date_fns_1.addMinutes)(start, serviceDurationMins ?? 60);
     }
     resolveJobTitle(dto, service, lineItems) {
-        return this.normalizeOptionalText(dto.title)
-            ?? service?.name
-            ?? lineItems[0]?.name
-            ?? 'Job';
+        return (this.normalizeOptionalText(dto.title) ??
+            service?.name ??
+            lineItems[0]?.name ??
+            'Job');
     }
     resolveCreateLineItems(dto, service) {
         if (dto.lineItems?.length) {
@@ -999,12 +1062,14 @@ let JobsService = class JobsService {
         if (!service) {
             throw new common_1.BadRequestException('Provide a service or at least one line item');
         }
-        return [{
+        return [
+            {
                 name: service.name,
                 quantity: 1,
                 unitPriceCents: service.basePriceCents,
                 serviceId: service.id,
-            }];
+            },
+        ];
     }
     async findService(companyId, serviceId) {
         const service = await this.prisma.service.findUnique({
@@ -1110,6 +1175,7 @@ exports.JobsService = JobsService = __decorate([
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
         slots_service_1.SlotsService,
         schedule_service_1.ScheduleService,
-        payments_service_1.PaymentsService])
+        payments_service_1.PaymentsService,
+        notification_service_1.NotificationService])
 ], JobsService);
 //# sourceMappingURL=jobs.service.js.map

@@ -10,12 +10,14 @@ import { CreateJobCommentDto } from './dto/create-job-comment.dto';
 import { UpdateJobInternalNotesDto } from './dto/update-job-internal-notes.dto';
 import { RequestJobPaymentDto } from './dto/request-job-payment.dto';
 import { PaymentsService } from '@/payments/payments.service';
+import { NotificationService } from '@/notifications/notification.service';
 export declare class JobsService {
     private readonly prisma;
     private readonly slots;
     private readonly schedule;
     private readonly payments;
-    constructor(prisma: PrismaService, slots: SlotsService, schedule: ScheduleService, payments: PaymentsService);
+    private readonly notifications;
+    constructor(prisma: PrismaService, slots: SlotsService, schedule: ScheduleService, payments: PaymentsService, notifications: NotificationService);
     findManyForUser(input: {
         companyId: string;
         roles: string[];
@@ -103,6 +105,12 @@ export declare class JobsService {
         createdAt: string;
         updatedAt: string;
     }>;
+    listNotifications(input: {
+        companyId: string;
+        roles: string[];
+        userSub: string | null;
+        id: string;
+    }): Promise<import("../notifications/notification.dto").JobNotificationDto[]>;
     updateJob(input: {
         companyId: string;
         roles: string[];
@@ -637,6 +645,7 @@ export declare class JobsService {
             phone: string | null;
             address: string | null;
             notes: string | null;
+            internalNotes: string | null;
         };
     } & {
         id: string;
@@ -646,9 +655,9 @@ export declare class JobsService {
         companyId: string;
         currency: string;
         workerId: string | null;
+        internalNotes: string | null;
         title: string | null;
         description: string | null;
-        internalNotes: string | null;
         status: import("@prisma/client").$Enums.JobStatus;
         startAt: Date;
         endAt: Date;
@@ -670,9 +679,9 @@ export declare class JobsService {
         companyId: string;
         currency: string;
         workerId: string | null;
+        internalNotes: string | null;
         title: string | null;
         description: string | null;
-        internalNotes: string | null;
         status: import("@prisma/client").$Enums.JobStatus;
         startAt: Date;
         endAt: Date;
@@ -698,6 +707,7 @@ export declare class JobsService {
     private syncJobAssignments;
     private areStringArraysEqual;
     private assertNoWorkerConflicts;
+    private syncJobReminderLifecycle;
     private buildJobNumber;
     private mapVisitStatus;
     private normalizeOptionalText;

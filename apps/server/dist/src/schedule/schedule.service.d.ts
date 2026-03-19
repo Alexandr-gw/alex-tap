@@ -22,9 +22,9 @@ export declare class ScheduleService {
         companyId: string;
         currency: string;
         workerId: string | null;
+        internalNotes: string | null;
         title: string | null;
         description: string | null;
-        internalNotes: string | null;
         status: import("@prisma/client").$Enums.JobStatus;
         startAt: Date;
         endAt: Date;
@@ -107,6 +107,7 @@ export declare class ScheduleService {
             phone: string | null;
             address: string | null;
             notes: string | null;
+            internalNotes: string | null;
         };
     } & {
         id: string;
@@ -116,9 +117,9 @@ export declare class ScheduleService {
         companyId: string;
         currency: string;
         workerId: string | null;
+        internalNotes: string | null;
         title: string | null;
         description: string | null;
-        internalNotes: string | null;
         status: import("@prisma/client").$Enums.JobStatus;
         startAt: Date;
         endAt: Date;
@@ -140,9 +141,9 @@ export declare class ScheduleService {
         companyId: string;
         currency: string;
         workerId: string | null;
+        internalNotes: string | null;
         title: string | null;
         description: string | null;
-        internalNotes: string | null;
         status: import("@prisma/client").$Enums.JobStatus;
         startAt: Date;
         endAt: Date;

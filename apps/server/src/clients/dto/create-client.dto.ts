@@ -1,4 +1,4 @@
-import { IsEmail, IsOptional, IsString, MaxLength } from 'class-validator';
+﻿import { IsEmail, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class CreateClientDto {
     @IsOptional()
@@ -34,4 +34,9 @@ export class CreateClientDto {
     @IsString()
     @MaxLength(2000)
     notes?: string;
+
+    @IsOptional()
+    @IsString()
+    @MaxLength(2000)
+    internalNotes?: string;
 }

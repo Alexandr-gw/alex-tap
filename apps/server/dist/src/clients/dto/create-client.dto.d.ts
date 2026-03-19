@@ -6,4 +6,5 @@ export declare class CreateClientDto {
     phone?: string;
     address?: string;
     notes?: string;
+    internalNotes?: string;
 }

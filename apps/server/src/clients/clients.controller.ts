@@ -1,9 +1,10 @@
-import {
+﻿import {
     BadRequestException,
     Body,
     Controller,
     Get,
     Param,
+    Patch,
     Post,
     Query,
     Req,
@@ -15,8 +16,9 @@ import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 import { ClientsService } from './clients.service';
 import { ListClientsDto } from './dto/list-clients.dto';
 import { CreateClientDto } from './dto/create-client.dto';
+import { UpdateClientDto } from './dto/update-client.dto';
 
- type ClientsRequest = Request & {
+type ClientsRequest = Request & {
     user: {
         roles: string[];
         companyId: string | null;
@@ -70,6 +72,24 @@ export class ClientsController {
             companyId,
             roles: req.user.roles,
             userSub: req.user.sub,
+            dto: body,
+        });
+    }
+
+    @Patch(':id')
+    async update(
+        @Req() req: ClientsRequest,
+        @Param('id') id: string,
+        @Body(new ValidationPipe({ whitelist: true, transform: true })) body: UpdateClientDto,
+    ) {
+        const companyId = req.user.companyId;
+        if (!companyId) throw new BadRequestException('companyId is required');
+
+        return this.clients.update({
+            companyId,
+            roles: req.user.roles,
+            userSub: req.user.sub,
+            clientId: id,
             dto: body,
         });
     }
