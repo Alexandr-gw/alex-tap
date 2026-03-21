@@ -18,12 +18,52 @@ export class AuthController {
         };
     }
 
-    @Get('login')
-    login(@Req() req, @Res() res) {
+    private normalizeReturnTo(input: unknown) {
+        const fallback = '/app';
+
+        if (typeof input !== 'string') {
+            return fallback;
+        }
+
+        const value = input.trim();
+        if (!value) {
+            return fallback;
+        }
+
+        if (value.startsWith('/')) {
+            if (value.startsWith('//') || value.startsWith('/server')) {
+                return fallback;
+            }
+
+            return value;
+        }
+
+        try {
+            const appBase = this.cfg.getOrThrow<string>('APP_BASE_URL');
+            const appUrl = new URL(appBase);
+            const candidate = new URL(value);
+
+            if (candidate.origin !== appUrl.origin) {
+                return fallback;
+            }
+
+            return `${candidate.pathname}${candidate.search}${candidate.hash}` || fallback;
+        } catch {
+            return fallback;
+        }
+    }
+
+    private buildAppRedirect(path: string) {
+        const appBase = this.cfg.getOrThrow<string>('APP_BASE_URL');
+        return new URL(path, `${appBase.replace(/\/$/, '')}/`).toString();
+    }
+
+    private beginLogin(returnTo: unknown, res: any) {
         const { codeVerifier, codeChallenge } = this.AuthService.generatePkce();
         const state = crypto.randomUUID();
         const nonce = crypto.randomUUID();
         const cookieOpts = this.getCookieOptions();
+        const normalizedReturnTo = this.normalizeReturnTo(returnTo);
 
         res.cookie('pkce_verifier', codeVerifier, {
             ...cookieOpts,
@@ -31,6 +71,10 @@ export class AuthController {
         });
         res.cookie('oidc_state', state, { ...cookieOpts, maxAge: 5 * 60 * 1000 });
         res.cookie('oidc_nonce', nonce, { ...cookieOpts, maxAge: 5 * 60 * 1000 });
+        res.cookie('post_login_redirect', normalizedReturnTo, {
+            ...cookieOpts,
+            maxAge: 10 * 60 * 1000,
+        });
 
         const authorizationUrl = this.AuthService.buildAuthUrl({
             authorizationEndpoint: this.cfg.getOrThrow<string>('KEYCLOAK_AUTHORIZATION_ENDPOINT'),
@@ -40,7 +84,23 @@ export class AuthController {
             state,
             nonce,
         });
+
+        return {
+            authorizationUrl,
+            normalizedReturnTo,
+        };
+    }
+
+    @Get('login')
+    login(@Req() req, @Res() res) {
+        const { authorizationUrl } = this.beginLogin(req.query['returnTo'], res);
         return res.redirect(authorizationUrl);
+    }
+
+    @Get('login-url')
+    loginUrl(@Req() req, @Res() res) {
+        const { authorizationUrl } = this.beginLogin(req.query['returnTo'], res);
+        return res.json({ url: authorizationUrl });
     }
 
     @Get('callback')
@@ -50,9 +110,12 @@ export class AuthController {
         const storedState = req.cookies['oidc_state'];
         const codeVerifier = req.cookies['pkce_verifier'];
         const savedNonce = req.cookies['oidc_nonce'];
+        const postLoginRedirect = this.normalizeReturnTo(req.cookies['post_login_redirect']);
+        const cookieOpts = this.getCookieOptions();
 
         if (!code || !state || !storedState || !codeVerifier || state !== storedState) {
-            return res.redirect(`${this.cfg.get<string>('APP_BASE_URL')}/401`);
+            res.clearCookie('post_login_redirect', cookieOpts);
+            return res.redirect(this.buildAppRedirect('/401'));
         }
 
         try {
@@ -79,7 +142,6 @@ export class AuthController {
                 throw new Error('Nonce mismatch');
             }
 
-            const cookieOpts = this.getCookieOptions();
             const accessName = this.cfg.getOrThrow<string>('COOKIE_NAME_ACCESS');
             const refreshName = this.cfg.getOrThrow<string>('COOKIE_NAME_REFRESH');
             const accessTtl = Math.max(1, Math.floor((tokenResponse.expires_in ?? 300) * 0.95)) * 1000;
@@ -93,15 +155,16 @@ export class AuthController {
             res.clearCookie('oidc_state', cookieOpts);
             res.clearCookie('oidc_nonce', cookieOpts);
             res.clearCookie('pkce_verifier', cookieOpts);
+            res.clearCookie('post_login_redirect', cookieOpts);
 
-            return res.redirect(this.cfg.getOrThrow<string>('APP_BASE_URL'));
+            return res.redirect(this.buildAppRedirect(postLoginRedirect));
         } catch (err) {
-            const cookieOpts = this.getCookieOptions();
             res.clearCookie('oidc_state', cookieOpts);
             res.clearCookie('oidc_nonce', cookieOpts);
             res.clearCookie('pkce_verifier', cookieOpts);
+            res.clearCookie('post_login_redirect', cookieOpts);
             console.log('Auth callback error:', err);
-            return res.redirect(`${this.cfg.getOrThrow<string>('APP_BASE_URL')}/401`);
+            return res.redirect(this.buildAppRedirect('/401'));
         }
     }
 

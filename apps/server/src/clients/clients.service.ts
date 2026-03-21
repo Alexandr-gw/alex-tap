@@ -1,4 +1,4 @@
-﻿import {
+import {
     BadRequestException,
     ConflictException,
     ForbiddenException,
@@ -11,10 +11,16 @@ import { hasAnyRole } from '@/common/utils/roles.util';
 import { CreateClientDto } from './dto/create-client.dto';
 import { ListClientsDto } from './dto/list-clients.dto';
 import { UpdateClientDto } from './dto/update-client.dto';
+import { NotificationService } from '@/notifications/notification.service';
+import { ActivityService } from '@/activity/activity.service';
 
 @Injectable()
 export class ClientsService {
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly notifications: NotificationService,
+        private readonly activity: ActivityService,
+    ) {}
 
     async list(input: {
         companyId: string;
@@ -168,25 +174,31 @@ export class ClientsService {
 
         if (!client) throw new NotFoundException('Client not found');
 
-        const payments = await this.prisma.payment.findMany({
-            where: {
-                companyId: input.companyId,
-                job: {
-                    clientId: input.clientId,
-                    deletedAt: null,
+        const [payments, lastCommunication] = await Promise.all([
+            this.prisma.payment.findMany({
+                where: {
+                    companyId: input.companyId,
+                    job: {
+                        clientId: input.clientId,
+                        deletedAt: null,
+                    },
                 },
-            },
-            orderBy: [{ createdAt: 'desc' }],
-            select: {
-                id: true,
-                amountCents: true,
-                status: true,
-                provider: true,
-                capturedAt: true,
-                updatedAt: true,
-                jobId: true,
-            },
-        });
+                orderBy: [{ createdAt: 'desc' }],
+                select: {
+                    id: true,
+                    amountCents: true,
+                    status: true,
+                    provider: true,
+                    capturedAt: true,
+                    updatedAt: true,
+                    jobId: true,
+                },
+            }),
+            this.notifications.getLatestClientCommunication(
+                input.companyId,
+                input.clientId,
+            ),
+        ]);
 
         return {
             id: client.id,
@@ -227,6 +239,7 @@ export class ClientsService {
                 paidAt: (payment.capturedAt ?? payment.updatedAt).toISOString(),
                 jobId: payment.jobId,
             })),
+            lastCommunication,
         };
     }
 
@@ -236,7 +249,7 @@ export class ClientsService {
         userSub: string | null;
         dto: CreateClientDto;
     }) {
-        await this.requireManager(input.companyId, input.roles, input.userSub);
+        const actor = await this.requireManager(input.companyId, input.roles, input.userSub);
 
         const name = this.normalizeClientName(input.dto);
         const email = input.dto.email?.trim().toLowerCase() ?? null;
@@ -269,6 +282,13 @@ export class ClientsService {
                 internalNotes,
                 notes: null,
             },
+        });
+
+        await this.activity.logClientCreated({
+            companyId: input.companyId,
+            clientId: client.id,
+            actorId: actor.userId,
+            actorLabel: actor.user.name ?? actor.user.email ?? 'Team member',
         });
 
         return this.getOne({
@@ -402,10 +422,30 @@ export class ClientsService {
                 companyId,
                 user: { sub: userSub },
             },
-            select: { id: true },
+            select: {
+                id: true,
+                userId: true,
+                user: {
+                    select: {
+                        name: true,
+                        email: true,
+                    },
+                },
+            },
         });
 
         if (!membership) throw new ForbiddenException();
         return membership;
     }
 }
+
+
+
+
+
+
+
+
+
+
+

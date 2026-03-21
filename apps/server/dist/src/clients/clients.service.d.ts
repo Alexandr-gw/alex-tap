@@ -2,9 +2,13 @@ import { PrismaService } from '@/prisma/prisma.service';
 import { CreateClientDto } from './dto/create-client.dto';
 import { ListClientsDto } from './dto/list-clients.dto';
 import { UpdateClientDto } from './dto/update-client.dto';
+import { NotificationService } from '@/notifications/notification.service';
+import { ActivityService } from '@/activity/activity.service';
 export declare class ClientsService {
     private readonly prisma;
-    constructor(prisma: PrismaService);
+    private readonly notifications;
+    private readonly activity;
+    constructor(prisma: PrismaService, notifications: NotificationService, activity: ActivityService);
     list(input: {
         companyId: string;
         roles: string[];
@@ -66,6 +70,7 @@ export declare class ClientsService {
             paidAt: string;
             jobId: string;
         }[];
+        lastCommunication: import("../notifications/notification.dto").ClientLastCommunicationDto | null;
     }>;
     create(input: {
         companyId: string;
@@ -105,6 +110,7 @@ export declare class ClientsService {
             paidAt: string;
             jobId: string;
         }[];
+        lastCommunication: import("../notifications/notification.dto").ClientLastCommunicationDto | null;
     }>;
     update(input: {
         companyId: string;
@@ -145,6 +151,7 @@ export declare class ClientsService {
             paidAt: string;
             jobId: string;
         }[];
+        lastCommunication: import("../notifications/notification.dto").ClientLastCommunicationDto | null;
     }>;
     private normalizeClientName;
     private normalizeText;

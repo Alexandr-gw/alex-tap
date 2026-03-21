@@ -14,12 +14,19 @@ const slots_module_1 = require("../slots/slots.module");
 const schedule_module_1 = require("../schedule/schedule.module");
 const payments_module_1 = require("../payments/payments.module");
 const notification_module_1 = require("../notifications/notification.module");
+const activity_module_1 = require("../activity/activity.module");
 let JobsModule = class JobsModule {
 };
 exports.JobsModule = JobsModule;
 exports.JobsModule = JobsModule = __decorate([
     (0, common_1.Module)({
-        imports: [slots_module_1.SlotsModule, schedule_module_1.ScheduleModule, payments_module_1.PaymentsModule, notification_module_1.NotificationModule],
+        imports: [
+            slots_module_1.SlotsModule,
+            schedule_module_1.ScheduleModule,
+            payments_module_1.PaymentsModule,
+            notification_module_1.NotificationModule,
+            activity_module_1.ActivityModule,
+        ],
         controllers: [jobs_controller_1.JobsController],
         providers: [jobs_service_1.JobsService],
         exports: [jobs_service_1.JobsService],

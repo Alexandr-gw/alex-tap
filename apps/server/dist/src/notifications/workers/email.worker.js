@@ -3,7 +3,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.emailWorker = exports.emailDlq = exports.emailQueue = void 0;
 const bullmq_1 = require("bullmq");
 const client_1 = require("@prisma/client");
+const email_provider_1 = require("../providers/email.provider");
 const resend_provider_1 = require("../providers/resend.provider");
+const smtp_provider_1 = require("../providers/smtp.provider");
 const notification_constants_1 = require("../notification.constants");
 const jobReminder24h_1 = require("../templates/jobReminder24h");
 const jobReminder1h_1 = require("../templates/jobReminder1h");
@@ -12,7 +14,10 @@ const connection = {
     port: Number(process.env.REDIS_PORT ?? 6379),
 };
 const prisma = new client_1.PrismaClient();
-const emailProvider = new resend_provider_1.ResendEmailProvider();
+const emailProvider = (0, email_provider_1.selectEmailProvider)({
+    smtp: new smtp_provider_1.SmtpEmailProvider(),
+    resend: new resend_provider_1.ResendEmailProvider(),
+});
 exports.emailQueue = new bullmq_1.Queue(notification_constants_1.QUEUE_EMAIL, {
     connection,
 });

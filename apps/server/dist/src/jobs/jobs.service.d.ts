@@ -11,13 +11,15 @@ import { UpdateJobInternalNotesDto } from './dto/update-job-internal-notes.dto';
 import { RequestJobPaymentDto } from './dto/request-job-payment.dto';
 import { PaymentsService } from '@/payments/payments.service';
 import { NotificationService } from '@/notifications/notification.service';
+import { ActivityService } from '@/activity/activity.service';
 export declare class JobsService {
     private readonly prisma;
     private readonly slots;
     private readonly schedule;
     private readonly payments;
     private readonly notifications;
-    constructor(prisma: PrismaService, slots: SlotsService, schedule: ScheduleService, payments: PaymentsService, notifications: NotificationService);
+    private readonly activity;
+    constructor(prisma: PrismaService, slots: SlotsService, schedule: ScheduleService, payments: PaymentsService, notifications: NotificationService, activity: ActivityService);
     findManyForUser(input: {
         companyId: string;
         roles: string[];
@@ -110,7 +112,19 @@ export declare class JobsService {
         roles: string[];
         userSub: string | null;
         id: string;
-    }): Promise<import("../notifications/notification.dto").JobNotificationDto[]>;
+    }): Promise<import("../notifications/notification.dto").JobNotificationsSummaryDto>;
+    listActivity(input: {
+        companyId: string;
+        roles: string[];
+        userSub: string | null;
+        id: string;
+    }): Promise<import("../activity/activity.types").JobActivityResponseDto>;
+    sendConfirmation(input: {
+        companyId: string;
+        roles: string[];
+        userSub: string | null;
+        id: string;
+    }): Promise<import("../notifications/notification.dto").SendJobConfirmationResponseDto>;
     updateJob(input: {
         companyId: string;
         roles: string[];

@@ -64,6 +64,7 @@ export declare class ClientsController {
             paidAt: string;
             jobId: string;
         }[];
+        lastCommunication: import("../notifications/notification.dto").ClientLastCommunicationDto | null;
     }>;
     create(req: ClientsRequest, body: CreateClientDto): Promise<{
         id: string;
@@ -98,6 +99,7 @@ export declare class ClientsController {
             paidAt: string;
             jobId: string;
         }[];
+        lastCommunication: import("../notifications/notification.dto").ClientLastCommunicationDto | null;
     }>;
     update(req: ClientsRequest, id: string, body: UpdateClientDto): Promise<{
         id: string;
@@ -132,6 +134,7 @@ export declare class ClientsController {
             paidAt: string;
             jobId: string;
         }[];
+        lastCommunication: import("../notifications/notification.dto").ClientLastCommunicationDto | null;
     }>;
 }
 export {};

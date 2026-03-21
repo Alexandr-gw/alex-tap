@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { AlertsService } from '@/alerts/alerts.service';
+import { ActivityService } from '@/activity/activity.service';
 import { PaymentProvider, PaymentStatus, JobStatus } from '@prisma/client';
 import { CreateCheckoutDto } from './dto/create-checkout.dto';
 import { randomUUID } from 'crypto';
@@ -31,6 +32,7 @@ export class PaymentsService {
     constructor(
         private readonly prisma: PrismaService,
         private readonly alerts: AlertsService,
+        private readonly activity: ActivityService,
         @Inject('STRIPE') private readonly stripe: Stripe,
     ) {}
 
@@ -347,6 +349,12 @@ export class PaymentsService {
                     status: true,
                     paidCents: true,
                     totalCents: true,
+                    clientId: true,
+                    client: {
+                        select: {
+                            name: true,
+                        },
+                    },
                 },
             });
 
@@ -379,6 +387,19 @@ export class PaymentsService {
                         paymentId: payment.id,
                         stripePaymentIntentId: paymentIntentId,
                     },
+                },
+            });
+
+            await this.activity.logPaymentSucceeded({
+                db: tx,
+                companyId,
+                paymentId: payment.id,
+                jobId,
+                clientId: job.clientId,
+                actorLabel: job.client.name ?? 'Customer',
+                metadata: {
+                    amountCents: payment.amountCents,
+                    provider: payment.provider,
                 },
             });
         });
@@ -578,6 +599,7 @@ export class PaymentsService {
         return latestCharge?.receipt_url ?? null;
     }
 }
+
 
 
 

@@ -33,17 +33,54 @@ let AuthController = class AuthController {
             path: '/',
         };
     }
-    login(req, res) {
+    normalizeReturnTo(input) {
+        const fallback = '/app';
+        if (typeof input !== 'string') {
+            return fallback;
+        }
+        const value = input.trim();
+        if (!value) {
+            return fallback;
+        }
+        if (value.startsWith('/')) {
+            if (value.startsWith('//') || value.startsWith('/server')) {
+                return fallback;
+            }
+            return value;
+        }
+        try {
+            const appBase = this.cfg.getOrThrow('APP_BASE_URL');
+            const appUrl = new URL(appBase);
+            const candidate = new URL(value);
+            if (candidate.origin !== appUrl.origin) {
+                return fallback;
+            }
+            return `${candidate.pathname}${candidate.search}${candidate.hash}` || fallback;
+        }
+        catch {
+            return fallback;
+        }
+    }
+    buildAppRedirect(path) {
+        const appBase = this.cfg.getOrThrow('APP_BASE_URL');
+        return new URL(path, `${appBase.replace(/\/$/, '')}/`).toString();
+    }
+    beginLogin(returnTo, res) {
         const { codeVerifier, codeChallenge } = this.AuthService.generatePkce();
         const state = crypto.randomUUID();
         const nonce = crypto.randomUUID();
         const cookieOpts = this.getCookieOptions();
+        const normalizedReturnTo = this.normalizeReturnTo(returnTo);
         res.cookie('pkce_verifier', codeVerifier, {
             ...cookieOpts,
             maxAge: 5 * 60 * 1000,
         });
         res.cookie('oidc_state', state, { ...cookieOpts, maxAge: 5 * 60 * 1000 });
         res.cookie('oidc_nonce', nonce, { ...cookieOpts, maxAge: 5 * 60 * 1000 });
+        res.cookie('post_login_redirect', normalizedReturnTo, {
+            ...cookieOpts,
+            maxAge: 10 * 60 * 1000,
+        });
         const authorizationUrl = this.AuthService.buildAuthUrl({
             authorizationEndpoint: this.cfg.getOrThrow('KEYCLOAK_AUTHORIZATION_ENDPOINT'),
             clientId: this.cfg.getOrThrow('KEYCLOAK_CLIENT_ID'),
@@ -52,7 +89,18 @@ let AuthController = class AuthController {
             state,
             nonce,
         });
+        return {
+            authorizationUrl,
+            normalizedReturnTo,
+        };
+    }
+    login(req, res) {
+        const { authorizationUrl } = this.beginLogin(req.query['returnTo'], res);
         return res.redirect(authorizationUrl);
+    }
+    loginUrl(req, res) {
+        const { authorizationUrl } = this.beginLogin(req.query['returnTo'], res);
+        return res.json({ url: authorizationUrl });
     }
     async callback(req, res) {
         const code = req.query['code'] || '';
@@ -60,8 +108,11 @@ let AuthController = class AuthController {
         const storedState = req.cookies['oidc_state'];
         const codeVerifier = req.cookies['pkce_verifier'];
         const savedNonce = req.cookies['oidc_nonce'];
+        const postLoginRedirect = this.normalizeReturnTo(req.cookies['post_login_redirect']);
+        const cookieOpts = this.getCookieOptions();
         if (!code || !state || !storedState || !codeVerifier || state !== storedState) {
-            return res.redirect(`${this.cfg.get('APP_BASE_URL')}/401`);
+            res.clearCookie('post_login_redirect', cookieOpts);
+            return res.redirect(this.buildAppRedirect('/401'));
         }
         try {
             const tokenResponse = await this.AuthService.exchangeCodeForToken({
@@ -80,7 +131,6 @@ let AuthController = class AuthController {
             if (!payload.nonce || payload.nonce !== savedNonce) {
                 throw new Error('Nonce mismatch');
             }
-            const cookieOpts = this.getCookieOptions();
             const accessName = this.cfg.getOrThrow('COOKIE_NAME_ACCESS');
             const refreshName = this.cfg.getOrThrow('COOKIE_NAME_REFRESH');
             const accessTtl = Math.max(1, Math.floor((tokenResponse.expires_in ?? 300) * 0.95)) * 1000;
@@ -92,15 +142,16 @@ let AuthController = class AuthController {
             res.clearCookie('oidc_state', cookieOpts);
             res.clearCookie('oidc_nonce', cookieOpts);
             res.clearCookie('pkce_verifier', cookieOpts);
-            return res.redirect(this.cfg.getOrThrow('APP_BASE_URL'));
+            res.clearCookie('post_login_redirect', cookieOpts);
+            return res.redirect(this.buildAppRedirect(postLoginRedirect));
         }
         catch (err) {
-            const cookieOpts = this.getCookieOptions();
             res.clearCookie('oidc_state', cookieOpts);
             res.clearCookie('oidc_nonce', cookieOpts);
             res.clearCookie('pkce_verifier', cookieOpts);
+            res.clearCookie('post_login_redirect', cookieOpts);
             console.log('Auth callback error:', err);
-            return res.redirect(`${this.cfg.getOrThrow('APP_BASE_URL')}/401`);
+            return res.redirect(this.buildAppRedirect('/401'));
         }
     }
     async refresh(req, res) {
@@ -172,6 +223,14 @@ __decorate([
     __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", void 0)
 ], AuthController.prototype, "login", null);
+__decorate([
+    (0, common_1.Get)('login-url'),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Res)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", void 0)
+], AuthController.prototype, "loginUrl", null);
 __decorate([
     (0, common_1.Get)('callback'),
     __param(0, (0, common_1.Req)()),

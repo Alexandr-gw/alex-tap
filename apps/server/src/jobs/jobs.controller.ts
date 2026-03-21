@@ -95,12 +95,38 @@ export class JobsController {
     return this.jobs.listCompanyWorkers({ companyId, userSub });
   }
 
+  @Get(':id/activity')
+  async getActivity(@Req() req: JobsRequest, @Param('id') id: string) {
+    const companyId = req.user.companyId;
+    if (!companyId) throw new BadRequestException('companyId is required');
+
+    return this.jobs.listActivity({
+      companyId,
+      roles: req.user.roles,
+      userSub: req.user.sub,
+      id,
+    });
+  }
+
   @Get(':id/notifications')
   async getNotifications(@Req() req: JobsRequest, @Param('id') id: string) {
     const companyId = req.user.companyId;
     if (!companyId) throw new BadRequestException('companyId is required');
 
     return this.jobs.listNotifications({
+      companyId,
+      roles: req.user.roles,
+      userSub: req.user.sub,
+      id,
+    });
+  }
+
+  @Post(':id/notifications/send-confirmation')
+  async sendConfirmation(@Req() req: JobsRequest, @Param('id') id: string) {
+    const companyId = req.user.companyId;
+    if (!companyId) throw new BadRequestException('companyId is required');
+
+    return this.jobs.sendConfirmation({
       companyId,
       roles: req.user.roles,
       userSub: req.user.sub,
@@ -274,3 +300,5 @@ export class JobsController {
     });
   }
 }
+
+

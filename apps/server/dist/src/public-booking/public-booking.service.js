@@ -17,14 +17,17 @@ const luxon_1 = require("luxon");
 const prisma_service_1 = require("../prisma/prisma.service");
 const slots_service_1 = require("../slots/slots.service");
 const payments_service_1 = require("../payments/payments.service");
+const activity_service_1 = require("../activity/activity.service");
 let PublicBookingService = class PublicBookingService {
     prisma;
     slots;
     payments;
-    constructor(prisma, slots, payments) {
+    activity;
+    constructor(prisma, slots, payments, activity) {
         this.prisma = prisma;
         this.slots = slots;
         this.payments = payments;
+        this.activity = activity;
     }
     async getPublicService(companySlug, serviceSlug) {
         const company = await this.prisma.company.findFirst({
@@ -112,7 +115,14 @@ let PublicBookingService = class PublicBookingService {
             }),
             this.prisma.service.findFirst({
                 where: { id: dto.serviceId, companyId: dto.companyId, active: true, deletedAt: null },
-                select: { id: true, companyId: true, name: true, durationMins: true, basePriceCents: true, currency: true },
+                select: {
+                    id: true,
+                    companyId: true,
+                    name: true,
+                    durationMins: true,
+                    basePriceCents: true,
+                    currency: true,
+                },
             }),
         ]);
         if (!company)
@@ -124,7 +134,7 @@ let PublicBookingService = class PublicBookingService {
         const bookingDay = luxon_1.DateTime.fromJSDate(start, { zone: 'utc' }).setZone(timezone).toISODate();
         if (!bookingDay)
             throw new common_1.BadRequestException('Invalid start');
-        const job = await this.withSerializableRetry(() => this.prisma.$transaction(async (tx) => {
+        const booking = await this.withSerializableRetry(() => this.prisma.$transaction(async (tx) => {
             await this.acquireCompanyDayBookingLock(tx, dto.companyId, bookingDay);
             const slotAllowed = await this.slots.isCompanySlotBookable({
                 companyId: dto.companyId,
@@ -136,6 +146,7 @@ let PublicBookingService = class PublicBookingService {
                 throw new common_1.UnprocessableEntityException('Selected slot is no longer available');
             }
             let clientId;
+            let clientWasCreated = false;
             if (dto.client.email) {
                 const existing = await tx.clientProfile.findFirst({
                     where: { companyId: dto.companyId, email: dto.client.email },
@@ -166,6 +177,7 @@ let PublicBookingService = class PublicBookingService {
                         select: { id: true },
                     });
                     clientId = created.id;
+                    clientWasCreated = true;
                 }
             }
             else {
@@ -181,6 +193,7 @@ let PublicBookingService = class PublicBookingService {
                     select: { id: true },
                 });
                 clientId = created.id;
+                clientWasCreated = true;
             }
             const subtotal = service.basePriceCents;
             const tax = 0;
@@ -214,15 +227,34 @@ let PublicBookingService = class PublicBookingService {
                     totalCents: service.basePriceCents,
                 },
             });
-            return job;
+            return {
+                jobId: job.id,
+                clientId,
+                clientWasCreated,
+            };
         }, { isolationLevel: 'Serializable' }));
         const session = await this.payments.createCheckoutSession(dto.companyId, 'public', {
-            jobId: job.id,
+            jobId: booking.jobId,
             successUrl: process.env.PUBLIC_BOOKING_SUCCESS_URL,
             cancelUrl: process.env.PUBLIC_BOOKING_CANCEL_URL,
-            idempotencyKey: `public:job:${job.id}`,
+            idempotencyKey: `public:job:${booking.jobId}`,
         });
-        return { checkoutUrl: session.url, jobId: job.id };
+        if (booking.clientWasCreated) {
+            await this.activity.logClientCreated({
+                companyId: dto.companyId,
+                clientId: booking.clientId,
+                actorType: 'PUBLIC',
+                actorLabel: dto.client.name?.trim() || 'Customer',
+            });
+        }
+        await this.activity.logBookingSubmitted({
+            companyId: dto.companyId,
+            jobId: booking.jobId,
+            clientId: booking.clientId,
+            actorLabel: dto.client.name?.trim() || 'Customer',
+            metadata: { source: 'public' },
+        });
+        return { checkoutUrl: session.url, jobId: booking.jobId };
     }
     async listPublicServices(companySlug) {
         const company = await this.prisma.company.findFirst({
@@ -281,6 +313,7 @@ exports.PublicBookingService = PublicBookingService = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
         slots_service_1.SlotsService,
-        payments_service_1.PaymentsService])
+        payments_service_1.PaymentsService,
+        activity_service_1.ActivityService])
 ], PublicBookingService);
 //# sourceMappingURL=public-booking.service.js.map

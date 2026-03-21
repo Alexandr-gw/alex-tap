@@ -12,12 +12,13 @@ const public_booking_controller_1 = require("./public-booking.controller");
 const public_booking_service_1 = require("./public-booking.service");
 const slots_module_1 = require("../slots/slots.module");
 const payments_module_1 = require("../payments/payments.module");
+const activity_module_1 = require("../activity/activity.module");
 let PublicBookingModule = class PublicBookingModule {
 };
 exports.PublicBookingModule = PublicBookingModule;
 exports.PublicBookingModule = PublicBookingModule = __decorate([
     (0, common_1.Module)({
-        imports: [slots_module_1.SlotsModule, payments_module_1.PaymentsModule],
+        imports: [slots_module_1.SlotsModule, payments_module_1.PaymentsModule, activity_module_1.ActivityModule],
         controllers: [public_booking_controller_1.PublicBookingController],
         providers: [public_booking_service_1.PublicBookingService],
     })

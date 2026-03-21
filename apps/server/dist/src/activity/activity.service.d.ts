@@ -1,0 +1,176 @@
+import { ActivityActorType, ActivityType, Prisma } from '@prisma/client';
+import { PrismaService } from '@/prisma/prisma.service';
+import type { JobActivityResponseDto } from './activity.types';
+type DbClient = Prisma.TransactionClient | PrismaService;
+type LogEventInput = {
+    db?: DbClient;
+    companyId: string;
+    type: ActivityType;
+    entityType: string;
+    entityId: string;
+    jobId?: string | null;
+    clientId?: string | null;
+    actorType: ActivityActorType;
+    actorId?: string | null;
+    actorLabel?: string | null;
+    message?: string | null;
+    metadata?: Prisma.InputJsonValue | null;
+};
+export declare class ActivityService {
+    private readonly prisma;
+    constructor(prisma: PrismaService);
+    logEvent(input: LogEventInput): Promise<{
+        id: string;
+        createdAt: Date;
+        companyId: string;
+        clientId: string | null;
+        message: string | null;
+        jobId: string | null;
+        metadata: Prisma.JsonValue | null;
+        type: import("@prisma/client").$Enums.ActivityType;
+        entityType: string;
+        entityId: string;
+        actorType: import("@prisma/client").$Enums.ActivityActorType;
+        actorId: string | null;
+        actorLabel: string;
+    }>;
+    logJobCreated(input: {
+        db?: DbClient;
+        companyId: string;
+        jobId: string;
+        clientId?: string | null;
+        actorId?: string | null;
+        actorLabel?: string | null;
+    }): Promise<{
+        id: string;
+        createdAt: Date;
+        companyId: string;
+        clientId: string | null;
+        message: string | null;
+        jobId: string | null;
+        metadata: Prisma.JsonValue | null;
+        type: import("@prisma/client").$Enums.ActivityType;
+        entityType: string;
+        entityId: string;
+        actorType: import("@prisma/client").$Enums.ActivityActorType;
+        actorId: string | null;
+        actorLabel: string;
+    }>;
+    logJobCompleted(input: {
+        db?: DbClient;
+        companyId: string;
+        jobId: string;
+        clientId?: string | null;
+        actorId?: string | null;
+        actorLabel?: string | null;
+    }): Promise<{
+        id: string;
+        createdAt: Date;
+        companyId: string;
+        clientId: string | null;
+        message: string | null;
+        jobId: string | null;
+        metadata: Prisma.JsonValue | null;
+        type: import("@prisma/client").$Enums.ActivityType;
+        entityType: string;
+        entityId: string;
+        actorType: import("@prisma/client").$Enums.ActivityActorType;
+        actorId: string | null;
+        actorLabel: string;
+    }>;
+    logJobCanceled(input: {
+        db?: DbClient;
+        companyId: string;
+        jobId: string;
+        clientId?: string | null;
+        actorId?: string | null;
+        actorLabel?: string | null;
+    }): Promise<{
+        id: string;
+        createdAt: Date;
+        companyId: string;
+        clientId: string | null;
+        message: string | null;
+        jobId: string | null;
+        metadata: Prisma.JsonValue | null;
+        type: import("@prisma/client").$Enums.ActivityType;
+        entityType: string;
+        entityId: string;
+        actorType: import("@prisma/client").$Enums.ActivityActorType;
+        actorId: string | null;
+        actorLabel: string;
+    }>;
+    logClientCreated(input: {
+        db?: DbClient;
+        companyId: string;
+        clientId: string;
+        actorType?: ActivityActorType;
+        actorId?: string | null;
+        actorLabel?: string | null;
+    }): Promise<{
+        id: string;
+        createdAt: Date;
+        companyId: string;
+        clientId: string | null;
+        message: string | null;
+        jobId: string | null;
+        metadata: Prisma.JsonValue | null;
+        type: import("@prisma/client").$Enums.ActivityType;
+        entityType: string;
+        entityId: string;
+        actorType: import("@prisma/client").$Enums.ActivityActorType;
+        actorId: string | null;
+        actorLabel: string;
+    }>;
+    logBookingSubmitted(input: {
+        db?: DbClient;
+        companyId: string;
+        jobId: string;
+        clientId?: string | null;
+        actorLabel?: string | null;
+        metadata?: Prisma.InputJsonValue | null;
+    }): Promise<{
+        id: string;
+        createdAt: Date;
+        companyId: string;
+        clientId: string | null;
+        message: string | null;
+        jobId: string | null;
+        metadata: Prisma.JsonValue | null;
+        type: import("@prisma/client").$Enums.ActivityType;
+        entityType: string;
+        entityId: string;
+        actorType: import("@prisma/client").$Enums.ActivityActorType;
+        actorId: string | null;
+        actorLabel: string;
+    }>;
+    logPaymentSucceeded(input: {
+        db?: DbClient;
+        companyId: string;
+        paymentId: string;
+        jobId: string;
+        clientId?: string | null;
+        actorType?: ActivityActorType;
+        actorLabel?: string | null;
+        metadata?: Prisma.InputJsonValue | null;
+    }): Promise<{
+        id: string;
+        createdAt: Date;
+        companyId: string;
+        clientId: string | null;
+        message: string | null;
+        jobId: string | null;
+        metadata: Prisma.JsonValue | null;
+        type: import("@prisma/client").$Enums.ActivityType;
+        entityType: string;
+        entityId: string;
+        actorType: import("@prisma/client").$Enums.ActivityActorType;
+        actorId: string | null;
+        actorLabel: string;
+    }>;
+    listJobActivity(companyId: string, jobId: string, clientId?: string | null): Promise<JobActivityResponseDto>;
+    private mapActivityItem;
+    private mapMetadata;
+    private normalizeActorLabel;
+}
+export {};

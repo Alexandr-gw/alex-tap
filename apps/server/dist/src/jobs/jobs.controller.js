@@ -56,11 +56,33 @@ let JobsController = class JobsController {
         }
         return this.jobs.listCompanyWorkers({ companyId, userSub });
     }
+    async getActivity(req, id) {
+        const companyId = req.user.companyId;
+        if (!companyId)
+            throw new common_1.BadRequestException('companyId is required');
+        return this.jobs.listActivity({
+            companyId,
+            roles: req.user.roles,
+            userSub: req.user.sub,
+            id,
+        });
+    }
     async getNotifications(req, id) {
         const companyId = req.user.companyId;
         if (!companyId)
             throw new common_1.BadRequestException('companyId is required');
         return this.jobs.listNotifications({
+            companyId,
+            roles: req.user.roles,
+            userSub: req.user.sub,
+            id,
+        });
+    }
+    async sendConfirmation(req, id) {
+        const companyId = req.user.companyId;
+        if (!companyId)
+            throw new common_1.BadRequestException('companyId is required');
+        return this.jobs.sendConfirmation({
             companyId,
             roles: req.user.roles,
             userSub: req.user.sub,
@@ -208,6 +230,14 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], JobsController.prototype, "listReviewWorkers", null);
 __decorate([
+    (0, common_1.Get)(':id/activity'),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", Promise)
+], JobsController.prototype, "getActivity", null);
+__decorate([
     (0, common_1.Get)(':id/notifications'),
     __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Param)('id')),
@@ -215,6 +245,14 @@ __decorate([
     __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], JobsController.prototype, "getNotifications", null);
+__decorate([
+    (0, common_1.Post)(':id/notifications/send-confirmation'),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", Promise)
+], JobsController.prototype, "sendConfirmation", null);
 __decorate([
     (0, common_1.Get)(':id'),
     __param(0, (0, common_1.Req)()),

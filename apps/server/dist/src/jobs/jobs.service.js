@@ -20,18 +20,21 @@ const idempotency_util_1 = require("../common/utils/idempotency.util");
 const schedule_service_1 = require("../schedule/schedule.service");
 const payments_service_1 = require("../payments/payments.service");
 const notification_service_1 = require("../notifications/notification.service");
+const activity_service_1 = require("../activity/activity.service");
 let JobsService = class JobsService {
     prisma;
     slots;
     schedule;
     payments;
     notifications;
-    constructor(prisma, slots, schedule, payments, notifications) {
+    activity;
+    constructor(prisma, slots, schedule, payments, notifications, activity) {
         this.prisma = prisma;
         this.slots = slots;
         this.schedule = schedule;
         this.payments = payments;
         this.notifications = notifications;
+        this.activity = activity;
     }
     async findManyForUser(input) {
         const { companyId, roles, userSub, dto } = input;
@@ -196,7 +199,19 @@ let JobsService = class JobsService {
         const access = await this.resolveAccess(input.companyId, input.roles, input.userSub);
         const job = await this.findDetailedJobOrThrow(this.prisma, input.companyId, input.id);
         this.assertCanAccessJob(job, access);
-        return this.notifications.listJobNotifications(input.companyId, input.id);
+        return this.notifications.getJobNotificationsSummary(input.companyId, input.id);
+    }
+    async listActivity(input) {
+        const access = await this.resolveAccess(input.companyId, input.roles, input.userSub);
+        const job = await this.findDetailedJobOrThrow(this.prisma, input.companyId, input.id);
+        this.assertCanAccessJob(job, access);
+        return this.activity.listJobActivity(input.companyId, input.id, job.client.id);
+    }
+    async sendConfirmation(input) {
+        const access = await this.resolveAccess(input.companyId, input.roles, input.userSub);
+        const job = await this.findDetailedJobOrThrow(this.prisma, input.companyId, input.id);
+        this.assertCanAccessJob(job, access);
+        return this.notifications.sendJobConfirmation(input.companyId, input.id);
     }
     async updateJob(input) {
         const access = await this.resolveAccess(input.companyId, input.roles, input.userSub);
@@ -313,6 +328,14 @@ let JobsService = class JobsService {
                     changes: { status: { from: job.status, to: client_1.JobStatus.DONE } },
                 },
             });
+            await this.activity.logJobCompleted({
+                db: tx,
+                companyId: input.companyId,
+                jobId: input.id,
+                clientId: job.client.id,
+                actorId: access.userId,
+                actorLabel: access.userName,
+            });
             return this.findDetailedJobOrThrow(tx, input.companyId, input.id);
         });
         await this.notifications.cancelJobReminders(input.companyId, updated.id, 'Job completed');
@@ -337,6 +360,14 @@ let JobsService = class JobsService {
                     entityId: input.id,
                     changes: { status: { from: job.status, to: client_1.JobStatus.CANCELED } },
                 },
+            });
+            await this.activity.logJobCanceled({
+                db: tx,
+                companyId: input.companyId,
+                jobId: input.id,
+                clientId: job.client.id,
+                actorId: access.userId,
+                actorLabel: access.userName,
             });
             return this.findDetailedJobOrThrow(tx, input.companyId, input.id);
         });
@@ -599,6 +630,14 @@ let JobsService = class JobsService {
                     },
                 },
             });
+            await this.activity.logJobCreated({
+                db: tx,
+                companyId: input.companyId,
+                jobId: created.id,
+                clientId,
+                actorId: access.userId,
+                actorLabel: access.userName,
+            });
             if (input.idempotencyKey) {
                 await tx.idempotencyKey.update({
                     where: { key: input.idempotencyKey },
@@ -626,10 +665,21 @@ let JobsService = class JobsService {
                 active: true,
                 user: { sub: input.userSub ?? '' },
             },
-            select: { id: true },
+            select: {
+                id: true,
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                    },
+                },
+            },
         });
         if (!actorWorker)
             throw new common_1.ForbiddenException();
+        const actorUserId = actorWorker.user?.id ?? null;
+        const actorUserLabel = actorWorker.user?.name ?? actorWorker.user?.email ?? 'Team member';
         const targetWorkerIds = requestedWorkerIds.length
             ? requestedWorkerIds
             : [actorWorker.id];
@@ -712,6 +762,14 @@ let JobsService = class JobsService {
                 },
             });
             await this.syncJobAssignments(tx, created.id, targetWorkerIds);
+            await this.activity.logJobCreated({
+                db: tx,
+                companyId: input.companyId,
+                jobId: created.id,
+                clientId,
+                actorId: actorUserId,
+                actorLabel: actorUserLabel,
+            });
             if (input.idempotencyKey) {
                 await tx.idempotencyKey.update({
                     where: { key: input.idempotencyKey },
@@ -1176,6 +1234,7 @@ exports.JobsService = JobsService = __decorate([
         slots_service_1.SlotsService,
         schedule_service_1.ScheduleService,
         payments_service_1.PaymentsService,
-        notification_service_1.NotificationService])
+        notification_service_1.NotificationService,
+        activity_service_1.ActivityService])
 ], JobsService);
 //# sourceMappingURL=jobs.service.js.map

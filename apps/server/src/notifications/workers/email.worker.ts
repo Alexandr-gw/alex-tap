@@ -1,6 +1,8 @@
 import { Queue, Worker } from 'bullmq';
 import { JobStatus, PrismaClient } from '@prisma/client';
+import { selectEmailProvider } from '../providers/email.provider';
 import { ResendEmailProvider } from '../providers/resend.provider';
+import { SmtpEmailProvider } from '../providers/smtp.provider';
 import {
   MAX_ATTEMPTS,
   QUEUE_EMAIL,
@@ -15,7 +17,10 @@ const connection = {
 };
 
 const prisma = new PrismaClient();
-const emailProvider = new ResendEmailProvider();
+const emailProvider = selectEmailProvider({
+  smtp: new SmtpEmailProvider(),
+  resend: new ResendEmailProvider(),
+});
 
 export type EmailJobPayload = {
   companyId: string;

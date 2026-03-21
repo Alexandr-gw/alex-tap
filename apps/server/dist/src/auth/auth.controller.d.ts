@@ -5,7 +5,11 @@ export declare class AuthController {
     private cfg;
     constructor(AuthService: AuthService, cfg: ConfigService);
     private getCookieOptions;
+    private normalizeReturnTo;
+    private buildAppRedirect;
+    private beginLogin;
     login(req: any, res: any): any;
+    loginUrl(req: any, res: any): any;
     callback(req: any, res: any): Promise<any>;
     refresh(req: any, res: any): Promise<any>;
     logout(req: any, res: any): Promise<any>;

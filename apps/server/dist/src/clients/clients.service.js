@@ -13,10 +13,16 @@ exports.ClientsService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
 const roles_util_1 = require("../common/utils/roles.util");
+const notification_service_1 = require("../notifications/notification.service");
+const activity_service_1 = require("../activity/activity.service");
 let ClientsService = class ClientsService {
     prisma;
-    constructor(prisma) {
+    notifications;
+    activity;
+    constructor(prisma, notifications, activity) {
         this.prisma = prisma;
+        this.notifications = notifications;
+        this.activity = activity;
     }
     async list(input) {
         await this.requireManager(input.companyId, input.roles, input.userSub);
@@ -153,25 +159,28 @@ let ClientsService = class ClientsService {
         });
         if (!client)
             throw new common_1.NotFoundException('Client not found');
-        const payments = await this.prisma.payment.findMany({
-            where: {
-                companyId: input.companyId,
-                job: {
-                    clientId: input.clientId,
-                    deletedAt: null,
+        const [payments, lastCommunication] = await Promise.all([
+            this.prisma.payment.findMany({
+                where: {
+                    companyId: input.companyId,
+                    job: {
+                        clientId: input.clientId,
+                        deletedAt: null,
+                    },
                 },
-            },
-            orderBy: [{ createdAt: 'desc' }],
-            select: {
-                id: true,
-                amountCents: true,
-                status: true,
-                provider: true,
-                capturedAt: true,
-                updatedAt: true,
-                jobId: true,
-            },
-        });
+                orderBy: [{ createdAt: 'desc' }],
+                select: {
+                    id: true,
+                    amountCents: true,
+                    status: true,
+                    provider: true,
+                    capturedAt: true,
+                    updatedAt: true,
+                    jobId: true,
+                },
+            }),
+            this.notifications.getLatestClientCommunication(input.companyId, input.clientId),
+        ]);
         return {
             id: client.id,
             name: client.name,
@@ -205,10 +214,11 @@ let ClientsService = class ClientsService {
                 paidAt: (payment.capturedAt ?? payment.updatedAt).toISOString(),
                 jobId: payment.jobId,
             })),
+            lastCommunication,
         };
     }
     async create(input) {
-        await this.requireManager(input.companyId, input.roles, input.userSub);
+        const actor = await this.requireManager(input.companyId, input.roles, input.userSub);
         const name = this.normalizeClientName(input.dto);
         const email = input.dto.email?.trim().toLowerCase() ?? null;
         const phone = this.normalizeText(input.dto.phone);
@@ -237,6 +247,12 @@ let ClientsService = class ClientsService {
                 internalNotes,
                 notes: null,
             },
+        });
+        await this.activity.logClientCreated({
+            companyId: input.companyId,
+            clientId: client.id,
+            actorId: actor.userId,
+            actorLabel: actor.user.name ?? actor.user.email ?? 'Team member',
         });
         return this.getOne({
             companyId: input.companyId,
@@ -338,7 +354,16 @@ let ClientsService = class ClientsService {
                 companyId,
                 user: { sub: userSub },
             },
-            select: { id: true },
+            select: {
+                id: true,
+                userId: true,
+                user: {
+                    select: {
+                        name: true,
+                        email: true,
+                    },
+                },
+            },
         });
         if (!membership)
             throw new common_1.ForbiddenException();
@@ -348,6 +373,8 @@ let ClientsService = class ClientsService {
 exports.ClientsService = ClientsService;
 exports.ClientsService = ClientsService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        notification_service_1.NotificationService,
+        activity_service_1.ActivityService])
 ], ClientsService);
 //# sourceMappingURL=clients.service.js.map

@@ -1,5 +1,6 @@
 import { PrismaService } from '@/prisma/prisma.service';
 import { AlertsService } from '@/alerts/alerts.service';
+import { ActivityService } from '@/activity/activity.service';
 import { PaymentStatus } from '@prisma/client';
 import { CreateCheckoutDto } from './dto/create-checkout.dto';
 import Stripe from 'stripe';
@@ -19,8 +20,9 @@ type CheckoutSummaryDto = {
 export declare class PaymentsService {
     private readonly prisma;
     private readonly alerts;
+    private readonly activity;
     private readonly stripe;
-    constructor(prisma: PrismaService, alerts: AlertsService, stripe: Stripe);
+    constructor(prisma: PrismaService, alerts: AlertsService, activity: ActivityService, stripe: Stripe);
     createCheckoutSession(companyId: string, actorUserId: string, dto: CreateCheckoutDto): Promise<{
         sessionId: string;
         url: string;

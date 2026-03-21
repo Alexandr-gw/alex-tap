@@ -1,18 +1,25 @@
 import { NotificationTemplateVars } from '../notification.types';
+import { escapeHtml, formatNotificationDate } from './template.utils';
 
 export function jobReminder24h(vars: NotificationTemplateVars) {
-    const start = new Date(vars.startAtISO).toLocaleString('en-CA', { timeZone: vars.timezone });
+    const start = formatNotificationDate(vars.startAtISO, vars.timezone);
+    const clientName = escapeHtml(vars.clientName ?? 'there');
+    const companyName = escapeHtml(vars.companyName);
+    const timezone = escapeHtml(vars.timezone);
+    const location = vars.location ? escapeHtml(vars.location) : null;
+    const workerName = vars.workerName ? escapeHtml(vars.workerName) : null;
+    const manageUrl = vars.manageUrl ? escapeHtml(vars.manageUrl) : null;
     return {
         subject: `Reminder: your appointment is tomorrow at ${start}`,
         html: `
       <div style="font-family: system-ui, sans-serif;">
-        <h2>${vars.companyName}</h2>
-        <p>Hi ${vars.clientName ?? 'there'},</p>
+        <h2>${companyName}</h2>
+        <p>Hi ${clientName},</p>
         <p>This is a reminder that your appointment is <strong>in 24 hours</strong>.</p>
-        <p><strong>When:</strong> ${start} (${vars.timezone})</p>
-        ${vars.location ? `<p><strong>Location:</strong> ${vars.location}</p>` : ''}
-        ${vars.workerName ? `<p><strong>With:</strong> ${vars.workerName}</p>` : ''}
-        ${vars.manageUrl ? `<p><a href="${vars.manageUrl}">Manage or reschedule</a></p>` : ''}
+        <p><strong>When:</strong> ${escapeHtml(start)} (${timezone})</p>
+        ${location ? `<p><strong>Location:</strong> ${location}</p>` : ''}
+        ${workerName ? `<p><strong>With:</strong> ${workerName}</p>` : ''}
+        ${manageUrl ? `<p><a href="${manageUrl}">Manage or reschedule</a></p>` : ''}
         <p>See you soon!</p>
       </div>`
     };

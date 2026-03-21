@@ -77,6 +77,22 @@ enum NotificationTargetType {
   COMPANY
 }
 
+enum ActivityType {
+  JOB_CREATED
+  JOB_COMPLETED
+  JOB_CANCELED
+  CLIENT_CREATED
+  BOOKING_SUBMITTED
+  PAYMENT_SUCCEEDED
+  INVOICE_SENT
+}
+
+enum ActivityActorType {
+  USER
+  PUBLIC
+  SYSTEM
+}
+
 // ---------- Base helpers ----------
 model Company {
   id        String    @id @default(cuid())
@@ -95,6 +111,7 @@ model Company {
   tasks                 Task[]
   payments              Payment[]
   notifications         Notification[]
+  activities            Activity[]
   alerts                Alert[]
   auditLogs             AuditLog[]
   AvailabilityRule      AvailabilityRule[]
@@ -412,6 +429,28 @@ model Notification {
   @@index([targetType, targetId, channel, type])
 }
 
+model Activity {
+  id         String            @id @default(cuid())
+  companyId  String
+  type       ActivityType
+  entityType String
+  entityId   String
+  jobId      String?
+  clientId   String?
+  actorType  ActivityActorType
+  actorId    String?
+  actorLabel String
+  message    String?
+  metadata   Json?
+  createdAt  DateTime          @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Restrict)
+
+  @@index([companyId, createdAt])
+  @@index([companyId, jobId, createdAt])
+  @@index([companyId, clientId, createdAt])
+  @@index([companyId, entityType, entityId, createdAt])
+}
 model Alert {
   id               String      @id @default(cuid())
   companyId        String
@@ -468,6 +507,7 @@ model IdempotencyKey {
 
   @@index([companyId, createdAt])
 }
+
 
 
 

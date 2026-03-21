@@ -19,16 +19,19 @@ exports.PaymentsService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
 const alerts_service_1 = require("../alerts/alerts.service");
+const activity_service_1 = require("../activity/activity.service");
 const client_1 = require("@prisma/client");
 const crypto_1 = require("crypto");
 const stripe_1 = __importDefault(require("stripe"));
 let PaymentsService = class PaymentsService {
     prisma;
     alerts;
+    activity;
     stripe;
-    constructor(prisma, alerts, stripe) {
+    constructor(prisma, alerts, activity, stripe) {
         this.prisma = prisma;
         this.alerts = alerts;
+        this.activity = activity;
         this.stripe = stripe;
     }
     async createCheckoutSession(companyId, actorUserId, dto) {
@@ -290,6 +293,12 @@ let PaymentsService = class PaymentsService {
                     status: true,
                     paidCents: true,
                     totalCents: true,
+                    clientId: true,
+                    client: {
+                        select: {
+                            name: true,
+                        },
+                    },
                 },
             });
             if (!job) {
@@ -317,6 +326,18 @@ let PaymentsService = class PaymentsService {
                         paymentId: payment.id,
                         stripePaymentIntentId: paymentIntentId,
                     },
+                },
+            });
+            await this.activity.logPaymentSucceeded({
+                db: tx,
+                companyId,
+                paymentId: payment.id,
+                jobId,
+                clientId: job.clientId,
+                actorLabel: job.client.name ?? 'Customer',
+                metadata: {
+                    amountCents: payment.amountCents,
+                    provider: payment.provider,
                 },
             });
         });
@@ -473,9 +494,10 @@ let PaymentsService = class PaymentsService {
 exports.PaymentsService = PaymentsService;
 exports.PaymentsService = PaymentsService = __decorate([
     (0, common_1.Injectable)(),
-    __param(2, (0, common_1.Inject)('STRIPE')),
+    __param(3, (0, common_1.Inject)('STRIPE')),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
         alerts_service_1.AlertsService,
+        activity_service_1.ActivityService,
         stripe_1.default])
 ], PaymentsService);
 //# sourceMappingURL=payments.service.js.map

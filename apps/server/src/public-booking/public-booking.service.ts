@@ -1,10 +1,16 @@
-import { BadRequestException, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import {
+    BadRequestException,
+    Injectable,
+    NotFoundException,
+    UnprocessableEntityException,
+} from '@nestjs/common';
 import { Prisma, JobStatus } from '@prisma/client';
 import { addMinutes, parseISO } from 'date-fns';
 import { DateTime } from 'luxon';
 import { PrismaService } from '@/prisma/prisma.service';
 import { SlotsService } from '@/slots/slots.service';
 import { PaymentsService } from '@/payments/payments.service';
+import { ActivityService } from '@/activity/activity.service';
 import { PublicCheckoutDto } from './dto/public-checkout.dto';
 
 @Injectable()
@@ -13,6 +19,7 @@ export class PublicBookingService {
         private readonly prisma: PrismaService,
         private readonly slots: SlotsService,
         private readonly payments: PaymentsService,
+        private readonly activity: ActivityService,
     ) {}
 
     async getPublicService(companySlug: string, serviceSlug: string) {
@@ -109,7 +116,14 @@ export class PublicBookingService {
             }),
             this.prisma.service.findFirst({
                 where: { id: dto.serviceId, companyId: dto.companyId, active: true, deletedAt: null },
-                select: { id: true, companyId: true, name: true, durationMins: true, basePriceCents: true, currency: true },
+                select: {
+                    id: true,
+                    companyId: true,
+                    name: true,
+                    durationMins: true,
+                    basePriceCents: true,
+                    currency: true,
+                },
             }),
         ]);
 
@@ -121,7 +135,7 @@ export class PublicBookingService {
         const bookingDay = DateTime.fromJSDate(start, { zone: 'utc' }).setZone(timezone).toISODate();
         if (!bookingDay) throw new BadRequestException('Invalid start');
 
-        const job = await this.withSerializableRetry(() =>
+        const booking = await this.withSerializableRetry(() =>
             this.prisma.$transaction(
                 async (tx: Prisma.TransactionClient) => {
                     await this.acquireCompanyDayBookingLock(tx, dto.companyId, bookingDay);
@@ -140,6 +154,7 @@ export class PublicBookingService {
                     }
 
                     let clientId: string;
+                    let clientWasCreated = false;
                     if (dto.client.email) {
                         const existing = await tx.clientProfile.findFirst({
                             where: { companyId: dto.companyId, email: dto.client.email },
@@ -170,6 +185,7 @@ export class PublicBookingService {
                                 select: { id: true },
                             });
                             clientId = created.id;
+                            clientWasCreated = true;
                         }
                     } else {
                         const created = await tx.clientProfile.create({
@@ -184,6 +200,7 @@ export class PublicBookingService {
                             select: { id: true },
                         });
                         clientId = created.id;
+                        clientWasCreated = true;
                     }
 
                     const subtotal = service.basePriceCents;
@@ -221,20 +238,41 @@ export class PublicBookingService {
                         },
                     });
 
-                    return job;
+                    return {
+                        jobId: job.id,
+                        clientId,
+                        clientWasCreated,
+                    };
                 },
                 { isolationLevel: 'Serializable' },
             ),
         );
 
         const session = await this.payments.createCheckoutSession(dto.companyId, 'public', {
-            jobId: job.id,
+            jobId: booking.jobId,
             successUrl: process.env.PUBLIC_BOOKING_SUCCESS_URL,
             cancelUrl: process.env.PUBLIC_BOOKING_CANCEL_URL,
-            idempotencyKey: `public:job:${job.id}`,
+            idempotencyKey: `public:job:${booking.jobId}`,
         });
 
-        return { checkoutUrl: session.url, jobId: job.id };
+        if (booking.clientWasCreated) {
+            await this.activity.logClientCreated({
+                companyId: dto.companyId,
+                clientId: booking.clientId,
+                actorType: 'PUBLIC',
+                actorLabel: dto.client.name?.trim() || 'Customer',
+            });
+        }
+
+        await this.activity.logBookingSubmitted({
+            companyId: dto.companyId,
+            jobId: booking.jobId,
+            clientId: booking.clientId,
+            actorLabel: dto.client.name?.trim() || 'Customer',
+            metadata: { source: 'public' },
+        });
+
+        return { checkoutUrl: session.url, jobId: booking.jobId };
     }
 
     async listPublicServices(companySlug: string) {
@@ -298,5 +336,3 @@ export class PublicBookingService {
         return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2034';
     }
 }
-
-
