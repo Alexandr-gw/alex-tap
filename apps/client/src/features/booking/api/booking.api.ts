@@ -9,12 +9,12 @@ import type {
 
 export function getPublicService(companySlug: string, serviceSlug: string) {
     return api<PublicServiceDto>(
-        `/api/api/v1/public/companies/${companySlug}/services/${serviceSlug}`,
+        `/api/v1/public/companies/${companySlug}/services/${serviceSlug}`,
     );
 }
 
 export function listPublicServices(companySlug: string) {
-    return api<PublicServicesListDto>(`/api/api/v1/public/companies/${companySlug}/services`);
+    return api<PublicServicesListDto>(`/api/v1/public/companies/${companySlug}/services`);
 }
 
 export type GetPublicSlotsParams = {
@@ -25,7 +25,7 @@ export type GetPublicSlotsParams = {
 };
 
 export function createCheckout(input: CreateCheckoutInput) {
-    return api<CreateCheckoutResponse>(`/api/api/v1/public/bookings/checkout`, {
+    return api<CreateCheckoutResponse>(`/api/v1/public/bookings/checkout`, {
         method: "POST",
         body: input,
         companyId: null,
@@ -45,7 +45,7 @@ export function getPublicSlotsDay(params: GetPublicSlotsDayParams) {
         day: params.day,
     }).toString();
 
-    return api<PublicSlotsResponse>(`/api/api/v1/public/slots/day?${qs}`, {
+    return api<PublicSlotsResponse>(`/api/v1/public/slots/day?${qs}`, {
         companyId: null,
     });
 }

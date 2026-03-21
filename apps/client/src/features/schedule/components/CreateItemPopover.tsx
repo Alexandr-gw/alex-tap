@@ -1,24 +1,20 @@
-type Props = {
+﻿type Props = {
     open: boolean;
     x: number;
     y: number;
-    workerName?: string;
-    timeLabel?: string;
     onCreateJob: () => void;
     onCreateTask: () => void;
     onClose: () => void;
 };
 
 export function CreateItemPopover({
-                                      open,
-                                      x,
-                                      y,
-                                      workerName,
-                                      timeLabel,
-                                      onCreateJob,
-                                      onCreateTask,
-                                      onClose,
-                                  }: Props) {
+    open,
+    x,
+    y,
+    onCreateJob,
+    onCreateTask,
+    onClose,
+}: Props) {
     if (!open) return null;
 
     return (
@@ -34,16 +30,11 @@ export function CreateItemPopover({
                 className="fixed z-50 w-56 rounded-lg border bg-white p-2 shadow-lg"
                 style={{ left: x, top: y }}
             >
-                <div className="border-b px-2 pb-2 text-xs text-slate-500">
-                    <div>{workerName ?? "Worker"}</div>
-                    <div>{timeLabel ?? "Time"}</div>
-                </div>
-
-                <div className="mt-2 flex flex-col">
+                <div className="flex flex-col gap-1">
                     <button
                         type="button"
                         onClick={onCreateJob}
-                        className="rounded px-3 py-2 text-left text-sm hover:bg-slate-100"
+                        className="rounded px-3 py-2 text-left text-sm font-medium text-emerald-700 hover:bg-emerald-50"
                     >
                         Create job
                     </button>
@@ -51,7 +42,7 @@ export function CreateItemPopover({
                     <button
                         type="button"
                         onClick={onCreateTask}
-                        className="rounded px-3 py-2 text-left text-sm hover:bg-slate-100"
+                        className="rounded px-3 py-2 text-left text-sm font-medium text-blue-700 hover:bg-blue-50"
                     >
                         Create task
                     </button>

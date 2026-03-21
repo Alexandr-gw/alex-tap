@@ -8,7 +8,7 @@ import type {
     UpdateTaskInput,
 } from "./tasks.types";
 
-const TASKS_BASE = "/api/api/v1/tasks";
+const TASKS_BASE = "/api/v1/tasks";
 
 function qs(params: TasksListParams = {}) {
     const search = new URLSearchParams();
@@ -49,3 +49,4 @@ export function deleteTask(taskId: string) {
         method: "DELETE",
     });
 }
+

@@ -12,7 +12,6 @@ import {
 } from "./schedule-time";
 
 export const WORKER_SIDEBAR_WIDTH = 240;
-export const TASK_DURATION_MINUTES = 30;
 
 const CARD_HEIGHT = 44;
 const ROW_VERTICAL_PADDING = 6;
@@ -27,23 +26,21 @@ export type ScheduleWorkerRow = {
     total: number;
 };
 
-function buildTaskEndAt(startAt: string) {
-    const next = new Date(startAt);
-    next.setMinutes(next.getMinutes() + TASK_DURATION_MINUTES);
-    return next.toISOString();
-}
-
 function buildWorkerItems(worker: WorkerDto, jobs: JobDto[], tasks: TaskDto[], timezone: string) {
     const jobItems = jobs
-        .filter((job) => job.workerId === worker.id)
+        .filter((job) => job.workerIds.includes(worker.id))
         .map((job) => {
             const startMinutes = getMinutesFromIso(job.startAt, timezone);
             const endMinutes = getMinutesFromIso(job.endAt, timezone);
 
             return {
                 ...job,
+                id: `${job.id}:${worker.id}`,
                 itemType: "job",
                 entityId: job.id,
+                workerId: worker.id,
+                workerName: worker.name,
+                colorTag: worker.colorTag ?? job.colorTag ?? null,
                 startMinutes,
                 endMinutes,
                 left: minutesToLeft(startMinutes),
@@ -56,9 +53,8 @@ function buildWorkerItems(worker: WorkerDto, jobs: JobDto[], tasks: TaskDto[], t
     const taskItems = tasks
         .filter((task) => task.assigneeIds.includes(worker.id))
         .map((task) => {
-            const endAt = buildTaskEndAt(task.scheduledAt);
-            const startMinutes = getMinutesFromIso(task.scheduledAt, timezone);
-            const endMinutes = getMinutesFromIso(endAt, timezone);
+            const startMinutes = getMinutesFromIso(task.startAt, timezone);
+            const endMinutes = getMinutesFromIso(task.endAt, timezone);
 
             return {
                 id: `${task.id}:${worker.id}`,
@@ -68,8 +64,8 @@ function buildWorkerItems(worker: WorkerDto, jobs: JobDto[], tasks: TaskDto[], t
                 workerId: worker.id,
                 workerName: worker.name,
                 colorTag: worker.colorTag ?? null,
-                startAt: task.scheduledAt,
-                endAt,
+                startAt: task.startAt,
+                endAt: task.endAt,
                 title: task.subject,
                 subtitle: task.customerName ?? null,
                 description: task.description,
@@ -122,7 +118,7 @@ export function buildScheduleWorkerRows(
     timezone: string,
 ) {
     return workers.map((worker) => {
-        const workerJobs = jobs.filter((job) => job.workerId === worker.id);
+        const workerJobs = jobs.filter((job) => job.workerIds.includes(worker.id));
         const workerTasks = tasks.filter((task) => task.assigneeIds.includes(worker.id));
         const { items, rowHeight } = buildWorkerItems(worker, jobs, tasks, timezone);
 
@@ -137,4 +133,3 @@ export function buildScheduleWorkerRows(
         } satisfies ScheduleWorkerRow;
     });
 }
-

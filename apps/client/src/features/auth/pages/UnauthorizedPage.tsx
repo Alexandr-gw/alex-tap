@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { startLogin } from "@/features/auth/api/auth.api.ts";
 
 export default function UnauthorizedPage() {
     return (
@@ -12,9 +13,13 @@ export default function UnauthorizedPage() {
                     <Link className="rounded-md border px-4 py-2" to="/app">
                         Go to dashboard
                     </Link>
-                    <Link className="rounded-md border px-4 py-2" to="/login">
+                    <button
+                        type="button"
+                        onClick={() => void startLogin("/app")}
+                        className="rounded-md border px-4 py-2"
+                    >
                         Back to login
-                    </Link>
+                    </button>
                 </div>
             </div>
         </div>

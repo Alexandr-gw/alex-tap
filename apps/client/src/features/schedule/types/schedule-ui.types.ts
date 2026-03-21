@@ -39,6 +39,8 @@ export type DragMode = "move" | "resize-end";
 
 export type DragState = {
     itemId: string;
+    entityId: string;
+    itemType: ScheduleRowItem["itemType"];
     workerId: string | null;
     mode: DragMode;
     originClientX: number;
@@ -46,6 +48,7 @@ export type DragState = {
     originEndMinutes: number;
     draftStartMinutes: number;
     draftEndMinutes: number;
+    hasPointerMoved: boolean;
 } | null;
 
 export function isScheduleTaskItem(item: ScheduleRowItem): item is ScheduleTaskItem {

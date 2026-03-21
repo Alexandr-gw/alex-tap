@@ -1,17 +1,15 @@
-import { NavLink } from "react-router-dom";
+﻿import { NavLink } from "react-router-dom";
 import { useMe } from "@/features/me/hooks/useMe";
 import { canManageCompany } from "@/features/me/me.selector.ts";
 
-const links = [
-    { to: ".", label: "Dashboard" },
-    { to: "tracking", label: "Tracking" },
-];
+const links = [{ to: ".", label: "Dashboard" }];
 
 const adminLinks = [
     { to: "schedule", label: "Schedule" },
+    { to: "clients", label: "Clients" },
+    { to: "settings", label: "Settings" },
     { to: "jobs", label: "Jobs" },
     { to: "services", label: "Services" },
-    { to: "users", label: "Users" },
 ];
 
 export function Sidebar() {
@@ -42,12 +40,6 @@ export function Sidebar() {
                             }
                         >
                             <span>{link.label}</span>
-
-                            {link.to === "tracking" ? (
-                                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">
-                                    Live
-                                </span>
-                            ) : null}
                         </NavLink>
                     ))}
                 </div>

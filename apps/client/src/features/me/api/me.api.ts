@@ -3,5 +3,5 @@ import { api } from "@/lib/api/apiClient";
 import type { MeResponse } from "./me.types";
 
 export function getMe(companyId?: string | null): Promise<MeResponse> {
-    return api<MeResponse>("/api/me", { companyId: companyId ?? undefined });
+    return api<MeResponse>("/me", { companyId: companyId ?? undefined });
 }

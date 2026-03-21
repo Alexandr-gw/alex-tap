@@ -7,7 +7,7 @@ export type UpdateScheduleJobInput = {
 };
 
 export async function updateScheduleJobTime(input: UpdateScheduleJobInput) {
-    return api(`/api/api/v1/jobs/${input.jobId}/review`, {
+    return api(`/api/v1/jobs/${input.jobId}/review`, {
         method: "PATCH",
         body: {
             start: input.startAt,
@@ -15,3 +15,4 @@ export async function updateScheduleJobTime(input: UpdateScheduleJobInput) {
         },
     });
 }
+

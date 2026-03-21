@@ -1,4 +1,5 @@
 import { NavLink } from "react-router-dom";
+import { startLogin } from "@/features/auth/api/auth.api.ts";
 
 const features = [
     { title: "Schedule Jobs", desc: "Plan routes and assign work in minutes.", icon: "📅" },
@@ -29,12 +30,13 @@ export function LandingPage() {
                     </div>
 
                     <div className="flex items-center gap-2">
-                        <NavLink
-                            to="/login"
+                        <button
+                            type="button"
+                            onClick={() => void startLogin("/app")}
                             className="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
                         >
                             Log In
-                        </NavLink>
+                        </button>
 
                         <NavLink
                             to="/dashboard"
@@ -72,12 +74,13 @@ export function LandingPage() {
                                 Get Started Free
                             </NavLink>
 
-                            <NavLink
-                                to="/login"
+                            <button
+                                type="button"
+                                onClick={() => void startLogin("/app")}
                                 className="rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-100"
                             >
                                 Log In
-                            </NavLink>
+                            </button>
                         </div>
 
                         <div className="mt-7 flex flex-wrap gap-2 text-xs text-slate-600">
@@ -203,9 +206,13 @@ export function LandingPage() {
 
                         <div className="text-sm text-slate-600">
                             Already have an account?{" "}
-                            <NavLink to="/login" className="font-medium text-indigo-700 underline underline-offset-4">
+                            <button
+                                type="button"
+                                onClick={() => void startLogin("/app")}
+                                className="font-medium text-indigo-700 underline underline-offset-4"
+                            >
                                 Log In
-                            </NavLink>
+                            </button>
                         </div>
                     </div>
                 </div>

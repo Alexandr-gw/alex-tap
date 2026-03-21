@@ -1,3 +1,4 @@
+import { JobNotificationIndicator } from "@/features/notifications/components/JobNotificationIndicator";
 import type { ScheduleRowItem } from "../types/schedule-ui.types";
 import { formatTimeLabel } from "../utils/schedule-time";
 
@@ -5,6 +6,7 @@ type Props = {
     item: ScheduleRowItem;
     timezone: string;
     isSelected?: boolean;
+    isSyncing?: boolean;
     onClick?: (item: ScheduleRowItem) => void;
     onPointerDown?: (
         item: ScheduleRowItem,
@@ -18,16 +20,14 @@ export function ScheduleCard({
     item,
     timezone,
     isSelected = false,
+    isSyncing = false,
     onClick,
     onPointerDown,
     resizeEnabled = false,
 }: Props) {
     const isTask = item.itemType === "task";
-    const accent = isTask
-        ? item.completed
-            ? "#64748b"
-            : "#d97706"
-        : item.colorTag ?? "#0f766e";
+    const isCompleted = isTask ? item.completed : item.status === "DONE";
+    const accent = isTask ? "#2563eb" : "#16a34a";
     const title = isTask ? item.title : item.serviceName ?? "Job";
     const subtitle = isTask ? item.customerName : item.clientName;
 
@@ -35,19 +35,25 @@ export function ScheduleCard({
         <button
             type="button"
             data-schedule-card="true"
+            disabled={isSyncing}
             onClick={() => onClick?.(item)}
             onPointerDown={(e) => {
+                if (isSyncing) return;
                 if ((e.target as HTMLElement).closest("[data-resize-handle='true']")) return;
                 onPointerDown?.(item, "move", e);
             }}
             className={[
-                "absolute h-11 overflow-hidden rounded-lg border border-slate-200 px-3 text-left text-xs shadow-sm transition select-none",
+                "absolute h-11 overflow-hidden rounded-lg border border-slate-200 px-3 text-left text-xs shadow-sm transition select-none disabled:cursor-wait",
                 isTask
-                    ? item.completed
-                        ? "bg-slate-100 text-slate-600"
-                        : "bg-amber-50/80 text-slate-900 hover:bg-amber-50"
-                    : "bg-white",
+                    ? isCompleted
+                        ? "bg-blue-50/50 text-slate-500"
+                        : "bg-blue-50 text-slate-900 hover:bg-blue-100/80"
+                    : isCompleted
+                      ? "bg-emerald-50/50 text-slate-500"
+                      : "bg-emerald-50 text-slate-900 hover:bg-emerald-100/80",
                 isSelected ? "ring-2 ring-slate-300" : "hover:border-slate-300",
+                isCompleted ? "opacity-70" : "",
+                isSyncing ? "opacity-80" : "",
             ].join(" ")}
             style={{
                 left: `${item.left}px`,
@@ -56,25 +62,49 @@ export function ScheduleCard({
                 borderLeftWidth: "4px",
                 borderLeftColor: accent,
             }}
-            title={`${title} ${formatTimeLabel(item.startAt, timezone)}${subtitle ? ` - ${subtitle}` : ""}`}
+            title={`${title} ${formatTimeLabel(item.startAt, timezone)} - ${formatTimeLabel(item.endAt, timezone)}${subtitle ? ` - ${subtitle}` : ""}`}
         >
-            <div className="truncate font-medium text-slate-900">{title}</div>
+            <div
+                className={[
+                    "truncate font-medium",
+                    isCompleted ? "text-slate-500 line-through" : "text-slate-900",
+                ].join(" ")}
+            >
+                {title}
+            </div>
 
-            <div className="truncate text-[11px] text-slate-500">
-                {formatTimeLabel(item.startAt, timezone)}
+            <div
+                className={[
+                    "truncate text-[11px]",
+                    isCompleted ? "text-slate-400 line-through" : "text-slate-500",
+                ].join(" ")}
+            >
+                {formatTimeLabel(item.startAt, timezone)} - {formatTimeLabel(item.endAt, timezone)}
                 {subtitle ? ` • ${subtitle}` : ""}
             </div>
+
+            {!isTask ? (
+                <div className="absolute right-3 top-2">
+                    <JobNotificationIndicator jobId={item.entityId} />
+                </div>
+            ) : null}
+
+            {isSyncing ? (
+                <div className="absolute inset-y-0 right-3 flex items-center">
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-emerald-600" />
+                </div>
+            ) : null}
 
             <div
                 data-resize-handle="true"
                 onPointerDown={(e) => {
-                    if (!resizeEnabled) return;
+                    if (!resizeEnabled || isSyncing) return;
                     e.stopPropagation();
                     onPointerDown?.(item, "resize-end", e);
                 }}
                 className={[
                     "absolute right-0 top-0 h-full w-2 rounded-r-md",
-                    resizeEnabled
+                    resizeEnabled && !isSyncing
                         ? "cursor-ew-resize hover:bg-sky-300/40"
                         : "pointer-events-none opacity-0",
                 ].join(" ")}

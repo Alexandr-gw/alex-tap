@@ -18,7 +18,7 @@ function qs(params: Record<string, any>) {
     return s ? `?${s}` : "";
 }
 
-const BASE = "/api/api/v1/services";
+const BASE = "/api/v1/services";
 
 export const servicesApi = {
     list(params: ServicesListParams) {
@@ -43,3 +43,4 @@ export const servicesApi = {
         });
     },
 };
+

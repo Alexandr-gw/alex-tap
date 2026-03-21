@@ -8,6 +8,7 @@ export type WorkerDto = {
 export type JobDto = {
     id: string;
     workerId: string | null;
+    workerIds: string[];
     startAt: string;
     endAt: string;
     clientName?: string;

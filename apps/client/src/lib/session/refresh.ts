@@ -6,7 +6,7 @@ export function isAuthRefreshPath(path: string) {
 
 export async function refreshAccessSession() {
     if (!refreshPromise) {
-        refreshPromise = fetch("/api/auth/refresh", {
+        refreshPromise = fetch("/server/auth/refresh", {
             method: "POST",
             credentials: "include",
         }).then((response) => {

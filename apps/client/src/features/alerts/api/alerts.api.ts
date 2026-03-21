@@ -1,8 +1,8 @@
 import { api } from "@/lib/api/apiClient";
 import type { AlertDetail, AlertsListResponse, ReviewJobInput, UnreadCountResponse } from "./alerts.types";
 
-const ALERTS_BASE = "/api/api/v1/alerts";
-const JOBS_BASE = "/api/api/v1/jobs";
+const ALERTS_BASE = "/api/v1/alerts";
+const JOBS_BASE = "/api/v1/jobs";
 
 function qs(params: Record<string, string | undefined>) {
     const sp = new URLSearchParams();
@@ -40,3 +40,4 @@ export const alertsApi = {
         });
     },
 };
+

@@ -33,7 +33,7 @@ export function SchedulePage() {
     const customersQuery = useTaskCustomers(canManageSchedule);
     const timezone = jobsTimezone ?? me?.activeCompanyTimezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
     const unassignedCount =
-        jobs.filter((job) => !job.workerId).length + tasks.filter((task) => task.assigneeIds.length === 0).length;
+        jobs.filter((job) => job.workerIds.length === 0).length + tasks.filter((task) => task.assigneeIds.length === 0).length;
 
     useEffect(() => {
         saveScheduleDate(date);

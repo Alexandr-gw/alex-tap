@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
+import { EditJobDialog } from "@/features/jobs/components/EditJobDialog";
+import { JobPreviewCard } from "@/features/jobs/components/JobPreviewCard";
+import { useJob } from "@/features/jobs/hooks/jobs.queries";
 import { useNavigate } from "react-router-dom";
+import { JobNotificationIndicator } from "@/features/notifications/components/JobNotificationIndicator";
 import { TaskFormModal } from "@/features/tasks/components/TaskFormModal";
 import type { TaskCustomerOption, TaskDto } from "@/features/tasks/api/tasks.types";
 import type { JobDto, WorkerDto } from "../api/schedule.types";
@@ -8,7 +12,6 @@ import { isScheduleTaskItem } from "../types/schedule-ui.types";
 import { WorkerSidebar } from "./WorkerSidebar";
 import { TimeHeader } from "./TimeHeader";
 import { ScheduleGrid } from "./ScheduleGrid";
-import { ScheduleDetailsDrawer } from "./ScheduleDetailsDrawer";
 import { CreateItemPopover } from "./CreateItemPopover";
 import { formatMinutesLabel, getMinutesFromIso } from "../utils/schedule-time";
 import {
@@ -29,7 +32,8 @@ type TaskModalState =
           mode: "create";
           prefill: {
               date: string;
-              time: string;
+              startTime: string;
+              endTime: string;
               workerIds?: string[];
           };
       }
@@ -54,6 +58,13 @@ type Props = {
     onCloseDetails: () => void;
 };
 
+function formatPrefillTime(totalMinutes: number) {
+    const clamped = Math.max(0, Math.min(23 * 60 + 59, totalMinutes));
+    const hours = Math.floor(clamped / 60);
+    const minutes = clamped % 60;
+    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
 export function ScheduleLayout({
     date,
     timezone,
@@ -72,9 +83,11 @@ export function ScheduleLayout({
     const [scrollLeft, setScrollLeft] = useState(0);
     const [createMenu, setCreateMenu] = useState<CreateMenuState>(null);
     const [taskModal, setTaskModal] = useState<TaskModalState>(null);
+    const [editJobOpen, setEditJobOpen] = useState(false);
 
     const jobsQueryKey = ["jobs", date] as const;
-    const unassignedJobs = useMemo(() => jobs.filter((job) => !job.workerId), [jobs]);
+    const tasksQueryKey = ["tasks", { from: `${date}T00:00:00`, to: `${date}T23:59:59` }] as const;
+    const unassignedJobs = useMemo(() => jobs.filter((job) => job.workerIds.length === 0), [jobs]);
     const unassignedTasks = useMemo(
         () => tasks.filter((task) => task.assigneeIds.length === 0),
         [tasks],
@@ -91,10 +104,12 @@ export function ScheduleLayout({
     const {
         dragState,
         dragPreviewById,
+        savingItemId,
         startDrag,
         updateDrag,
         commitDrag,
         cancelDrag,
+        consumeSuppressedClick,
     } = useScheduleInteractions();
 
     useEffect(() => {
@@ -106,7 +121,7 @@ export function ScheduleLayout({
 
         async function handlePointerUp() {
             try {
-                await commitDrag({ date, timezone, jobsQueryKey });
+                await commitDrag({ date, timezone, jobsQueryKey, tasksQueryKey });
             } catch (error) {
                 console.error("Failed to update schedule item", error);
             }
@@ -127,17 +142,17 @@ export function ScheduleLayout({
             window.removeEventListener("pointerup", handlePointerUp);
             window.removeEventListener("keydown", handleKeyDown);
         };
-    }, [dragState, updateDrag, commitDrag, cancelDrag, date, timezone]);
-
-    const selectedWorker = useMemo(() => {
-        if (!createMenu) return null;
-        return workers.find((worker) => worker.id === createMenu.workerId) ?? null;
-    }, [createMenu, workers]);
+    }, [dragState, updateDrag, commitDrag, cancelDrag, date, timezone, jobsQueryKey, tasksQueryKey]);
 
     const activeTask = useMemo(() => {
         if (!taskModal || taskModal.mode !== "edit") return null;
         return tasks.find((task) => task.id === taskModal.taskId) ?? null;
     }, [taskModal, tasks]);
+    const selectedJobQuery = useJob(selectedJob?.entityId);
+
+    useEffect(() => {
+        setEditJobOpen(false);
+    }, [selectedJob?.entityId]);
 
     function goToCreateJob() {
         if (!createMenu) return;
@@ -149,7 +164,7 @@ export function ScheduleLayout({
             workerId: createMenu.workerId,
         });
 
-        navigate(`../jobs?${params.toString()}`);
+        navigate(`../jobs/new?${params.toString()}`);
         setCreateMenu(null);
     }
 
@@ -160,7 +175,8 @@ export function ScheduleLayout({
             mode: "create",
             prefill: {
                 date,
-                time: formatMinutesLabel(createMenu.startMinutes),
+                startTime: formatPrefillTime(createMenu.startMinutes),
+                endTime: formatPrefillTime(createMenu.startMinutes + 60),
                 workerIds: [createMenu.workerId],
             },
         });
@@ -172,6 +188,10 @@ export function ScheduleLayout({
     }
 
     function handleSelectItem(item: ScheduleRowItem) {
+        if (consumeSuppressedClick(item.id)) {
+            return;
+        }
+
         if (isScheduleTaskItem(item)) {
             if (canManageSchedule) {
                 openEditTask(item.entityId);
@@ -219,15 +239,18 @@ export function ScheduleLayout({
                             timezone={timezone}
                             rows={rows}
                             selectedItemId={selectedJob?.id ?? null}
+                            syncingItemId={savingItemId}
                             dragPreviewById={dragPreviewById}
                             onSelectItem={handleSelectItem}
                             onScrollLeftChange={setScrollLeft}
                             onCardPointerDown={(item, mode, e) => {
-                                if (!canManageSchedule || item.itemType !== "job") return;
+                                if (!canManageSchedule) return;
 
                                 e.preventDefault();
                                 startDrag({
                                     itemId: item.id,
+                                    entityId: item.entityId,
+                                    itemType: item.itemType,
                                     workerId: item.workerId,
                                     mode,
                                     clientX: e.clientX,
@@ -276,8 +299,11 @@ export function ScheduleLayout({
                                         onClick={() => selectUnassignedJob(job)}
                                         className="w-full rounded-xl border border-slate-200 p-3 text-left hover:bg-slate-50"
                                     >
-                                        <div className="text-sm font-medium text-slate-900">
-                                            {job.serviceName ?? "Job"}
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="text-sm font-medium text-slate-900">
+                                                {job.serviceName ?? "Job"}
+                                            </div>
+                                            <JobNotificationIndicator jobId={job.id} />
                                         </div>
                                         <div className="mt-1 text-xs text-slate-600">
                                             {job.clientName ?? "No client"}
@@ -297,7 +323,7 @@ export function ScheduleLayout({
                                         key={task.id}
                                         type="button"
                                         onClick={() => canManageSchedule && openEditTask(task.id)}
-                                        className="w-full rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-left hover:bg-amber-50"
+                                        className="w-full rounded-xl border border-blue-200 bg-blue-50/70 p-3 text-left hover:bg-blue-50"
                                     >
                                         <div className="text-sm font-medium text-slate-900">{task.subject}</div>
                                         <div className="mt-1 text-xs text-slate-600">
@@ -315,22 +341,45 @@ export function ScheduleLayout({
                 </aside>
             ) : null}
 
-            <ScheduleDetailsDrawer
-                item={selectedJob}
-                timezone={timezone}
-                open={!!selectedJob}
-                onClose={onCloseDetails}
-            />
+            {selectedJob ? (
+                <div
+                    className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/40 p-4"
+                    onClick={() => onCloseDetails()}
+                >
+                    <div onClick={(e) => e.stopPropagation()}>
+                        {selectedJobQuery.isLoading ? (
+                            <div className="w-[360px] rounded-2xl bg-white p-6 shadow-xl">
+                                <div className="h-6 animate-pulse rounded bg-slate-200" />
+                                <div className="mt-4 h-20 animate-pulse rounded bg-slate-100" />
+                            </div>
+                        ) : selectedJobQuery.isError || !selectedJobQuery.data ? (
+                            <div className="w-[360px] rounded-2xl border border-rose-200 bg-white p-6 text-sm text-rose-700 shadow-xl">
+                                Could not load job preview.
+                            </div>
+                        ) : (
+                            <JobPreviewCard
+                                job={selectedJobQuery.data}
+                                onEdit={() => setEditJobOpen(true)}
+                                onClose={onCloseDetails}
+                            />
+                        )}
+                    </div>
+                </div>
+            ) : null}
 
             <CreateItemPopover
                 open={!!createMenu}
                 x={createMenu?.x ?? 0}
                 y={createMenu?.y ?? 0}
-                workerName={selectedWorker?.name}
-                timeLabel={createMenu ? `${date} ${formatMinutesLabel(createMenu.startMinutes)}` : undefined}
                 onClose={() => setCreateMenu(null)}
                 onCreateJob={goToCreateJob}
                 onCreateTask={openCreateTaskModal}
+            />
+
+            <EditJobDialog
+                job={selectedJobQuery.data ?? null}
+                open={editJobOpen && !!selectedJob}
+                onClose={() => setEditJobOpen(false)}
             />
 
             <TaskFormModal
@@ -345,3 +394,4 @@ export function ScheduleLayout({
         </div>
     );
 }
+

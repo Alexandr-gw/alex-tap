@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { startLogin } from "@/features/auth/api/auth.api.ts";
 
 export default function NotFoundPage() {
     return (
@@ -17,12 +18,13 @@ export default function NotFoundPage() {
                         Go to dashboard
                     </Link>
 
-                    <Link
-                        to="/login"
+                    <button
+                        type="button"
+                        onClick={() => void startLogin("/app")}
                         className="rounded-md border px-4 py-2"
                     >
                         Back to login
-                    </Link>
+                    </button>
                 </div>
             </div>
         </div>

@@ -14,6 +14,7 @@ type ApiRequestOptions<TBody> = {
 };
 
 const API_ORIGIN = import.meta.env.VITE_API_URL as string | undefined;
+const API_PROXY_BASE = "/server";
 
 function cleanHeaders(h?: Record<string, string | undefined>): Record<string, string> {
     const out: Record<string, string> = {};
@@ -26,9 +27,18 @@ function cleanHeaders(h?: Record<string, string | undefined>): Record<string, st
 
 function buildUrl(path: string) {
     if (/^https?:\/\//i.test(path)) return path;
-    if (path.startsWith("/api")) return path;
-    if (API_ORIGIN) return `${API_ORIGIN}${path.startsWith("/") ? "" : "/"}${path}`;
-    return path;
+
+    const normalized = path.startsWith("/") ? path : `/${path}`;
+
+    if (API_ORIGIN) {
+        return `${API_ORIGIN}${normalized}`;
+    }
+
+    if (normalized.startsWith(API_PROXY_BASE)) {
+        return normalized;
+    }
+
+    return `${API_PROXY_BASE}${normalized}`;
 }
 
 export async function api<TResp, TBody = unknown>(

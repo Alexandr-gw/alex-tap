@@ -1,4 +1,3 @@
-// src/features/tasks/components/TaskFormModal.tsx
 import { useEffect, useMemo, useState } from "react";
 import type { TaskDto } from "../api/tasks.types";
 import {
@@ -20,8 +19,9 @@ type WorkerOption = {
 };
 
 type Prefill = {
-    date?: string; // YYYY-MM-DD
-    time?: string; // HH:mm
+    date?: string;
+    startTime?: string;
+    endTime?: string;
     workerIds?: string[];
 };
 
@@ -30,10 +30,8 @@ type Props = {
     mode: "create" | "edit";
     task?: TaskDto | null;
     prefill?: Prefill | null;
-
     customers: CustomerOption[];
     workers: WorkerOption[];
-
     onClose: () => void;
 };
 
@@ -57,14 +55,14 @@ function combineLocalDateTime(date: string, time: string) {
 }
 
 export function TaskFormModal({
-                                  open,
-                                  mode,
-                                  task,
-                                  prefill,
-                                  customers,
-                                  workers,
-                                  onClose,
-                              }: Props) {
+    open,
+    mode,
+    task,
+    prefill,
+    customers,
+    workers,
+    onClose,
+}: Props) {
     const createMutation = useCreateTask();
     const updateMutation = useUpdateTask();
     const deleteMutation = useDeleteTask();
@@ -74,8 +72,9 @@ export function TaskFormModal({
             return {
                 subject: task.subject ?? "",
                 description: task.description ?? "",
-                date: toDateInputValue(task.scheduledAt),
-                time: toTimeInputValue(task.scheduledAt),
+                date: toDateInputValue(task.startAt),
+                startTime: toTimeInputValue(task.startAt),
+                endTime: toTimeInputValue(task.endAt),
                 customerId: task.customerId ?? null,
                 assigneeIds: task.assigneeIds ?? [],
                 completed: task.completed ?? false,
@@ -86,16 +85,15 @@ export function TaskFormModal({
         const date =
             prefill?.date ??
             `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(
-                now.getDate()
+                now.getDate(),
             ).padStart(2, "0")}`;
-
-        const time = prefill?.time ?? "09:00";
 
         return {
             subject: "",
             description: "",
             date,
-            time,
+            startTime: prefill?.startTime ?? "09:00",
+            endTime: prefill?.endTime ?? "10:00",
             customerId: null,
             assigneeIds: prefill?.workerIds ?? [],
             completed: false,
@@ -149,7 +147,8 @@ export function TaskFormModal({
         const payload = {
             subject: parsed.data.subject.trim(),
             description: parsed.data.description?.trim() || undefined,
-            scheduledAt: combineLocalDateTime(parsed.data.date, parsed.data.time),
+            startAt: combineLocalDateTime(parsed.data.date, parsed.data.startTime),
+            endAt: combineLocalDateTime(parsed.data.date, parsed.data.endTime),
             customerId: parsed.data.customerId || null,
             assigneeIds: parsed.data.assigneeIds,
             completed: parsed.data.completed,
@@ -176,9 +175,6 @@ export function TaskFormModal({
 
     async function handleDelete() {
         if (!task) return;
-
-        const ok = window.confirm("Delete this task?");
-        if (!ok) return;
 
         try {
             await deleteMutation.mutateAsync(task.id);
@@ -244,7 +240,7 @@ export function TaskFormModal({
                             ) : null}
                         </div>
 
-                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                             <div>
                                 <label className="mb-1 block text-sm font-medium text-slate-700">
                                     Date
@@ -262,16 +258,31 @@ export function TaskFormModal({
 
                             <div>
                                 <label className="mb-1 block text-sm font-medium text-slate-700">
-                                    Time
+                                    Start time
                                 </label>
                                 <input
                                     type="time"
-                                    value={values.time}
-                                    onChange={(e) => setField("time", e.target.value)}
+                                    value={values.startTime}
+                                    onChange={(e) => setField("startTime", e.target.value)}
                                     className="w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:border-slate-500"
                                 />
-                                {errors.time ? (
-                                    <p className="mt-1 text-sm text-red-600">{errors.time}</p>
+                                {errors.startTime ? (
+                                    <p className="mt-1 text-sm text-red-600">{errors.startTime}</p>
+                                ) : null}
+                            </div>
+
+                            <div>
+                                <label className="mb-1 block text-sm font-medium text-slate-700">
+                                    End time
+                                </label>
+                                <input
+                                    type="time"
+                                    value={values.endTime}
+                                    onChange={(e) => setField("endTime", e.target.value)}
+                                    className="w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:border-slate-500"
+                                />
+                                {errors.endTime ? (
+                                    <p className="mt-1 text-sm text-red-600">{errors.endTime}</p>
                                 ) : null}
                             </div>
                         </div>
@@ -360,24 +371,26 @@ export function TaskFormModal({
                                 >
                                     Delete
                                 </button>
-                            ) : (
-                                <button
-                                    type="button"
-                                    onClick={onClose}
-                                    className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                                >
-                                    Cancel
-                                </button>
-                            )}
+                            ) : null}
                         </div>
 
-                        <button
-                            type="submit"
-                            disabled={isSaving}
-                            className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
-                        >
-                            {mode === "create" ? "Save task" : "Update task"}
-                        </button>
+                        <div className="flex items-center gap-3">
+                            <button
+                                type="button"
+                                onClick={onClose}
+                                className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                            >
+                                Cancel
+                            </button>
+
+                            <button
+                                type="submit"
+                                disabled={isSaving}
+                                className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+                            >
+                                {mode === "create" ? "Save task" : "Update task"}
+                            </button>
+                        </div>
                     </div>
                 </form>
             </div>

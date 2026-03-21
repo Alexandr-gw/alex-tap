@@ -22,6 +22,7 @@ type Props = {
     timezone: string;
     rows: ScheduleWorkerRow[];
     selectedItemId?: string | null;
+    syncingItemId?: string | null;
     onSelectItem?: (item: ScheduleRowItem) => void;
     onEmptySlotClick?: (payload: {
         workerId: string;
@@ -53,6 +54,7 @@ export function ScheduleGrid({
     timezone,
     rows,
     selectedItemId,
+    syncingItemId,
     onSelectItem,
     onEmptySlotClick,
     onScrollLeftChange,
@@ -139,16 +141,15 @@ export function ScheduleGrid({
 
                         {row.items.map((item) => {
                             const preview = dragPreviewById?.[item.id];
-                            const renderedItem =
-                                preview && item.itemType === "job"
-                                    ? {
-                                          ...item,
-                                          startMinutes: preview.startMinutes,
-                                          endMinutes: preview.endMinutes,
-                                          left: minutesToLeft(preview.startMinutes),
-                                          width: durationToWidth(preview.startMinutes, preview.endMinutes),
-                                      }
-                                    : item;
+                            const renderedItem = preview
+                                ? {
+                                      ...item,
+                                      startMinutes: preview.startMinutes,
+                                      endMinutes: preview.endMinutes,
+                                      left: minutesToLeft(preview.startMinutes),
+                                      width: durationToWidth(preview.startMinutes, preview.endMinutes),
+                                  }
+                                : item;
 
                             return (
                                 <ScheduleCard
@@ -156,9 +157,10 @@ export function ScheduleGrid({
                                     item={renderedItem}
                                     timezone={timezone}
                                     isSelected={selectedItemId === item.id}
+                                    isSyncing={syncingItemId === item.id}
                                     onClick={onSelectItem}
                                     onPointerDown={onCardPointerDown}
-                                    resizeEnabled={item.itemType === "job"}
+                                    resizeEnabled={item.itemType === "job" || item.itemType === "task"}
                                 />
                             );
                         })}

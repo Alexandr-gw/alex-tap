@@ -1,7 +1,23 @@
-import { API_BASE, apiFetch } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 
-export function startLogin() {
-    window.location.href = `${API_BASE}/auth/login`;
+type LoginUrlResponse = {
+    url: string;
+};
+
+function buildLoginSearch(returnTo?: string) {
+    const sp = new URLSearchParams();
+
+    if (returnTo) {
+        sp.set("returnTo", returnTo);
+    }
+
+    const search = sp.toString();
+    return search ? `?${search}` : "";
+}
+
+export async function startLogin(returnTo?: string) {
+    const { url } = await apiFetch<LoginUrlResponse>(`/auth/login-url${buildLoginSearch(returnTo)}`);
+    window.location.assign(url);
 }
 
 export async function logout() {

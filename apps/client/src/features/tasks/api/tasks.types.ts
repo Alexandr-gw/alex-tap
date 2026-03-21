@@ -3,7 +3,8 @@ export type TaskDto = {
     companyId: string;
     subject: string;
     description: string | null;
-    scheduledAt: string;
+    startAt: string;
+    endAt: string;
     completed: boolean;
     customerId: string | null;
     customerName?: string | null;
@@ -26,7 +27,8 @@ export type TaskCustomerOption = {
 export type CreateTaskInput = {
     subject: string;
     description?: string;
-    scheduledAt: string;
+    startAt: string;
+    endAt: string;
     completed?: boolean;
     customerId?: string | null;
     assigneeIds?: string[];

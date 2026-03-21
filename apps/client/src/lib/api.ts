@@ -1,6 +1,6 @@
 import { isAuthRefreshPath, refreshAccessSession } from "@/lib/session/refresh";
 
-export const API_BASE = "/api";
+export const API_BASE = "/server";
 
 export type ApiError = { status: number; message: string };
 
@@ -14,10 +14,17 @@ function hasJsonBody(init: RequestInit) {
     return false;
 }
 
+function buildUrl(path: string) {
+    if (/^https?:\/\//i.test(path)) return path;
+    const normalized = path.startsWith("/") ? path : `/${path}`;
+    if (normalized.startsWith(API_BASE)) return normalized;
+    return `${API_BASE}${normalized}`;
+}
+
 export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
     const companyId = getActiveCompanyId();
 
-    const request = () => fetch(`${API_BASE}${path}`, {
+    const request = () => fetch(buildUrl(path), {
         ...init,
         credentials: "include",
         headers: {
