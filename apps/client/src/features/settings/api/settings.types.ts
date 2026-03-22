@@ -1,4 +1,6 @@
-﻿export type CompanySettingsDto = {
+export type WorkerRole = "ADMIN" | "MANAGER" | "WORKER" | "CLIENT";
+
+export type CompanySettingsDto = {
     id: string;
     name: string;
     timezone: string;
@@ -19,7 +21,7 @@ export type WorkerListItemDto = {
     colorTag?: string | null;
     active: boolean;
     linkedUserEmail?: string | null;
-    role?: string | null;
+    role?: WorkerRole | null;
     createdAt?: string;
 };
 
@@ -53,4 +55,5 @@ export type UpdateWorkerInput = {
     phone?: string;
     colorTag?: string;
     active?: boolean;
+    role?: "MANAGER" | "WORKER";
 };

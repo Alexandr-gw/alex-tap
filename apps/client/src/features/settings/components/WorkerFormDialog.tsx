@@ -1,4 +1,5 @@
 ﻿import { useEffect, useState } from "react";
+import { isApiError } from "@/lib/api/apiError";
 import type { CreateWorkerInput, UpdateWorkerInput, WorkerListItemDto } from "../api/settings.types";
 
 type Props = {
@@ -15,6 +16,7 @@ type WorkerFormState = {
     phone: string;
     colorTag: string;
     active: boolean;
+    role: "MANAGER" | "WORKER";
 };
 
 const DEFAULT_FORM: WorkerFormState = {
@@ -22,10 +24,12 @@ const DEFAULT_FORM: WorkerFormState = {
     phone: "",
     colorTag: "",
     active: true,
+    role: "WORKER",
 };
 
 export function WorkerFormDialog({ open, mode, worker, isSaving = false, onClose, onSubmit }: Props) {
     const [form, setForm] = useState<WorkerFormState>(DEFAULT_FORM);
+    const [submitError, setSubmitError] = useState<string | null>(null);
 
     useEffect(() => {
         if (mode === "edit" && worker) {
@@ -34,24 +38,35 @@ export function WorkerFormDialog({ open, mode, worker, isSaving = false, onClose
                 phone: worker.phone ?? "",
                 colorTag: worker.colorTag ?? "",
                 active: Boolean(worker.active),
+                role: worker.role === "MANAGER" ? "MANAGER" : "WORKER",
             });
+            setSubmitError(null);
             return;
         }
 
         setForm(DEFAULT_FORM);
+        setSubmitError(null);
     }, [mode, worker, open]);
 
     if (!open) return null;
 
+    const canEditRole = mode === "edit" && Boolean(worker?.linkedUserEmail) && worker?.role !== "ADMIN";
+
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
 
-        await onSubmit({
-            name: form.name.trim(),
-            phone: form.phone.trim(),
-            colorTag: form.colorTag.trim(),
-            active: form.active,
-        });
+        try {
+            setSubmitError(null);
+            await onSubmit({
+                name: form.name.trim(),
+                phone: form.phone.trim(),
+                colorTag: form.colorTag.trim(),
+                active: form.active,
+                role: canEditRole ? form.role : undefined,
+            });
+        } catch (error) {
+            setSubmitError(isApiError(error) ? error.message : "Could not save worker changes.");
+        }
     }
 
     return (
@@ -65,7 +80,7 @@ export function WorkerFormDialog({ open, mode, worker, isSaving = false, onClose
                         <p className="text-sm text-slate-500">
                             {mode === "create"
                                 ? "Create an internal worker profile for scheduling and jobs."
-                                : "Update worker profile details used in staff tools."}
+                                : "Update worker profile details and linked account access."}
                         </p>
                     </div>
 
@@ -99,9 +114,46 @@ export function WorkerFormDialog({ open, mode, worker, isSaving = false, onClose
                         placeholder="#0f766e"
                     />
 
-                    <div className="rounded-xl border bg-slate-50 p-4 text-sm text-slate-600">
-                        Linked login accounts and roles are managed separately. This page controls the worker profile used by schedule and job assignment.
-                    </div>
+                    {mode === "edit" ? (
+                        <div className="space-y-3 rounded-xl border bg-slate-50 p-4">
+                            <div>
+                                <div className="text-sm font-medium text-slate-700">Access role</div>
+                            </div>
+
+                            {worker?.linkedUserEmail ? (
+                                worker.role === "ADMIN" ? (
+                                    <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-800">
+                                        Admin accounts are protected here and must be managed outside the worker settings screen.
+                                    </div>
+                                ) : (
+                                    <label className="block">
+                                        <span className="text-sm font-medium text-slate-700">Role</span>
+                                        <select
+                                            value={form.role}
+                                            onChange={(e) =>
+                                                setForm((prev) => ({
+                                                    ...prev,
+                                                    role: e.target.value as "MANAGER" | "WORKER",
+                                                }))
+                                            }
+                                            className="mt-2 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-slate-500"
+                                        >
+                                            <option value="WORKER">Worker</option>
+                                            <option value="MANAGER">Manager</option>
+                                        </select>
+                                    </label>
+                                )
+                            ) : (
+                                <div className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-600">
+                                    This worker does not have a linked login account yet, so there is no app role to change.
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="rounded-xl border bg-slate-50 p-4 text-sm text-slate-600">
+                            Linked login accounts and roles can be managed after the worker is connected to a user account.
+                        </div>
+                    )}
 
                     <div className="space-y-3 rounded-xl border bg-slate-50 p-4">
                         <label className="flex items-center justify-between gap-4">
@@ -113,6 +165,12 @@ export function WorkerFormDialog({ open, mode, worker, isSaving = false, onClose
                             />
                         </label>
                     </div>
+
+                    {submitError ? (
+                        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                            {submitError}
+                        </div>
+                    ) : null}
 
                     <div className="flex justify-end gap-3 border-t pt-4">
                         <button

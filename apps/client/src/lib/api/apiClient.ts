@@ -51,7 +51,7 @@ export async function api<TResp, TBody = unknown>(
         ...cleanHeaders(opts.headers),
     };
 
-    const companyId = opts.companyId ?? getActiveCompanyId();
+    const companyId = opts.companyId === undefined ? getActiveCompanyId() : opts.companyId;
     if (companyId) headers["x-company-id"] = companyId;
 
     let body: BodyInit | undefined;

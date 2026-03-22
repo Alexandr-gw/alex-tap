@@ -80,7 +80,7 @@ export function ScheduleCard({
                 ].join(" ")}
             >
                 {formatTimeLabel(item.startAt, timezone)} - {formatTimeLabel(item.endAt, timezone)}
-                {subtitle ? ` • ${subtitle}` : ""}
+                {subtitle ? ` - ${subtitle}` : ""}
             </div>
 
             {!isTask ? (

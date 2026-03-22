@@ -3,7 +3,11 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { logout } from "@/features/auth/api/auth.api";
 
-export function LogoutButton() {
+type Props = {
+    className?: string;
+};
+
+export function LogoutButton({ className }: Props) {
     const qc = useQueryClient();
     const nav = useNavigate();
     const [loading, setLoading] = useState(false);
@@ -26,17 +30,13 @@ export function LogoutButton() {
             onClick={handleLogout}
             disabled={loading}
             className={[
-                "ml-2 inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition",
-                "border border-slate-200 bg-white text-slate-700 shadow-sm",
-                "hover:bg-slate-50 hover:text-slate-900",
-                "disabled:opacity-50 disabled:cursor-not-allowed",
+                "inline-flex h-11 min-w-[120px] items-center justify-center rounded-2xl px-4 text-sm font-semibold transition",
+                "border border-rose-200 bg-rose-50 text-rose-700 shadow-sm",
+                "hover:border-rose-300 hover:bg-rose-100 hover:text-rose-800",
+                "disabled:cursor-not-allowed disabled:opacity-50",
+                className ?? "",
             ].join(" ")}
         >
-            {/* icon */}
-            <span className="text-xs">
-        {loading ? "…" : "⎋"}
-      </span>
-
             {loading ? "Signing out..." : "Logout"}
         </button>
     );

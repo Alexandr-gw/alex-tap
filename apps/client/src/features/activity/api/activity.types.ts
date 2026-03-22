@@ -29,3 +29,4 @@ export type ActivityItem = {
 };
 
 export type JobActivityResponse = ActivityItem[];
+export type RecentActivityResponse = ActivityItem[];
