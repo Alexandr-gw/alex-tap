@@ -33,8 +33,19 @@ services:
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.3.2
+    volumes:
+      - ./apps/keycloak-theme/dist_keycloak:/opt/keycloak/providers
+      - ./apps/keycloak-theme/theme:/opt/keycloak/themes:ro
+      - ./apps/server/keycloak/generated/local:/opt/keycloak/data/import:ro
     container_name: app-keycloak
-    command: ["start-dev"]
+    command:
+      [
+        "start-dev",
+        "--import-realm",
+        "--spi-theme-static-max-age=-1",
+        "--spi-theme-cache-themes=false",
+        "--spi-theme-cache-templates=false"
+      ]
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin
