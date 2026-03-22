@@ -32,5 +32,6 @@ export declare class MeController {
         activeCompanyId: string | null;
         activeCompanyTimezone: string | null;
     }>;
+    private ensureDemoMembership;
 }
 export {};

@@ -23,11 +23,11 @@ export declare class PublicBookingController {
         companyName: string;
         services: {
             id: string;
-            slug: string | null;
+            currency: string;
             name: string;
+            slug: string | null;
             durationMins: number;
             basePriceCents: number;
-            currency: string;
         }[];
     }>;
     checkout(dto: PublicCheckoutDto): Promise<{

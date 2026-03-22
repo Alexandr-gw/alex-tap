@@ -22,7 +22,10 @@
     "prisma:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
     "db:seed": "prisma db seed",
-    "db:reset": "prisma migrate reset --force --skip-generate --skip-seed && prisma db seed"
+    "db:reset": "prisma migrate reset --force --skip-generate --skip-seed && prisma db seed",
+    "demo:reset": "npm run db:reset",
+    "keycloak:generate-realms": "node ./keycloak/generate-realms.mjs",
+    "keycloak:prepare": "npm run keycloak:generate-realms && npm --prefix ../keycloak-theme run build-keycloak-theme"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

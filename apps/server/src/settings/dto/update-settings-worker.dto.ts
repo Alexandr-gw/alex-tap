@@ -1,4 +1,4 @@
-﻿import { IsBoolean, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsBoolean, IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class UpdateSettingsWorkerDto {
     @IsOptional()
@@ -19,4 +19,9 @@ export class UpdateSettingsWorkerDto {
     @IsOptional()
     @IsBoolean()
     active?: boolean;
+
+    @IsOptional()
+    @IsString()
+    @IsIn(['MANAGER', 'WORKER'])
+    role?: 'MANAGER' | 'WORKER';
 }

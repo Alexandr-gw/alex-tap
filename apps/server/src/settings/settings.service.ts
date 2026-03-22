@@ -5,7 +5,7 @@
     Injectable,
     NotFoundException,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma, Role } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import { hasAnyRole } from '@/common/utils/roles.util';
 import { CreateSettingsWorkerDto } from './dto/create-settings-worker.dto';
@@ -147,6 +147,7 @@ export class SettingsService {
                     user: {
                         select: {
                             email: true,
+                            sub: true,
                             memberships: {
                                 where: { companyId: input.companyId },
                                 select: { role: true },
@@ -200,6 +201,7 @@ export class SettingsService {
                 user: {
                     select: {
                         email: true,
+                        sub: true,
                         memberships: {
                             where: { companyId: input.companyId },
                             select: { role: true },
@@ -227,7 +229,20 @@ export class SettingsService {
                 id: input.workerId,
                 companyId: input.companyId,
             },
-            select: { id: true },
+            select: {
+                id: true,
+                userId: true,
+                user: {
+                    select: {
+                        sub: true,
+                        memberships: {
+                            where: { companyId: input.companyId },
+                            select: { role: true },
+                            take: 1,
+                        },
+                    },
+                },
+            },
         });
 
         if (!existing) {
@@ -256,6 +271,32 @@ export class SettingsService {
             data.active = input.dto.active;
         }
 
+        if (input.dto.role !== undefined) {
+            if (!existing.userId || !existing.user) {
+                throw new BadRequestException('Only linked worker accounts can have app roles');
+            }
+
+            const currentRole = existing.user.memberships[0]?.role ?? null;
+
+            if (currentRole === Role.ADMIN) {
+                throw new ForbiddenException('Admin roles cannot be changed from worker settings');
+            }
+
+            if (existing.user.sub === input.userSub && currentRole !== input.dto.role) {
+                throw new ForbiddenException('You cannot change your own role here');
+            }
+
+            await this.prisma.membership.updateMany({
+                where: {
+                    companyId: input.companyId,
+                    userId: existing.userId,
+                },
+                data: {
+                    role: input.dto.role,
+                },
+            });
+        }
+
         const worker = await this.prisma.worker.update({
             where: { id: input.workerId },
             data,
@@ -269,6 +310,7 @@ export class SettingsService {
                 user: {
                     select: {
                         email: true,
+                        sub: true,
                         memberships: {
                             where: { companyId: input.companyId },
                             select: { role: true },
@@ -307,6 +349,7 @@ export class SettingsService {
         createdAt: Date;
         user: {
             email: string | null;
+            sub: string;
             memberships: Array<{ role: string }>;
         } | null;
     }) {

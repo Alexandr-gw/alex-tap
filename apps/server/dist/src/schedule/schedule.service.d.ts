@@ -15,16 +15,13 @@ export declare class ScheduleService {
         companyId: string;
         userSub: string | null;
     }): Promise<{
-        id: string;
-        createdAt: Date;
-        updatedAt: Date;
-        deletedAt: Date | null;
         companyId: string;
-        currency: string;
+        id: string;
+        clientId: string;
         workerId: string | null;
-        internalNotes: string | null;
         title: string | null;
         description: string | null;
+        internalNotes: string | null;
         status: import("@prisma/client").$Enums.JobStatus;
         startAt: Date;
         endAt: Date;
@@ -34,9 +31,12 @@ export declare class ScheduleService {
         totalCents: number;
         paidCents: number;
         balanceCents: number;
+        currency: string;
         source: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        deletedAt: Date | null;
         paidAt: Date | null;
-        clientId: string;
     }>;
     listCompanyWorkers(input: {
         companyId: string;
@@ -53,27 +53,19 @@ export declare class ScheduleService {
         jobId: string;
         dto: ReviewJobDto;
     }): Promise<{
-        payments: {
+        client: {
+            companyId: string;
             id: string;
+            internalNotes: string | null;
             createdAt: Date;
             updatedAt: Date;
-            companyId: string;
-            currency: string;
-            status: import("@prisma/client").$Enums.PaymentStatus;
-            jobId: string;
-            provider: import("@prisma/client").$Enums.PaymentProvider;
-            amountCents: number;
-            providerPaymentId: string | null;
-            stripeSessionId: string | null;
-            stripePaymentIntentId: string | null;
-            stripeCustomerId: string | null;
-            receiptUrl: string | null;
-            idempotencyKey: string | null;
-            metadata: Prisma.JsonValue | null;
-            raw: Prisma.JsonValue | null;
-            capturedAt: Date | null;
-            refundedAt: Date | null;
-        }[];
+            deletedAt: Date | null;
+            name: string;
+            email: string | null;
+            phone: string | null;
+            address: string | null;
+            notes: string | null;
+        };
         worker: {
             id: string;
             displayName: string;
@@ -90,36 +82,41 @@ export declare class ScheduleService {
             id: string;
             description: string;
             totalCents: number;
+            jobId: string;
             quantity: number;
             unitPriceCents: number;
             taxRateBps: number;
             serviceId: string | null;
-            jobId: string;
         })[];
-        client: {
+        payments: {
+            companyId: string;
             id: string;
-            name: string;
+            status: import("@prisma/client").$Enums.PaymentStatus;
+            currency: string;
             createdAt: Date;
             updatedAt: Date;
-            deletedAt: Date | null;
-            email: string | null;
-            companyId: string;
-            phone: string | null;
-            address: string | null;
-            notes: string | null;
-            internalNotes: string | null;
-        };
+            jobId: string;
+            metadata: Prisma.JsonValue | null;
+            idempotencyKey: string | null;
+            provider: import("@prisma/client").$Enums.PaymentProvider;
+            amountCents: number;
+            providerPaymentId: string | null;
+            stripeSessionId: string | null;
+            stripePaymentIntentId: string | null;
+            stripeCustomerId: string | null;
+            receiptUrl: string | null;
+            raw: Prisma.JsonValue | null;
+            capturedAt: Date | null;
+            refundedAt: Date | null;
+        }[];
     } & {
-        id: string;
-        createdAt: Date;
-        updatedAt: Date;
-        deletedAt: Date | null;
         companyId: string;
-        currency: string;
+        id: string;
+        clientId: string;
         workerId: string | null;
-        internalNotes: string | null;
         title: string | null;
         description: string | null;
+        internalNotes: string | null;
         status: import("@prisma/client").$Enums.JobStatus;
         startAt: Date;
         endAt: Date;
@@ -129,21 +126,21 @@ export declare class ScheduleService {
         totalCents: number;
         paidCents: number;
         balanceCents: number;
+        currency: string;
         source: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        deletedAt: Date | null;
         paidAt: Date | null;
-        clientId: string;
     }>;
     confirmJob(companyId: string, jobId: string, resolvedByUserId: string): Promise<{
-        id: string;
-        createdAt: Date;
-        updatedAt: Date;
-        deletedAt: Date | null;
         companyId: string;
-        currency: string;
+        id: string;
+        clientId: string;
         workerId: string | null;
-        internalNotes: string | null;
         title: string | null;
         description: string | null;
+        internalNotes: string | null;
         status: import("@prisma/client").$Enums.JobStatus;
         startAt: Date;
         endAt: Date;
@@ -153,9 +150,12 @@ export declare class ScheduleService {
         totalCents: number;
         paidCents: number;
         balanceCents: number;
+        currency: string;
         source: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        deletedAt: Date | null;
         paidAt: Date | null;
-        clientId: string;
     }>;
     private requireManagerActor;
 }

@@ -120,6 +120,7 @@ let SettingsService = class SettingsService {
                     user: {
                         select: {
                             email: true,
+                            sub: true,
                             memberships: {
                                 where: { companyId: input.companyId },
                                 select: { role: true },
@@ -164,6 +165,7 @@ let SettingsService = class SettingsService {
                 user: {
                     select: {
                         email: true,
+                        sub: true,
                         memberships: {
                             where: { companyId: input.companyId },
                             select: { role: true },
@@ -182,7 +184,20 @@ let SettingsService = class SettingsService {
                 id: input.workerId,
                 companyId: input.companyId,
             },
-            select: { id: true },
+            select: {
+                id: true,
+                userId: true,
+                user: {
+                    select: {
+                        sub: true,
+                        memberships: {
+                            where: { companyId: input.companyId },
+                            select: { role: true },
+                            take: 1,
+                        },
+                    },
+                },
+            },
         });
         if (!existing) {
             throw new common_1.NotFoundException('Worker not found');
@@ -204,6 +219,27 @@ let SettingsService = class SettingsService {
         if (input.dto.active !== undefined) {
             data.active = input.dto.active;
         }
+        if (input.dto.role !== undefined) {
+            if (!existing.userId || !existing.user) {
+                throw new common_1.BadRequestException('Only linked worker accounts can have app roles');
+            }
+            const currentRole = existing.user.memberships[0]?.role ?? null;
+            if (currentRole === client_1.Role.ADMIN) {
+                throw new common_1.ForbiddenException('Admin roles cannot be changed from worker settings');
+            }
+            if (existing.user.sub === input.userSub && currentRole !== input.dto.role) {
+                throw new common_1.ForbiddenException('You cannot change your own role here');
+            }
+            await this.prisma.membership.updateMany({
+                where: {
+                    companyId: input.companyId,
+                    userId: existing.userId,
+                },
+                data: {
+                    role: input.dto.role,
+                },
+            });
+        }
         const worker = await this.prisma.worker.update({
             where: { id: input.workerId },
             data,
@@ -217,6 +253,7 @@ let SettingsService = class SettingsService {
                 user: {
                     select: {
                         email: true,
+                        sub: true,
                         memberships: {
                             where: { companyId: input.companyId },
                             select: { role: true },

@@ -15,6 +15,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.MeController = void 0;
 const common_1 = require("@nestjs/common");
 const config_1 = require("@nestjs/config");
+const client_1 = require("@prisma/client");
 const jwt_auth_guard_1 = require("../common/guards/jwt-auth.guard");
 const auth_user_decorator_1 = require("../common/decorators/auth-user.decorator");
 const prisma_service_1 = require("../prisma/prisma.service");
@@ -45,6 +46,7 @@ let MeController = class MeController {
             },
             select: { id: true, sub: true, email: true, name: true },
         });
+        await this.ensureDemoMembership(user.id);
         const memberships = await this.prisma.membership.findMany({
             where: { userId: user.id },
             select: {
@@ -57,7 +59,7 @@ let MeController = class MeController {
         if (activeCompanyId) {
             const allowed = memberships.some((m) => m.companyId === activeCompanyId);
             if (!allowed) {
-                throw new common_1.ForbiddenException('Access denied for this company');
+                activeCompanyId = memberships.length === 1 ? memberships[0].companyId : null;
             }
         }
         else if (memberships.length === 1) {
@@ -77,6 +79,44 @@ let MeController = class MeController {
             activeCompanyId,
             activeCompanyTimezone: memberships.find((m) => m.companyId === activeCompanyId)?.company.timezone ?? null,
         };
+    }
+    async ensureDemoMembership(userId) {
+        const demoAutoProvisionEnabled = this.cfg.get('PUBLIC_DEMO_AUTO_PROVISION')?.toLowerCase() !== 'false';
+        const demoCompanyId = this.cfg.get('PUBLIC_DEMO_COMPANY_ID') ??
+            this.cfg.get('MANAGER_AUTO_MEMBERSHIP_COMPANY_ID');
+        if (!demoAutoProvisionEnabled || !demoCompanyId) {
+            return;
+        }
+        const existingMembership = await this.prisma.membership.findFirst({
+            where: { userId },
+            select: { companyId: true },
+        });
+        if (existingMembership) {
+            return;
+        }
+        const company = await this.prisma.company.findUnique({
+            where: { id: demoCompanyId },
+            select: { id: true },
+        });
+        if (!company) {
+            return;
+        }
+        await this.prisma.membership.upsert({
+            where: {
+                companyId_userId: {
+                    companyId: demoCompanyId,
+                    userId,
+                },
+            },
+            update: {
+                role: client_1.Role.MANAGER,
+            },
+            create: {
+                companyId: demoCompanyId,
+                userId,
+                role: client_1.Role.MANAGER,
+            },
+        });
     }
 };
 exports.MeController = MeController;

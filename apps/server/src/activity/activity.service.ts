@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { ActivityActorType, ActivityType, Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
+import { hasAnyRole } from '@/common/utils/roles.util';
 import type { ActivityItemDto, JobActivityResponseDto } from './activity.types';
 
 type DbClient = Prisma.TransactionClient | PrismaService;
@@ -221,6 +222,31 @@ export class ActivityService {
     return items.map((item) => this.mapActivityItem(item));
   }
 
+  async listRecentActivity(input: {
+    companyId: string;
+    roles: string[];
+    userSub: string | null;
+    hours: number;
+    limit: number;
+  }): Promise<JobActivityResponseDto> {
+    await this.requireManager(input.companyId, input.roles, input.userSub);
+
+    const windowStart = new Date(Date.now() - input.hours * 60 * 60 * 1000);
+
+    const items = await this.prisma.activity.findMany({
+      where: {
+        companyId: input.companyId,
+        createdAt: {
+          gte: windowStart,
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: input.limit,
+    });
+
+    return items.map((item) => this.mapActivityItem(item));
+  }
+
   private mapActivityItem(item: {
     id: string;
     type: ActivityType;
@@ -280,6 +306,34 @@ export class ActivityService {
       default:
         return 'Team member';
     }
+  }
+
+  private async requireManager(
+    companyId: string,
+    roles: string[],
+    userSub: string | null,
+  ) {
+    if (!hasAnyRole(roles, ['admin', 'manager'])) {
+      throw new ForbiddenException();
+    }
+
+    if (!userSub) {
+      throw new ForbiddenException();
+    }
+
+    const membership = await this.prisma.membership.findFirst({
+      where: {
+        companyId,
+        user: { sub: userSub },
+      },
+      select: { id: true },
+    });
+
+    if (!membership) {
+      throw new ForbiddenException();
+    }
+
+    return membership;
   }
 }
 

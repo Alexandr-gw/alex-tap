@@ -3,4 +3,5 @@ export declare class UpdateSettingsWorkerDto {
     phone?: string;
     colorTag?: string;
     active?: boolean;
+    role?: 'MANAGER' | 'WORKER';
 }

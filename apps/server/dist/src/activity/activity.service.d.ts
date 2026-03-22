@@ -20,19 +20,19 @@ export declare class ActivityService {
     private readonly prisma;
     constructor(prisma: PrismaService);
     logEvent(input: LogEventInput): Promise<{
-        id: string;
-        createdAt: Date;
         companyId: string;
+        id: string;
         clientId: string | null;
-        message: string | null;
-        jobId: string | null;
-        metadata: Prisma.JsonValue | null;
+        createdAt: Date;
         type: import("@prisma/client").$Enums.ActivityType;
         entityType: string;
         entityId: string;
+        jobId: string | null;
         actorType: import("@prisma/client").$Enums.ActivityActorType;
         actorId: string | null;
         actorLabel: string;
+        message: string | null;
+        metadata: Prisma.JsonValue | null;
     }>;
     logJobCreated(input: {
         db?: DbClient;
@@ -42,19 +42,19 @@ export declare class ActivityService {
         actorId?: string | null;
         actorLabel?: string | null;
     }): Promise<{
-        id: string;
-        createdAt: Date;
         companyId: string;
+        id: string;
         clientId: string | null;
-        message: string | null;
-        jobId: string | null;
-        metadata: Prisma.JsonValue | null;
+        createdAt: Date;
         type: import("@prisma/client").$Enums.ActivityType;
         entityType: string;
         entityId: string;
+        jobId: string | null;
         actorType: import("@prisma/client").$Enums.ActivityActorType;
         actorId: string | null;
         actorLabel: string;
+        message: string | null;
+        metadata: Prisma.JsonValue | null;
     }>;
     logJobCompleted(input: {
         db?: DbClient;
@@ -64,19 +64,19 @@ export declare class ActivityService {
         actorId?: string | null;
         actorLabel?: string | null;
     }): Promise<{
-        id: string;
-        createdAt: Date;
         companyId: string;
+        id: string;
         clientId: string | null;
-        message: string | null;
-        jobId: string | null;
-        metadata: Prisma.JsonValue | null;
+        createdAt: Date;
         type: import("@prisma/client").$Enums.ActivityType;
         entityType: string;
         entityId: string;
+        jobId: string | null;
         actorType: import("@prisma/client").$Enums.ActivityActorType;
         actorId: string | null;
         actorLabel: string;
+        message: string | null;
+        metadata: Prisma.JsonValue | null;
     }>;
     logJobCanceled(input: {
         db?: DbClient;
@@ -86,19 +86,19 @@ export declare class ActivityService {
         actorId?: string | null;
         actorLabel?: string | null;
     }): Promise<{
-        id: string;
-        createdAt: Date;
         companyId: string;
+        id: string;
         clientId: string | null;
-        message: string | null;
-        jobId: string | null;
-        metadata: Prisma.JsonValue | null;
+        createdAt: Date;
         type: import("@prisma/client").$Enums.ActivityType;
         entityType: string;
         entityId: string;
+        jobId: string | null;
         actorType: import("@prisma/client").$Enums.ActivityActorType;
         actorId: string | null;
         actorLabel: string;
+        message: string | null;
+        metadata: Prisma.JsonValue | null;
     }>;
     logClientCreated(input: {
         db?: DbClient;
@@ -108,19 +108,19 @@ export declare class ActivityService {
         actorId?: string | null;
         actorLabel?: string | null;
     }): Promise<{
-        id: string;
-        createdAt: Date;
         companyId: string;
+        id: string;
         clientId: string | null;
-        message: string | null;
-        jobId: string | null;
-        metadata: Prisma.JsonValue | null;
+        createdAt: Date;
         type: import("@prisma/client").$Enums.ActivityType;
         entityType: string;
         entityId: string;
+        jobId: string | null;
         actorType: import("@prisma/client").$Enums.ActivityActorType;
         actorId: string | null;
         actorLabel: string;
+        message: string | null;
+        metadata: Prisma.JsonValue | null;
     }>;
     logBookingSubmitted(input: {
         db?: DbClient;
@@ -130,19 +130,19 @@ export declare class ActivityService {
         actorLabel?: string | null;
         metadata?: Prisma.InputJsonValue | null;
     }): Promise<{
-        id: string;
-        createdAt: Date;
         companyId: string;
+        id: string;
         clientId: string | null;
-        message: string | null;
-        jobId: string | null;
-        metadata: Prisma.JsonValue | null;
+        createdAt: Date;
         type: import("@prisma/client").$Enums.ActivityType;
         entityType: string;
         entityId: string;
+        jobId: string | null;
         actorType: import("@prisma/client").$Enums.ActivityActorType;
         actorId: string | null;
         actorLabel: string;
+        message: string | null;
+        metadata: Prisma.JsonValue | null;
     }>;
     logPaymentSucceeded(input: {
         db?: DbClient;
@@ -154,23 +154,31 @@ export declare class ActivityService {
         actorLabel?: string | null;
         metadata?: Prisma.InputJsonValue | null;
     }): Promise<{
-        id: string;
-        createdAt: Date;
         companyId: string;
+        id: string;
         clientId: string | null;
-        message: string | null;
-        jobId: string | null;
-        metadata: Prisma.JsonValue | null;
+        createdAt: Date;
         type: import("@prisma/client").$Enums.ActivityType;
         entityType: string;
         entityId: string;
+        jobId: string | null;
         actorType: import("@prisma/client").$Enums.ActivityActorType;
         actorId: string | null;
         actorLabel: string;
+        message: string | null;
+        metadata: Prisma.JsonValue | null;
     }>;
     listJobActivity(companyId: string, jobId: string, clientId?: string | null): Promise<JobActivityResponseDto>;
+    listRecentActivity(input: {
+        companyId: string;
+        roles: string[];
+        userSub: string | null;
+        hours: number;
+        limit: number;
+    }): Promise<JobActivityResponseDto>;
     private mapActivityItem;
     private mapMetadata;
     private normalizeActorLabel;
+    private requireManager;
 }
 export {};

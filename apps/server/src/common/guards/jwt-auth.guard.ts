@@ -5,6 +5,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { createRemoteJWKSet, jwtVerify, JWTPayload, errors as joseErrors } from 'jose';
 import type { Request } from 'express';
+import { PrismaService } from '@/prisma/prisma.service';
 
 type AccessClaims = JWTPayload & {
     azp?: string;
@@ -26,7 +27,7 @@ export class JwtAuthGuard implements CanActivate {
     private readonly loginClientId: string;    // auth client id (optional)
     private readonly accessCookieName: string;
 
-    constructor(cfg: ConfigService) {
+    constructor(cfg: ConfigService, private readonly prisma: PrismaService) {
         this.issuer         = cfg.getOrThrow<string>('KEYCLOAK_ISSUER');
         this.apiAudience    = cfg.getOrThrow<string>('API_AUDIENCE');      // e.g. "api-alex-tap"
         this.loginClientId  = cfg.getOrThrow<string>('KEYCLOAK_CLIENT_ID');
@@ -85,12 +86,25 @@ export class JwtAuthGuard implements CanActivate {
                 (req as any).cookies?.['active_company_id'] ??
                 null;
 
+            let membershipRole: string | null = null;
+            if (companyId && claims.sub) {
+                const membership = await this.prisma.membership.findFirst({
+                    where: {
+                        companyId,
+                        user: { sub: claims.sub },
+                    },
+                    select: { role: true },
+                });
+
+                membershipRole = membership?.role?.toLowerCase() ?? null;
+            }
+
             // 5) Set a clean, uniform user object for the rest of the app
             (req as any).user = {
                 sub: claims.sub,
                 email: claims.email ?? null,
                 username: claims.preferred_username ?? null,
-                roles,                 // flat lowercase string[]
+                roles: membershipRole ? Array.from(new Set([...roles, membershipRole])) : roles,
                 companyId,             // may be null if you don’t pass it
                 raw: undefined,        // avoid leaking full token around
             };

@@ -36,11 +36,11 @@ export declare class PublicBookingService {
         companyName: string;
         services: {
             id: string;
-            slug: string | null;
+            currency: string;
             name: string;
+            slug: string | null;
             durationMins: number;
             basePriceCents: number;
-            currency: string;
         }[];
     }>;
     private acquireCompanyDayBookingLock;

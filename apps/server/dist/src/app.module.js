@@ -28,6 +28,7 @@ const alerts_module_1 = require("./alerts/alerts.module");
 const tasks_module_1 = require("./tasks/tasks.module");
 const clients_module_1 = require("./clients/clients.module");
 const settings_module_1 = require("./settings/settings.module");
+const activity_module_1 = require("./activity/activity.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -52,6 +53,7 @@ exports.AppModule = AppModule = __decorate([
             tasks_module_1.TasksModule,
             clients_module_1.ClientsModule,
             settings_module_1.SettingsModule,
+            activity_module_1.ActivityModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [app_service_1.AppService],

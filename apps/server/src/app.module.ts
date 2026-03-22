@@ -19,6 +19,7 @@ import {AlertsModule} from '@/alerts/alerts.module';
 import {TasksModule} from '@/tasks/tasks.module';
 import {ClientsModule} from '@/clients/clients.module';
 import {SettingsModule} from '@/settings/settings.module';
+import {ActivityModule} from '@/activity/activity.module';
 
 @Module({
     imports: [
@@ -40,6 +41,7 @@ import {SettingsModule} from '@/settings/settings.module';
         TasksModule,
         ClientsModule,
         SettingsModule,
+        ActivityModule,
     ],
     controllers: [AppController],
     providers: [AppService],

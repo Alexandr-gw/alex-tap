@@ -13,13 +13,16 @@ exports.JwtAuthGuard = void 0;
 const common_1 = require("@nestjs/common");
 const config_1 = require("@nestjs/config");
 const jose_1 = require("jose");
+const prisma_service_1 = require("../../prisma/prisma.service");
 let JwtAuthGuard = class JwtAuthGuard {
+    prisma;
     jwks;
     issuer;
     apiAudience;
     loginClientId;
     accessCookieName;
-    constructor(cfg) {
+    constructor(cfg, prisma) {
+        this.prisma = prisma;
         this.issuer = cfg.getOrThrow('KEYCLOAK_ISSUER');
         this.apiAudience = cfg.getOrThrow('API_AUDIENCE');
         this.loginClientId = cfg.getOrThrow('KEYCLOAK_CLIENT_ID');
@@ -57,11 +60,22 @@ let JwtAuthGuard = class JwtAuthGuard {
                 req.header('x-company-id') ??
                 req.cookies?.['active_company_id'] ??
                 null;
+            let membershipRole = null;
+            if (companyId && claims.sub) {
+                const membership = await this.prisma.membership.findFirst({
+                    where: {
+                        companyId,
+                        user: { sub: claims.sub },
+                    },
+                    select: { role: true },
+                });
+                membershipRole = membership?.role?.toLowerCase() ?? null;
+            }
             req.user = {
                 sub: claims.sub,
                 email: claims.email ?? null,
                 username: claims.preferred_username ?? null,
-                roles,
+                roles: membershipRole ? Array.from(new Set([...roles, membershipRole])) : roles,
                 companyId,
                 raw: undefined,
             };
@@ -81,6 +95,6 @@ let JwtAuthGuard = class JwtAuthGuard {
 exports.JwtAuthGuard = JwtAuthGuard;
 exports.JwtAuthGuard = JwtAuthGuard = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [config_1.ConfigService])
+    __metadata("design:paramtypes", [config_1.ConfigService, prisma_service_1.PrismaService])
 ], JwtAuthGuard);
 //# sourceMappingURL=jwt-auth.guard.js.map

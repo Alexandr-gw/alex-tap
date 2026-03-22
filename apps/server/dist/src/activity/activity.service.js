@@ -13,6 +13,7 @@ exports.ActivityService = void 0;
 const common_1 = require("@nestjs/common");
 const client_1 = require("@prisma/client");
 const prisma_service_1 = require("../prisma/prisma.service");
+const roles_util_1 = require("../common/utils/roles.util");
 let ActivityService = class ActivityService {
     prisma;
     constructor(prisma) {
@@ -151,6 +152,21 @@ let ActivityService = class ActivityService {
         });
         return items.map((item) => this.mapActivityItem(item));
     }
+    async listRecentActivity(input) {
+        await this.requireManager(input.companyId, input.roles, input.userSub);
+        const windowStart = new Date(Date.now() - input.hours * 60 * 60 * 1000);
+        const items = await this.prisma.activity.findMany({
+            where: {
+                companyId: input.companyId,
+                createdAt: {
+                    gte: windowStart,
+                },
+            },
+            orderBy: { createdAt: 'desc' },
+            take: input.limit,
+        });
+        return items.map((item) => this.mapActivityItem(item));
+    }
     mapActivityItem(item) {
         return {
             id: item.id,
@@ -190,6 +206,25 @@ let ActivityService = class ActivityService {
             default:
                 return 'Team member';
         }
+    }
+    async requireManager(companyId, roles, userSub) {
+        if (!(0, roles_util_1.hasAnyRole)(roles, ['admin', 'manager'])) {
+            throw new common_1.ForbiddenException();
+        }
+        if (!userSub) {
+            throw new common_1.ForbiddenException();
+        }
+        const membership = await this.prisma.membership.findFirst({
+            where: {
+                companyId,
+                user: { sub: userSub },
+            },
+            select: { id: true },
+        });
+        if (!membership) {
+            throw new common_1.ForbiddenException();
+        }
+        return membership;
     }
 };
 exports.ActivityService = ActivityService;

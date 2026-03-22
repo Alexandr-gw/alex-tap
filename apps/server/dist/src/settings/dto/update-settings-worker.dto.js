@@ -16,6 +16,7 @@ class UpdateSettingsWorkerDto {
     phone;
     colorTag;
     active;
+    role;
 }
 exports.UpdateSettingsWorkerDto = UpdateSettingsWorkerDto;
 __decorate([
@@ -41,4 +42,10 @@ __decorate([
     (0, class_validator_1.IsBoolean)(),
     __metadata("design:type", Boolean)
 ], UpdateSettingsWorkerDto.prototype, "active", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsIn)(['MANAGER', 'WORKER']),
+    __metadata("design:type", String)
+], UpdateSettingsWorkerDto.prototype, "role", void 0);
 //# sourceMappingURL=update-settings-worker.dto.js.map
