@@ -30,6 +30,34 @@ services:
       timeout: 3s
       retries: 10
 
+  notification-worker:
+    build:
+      context: .
+      dockerfile: ./apps/server/Dockerfile.worker
+    container_name: app-notification-worker
+    restart: unless-stopped
+    env_file:
+      - ./apps/server/.env
+    environment:
+      DATABASE_URL: postgres://app:app@db:5432/app?schema=public
+      REDIS_URL: redis://redis:6379
+      SMTP_HOST: mailhog
+      SMTP_PORT: 1025
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_ISSUER: http://keycloak:8080/realms/alex-tap-local
+      KEYCLOAK_AUTHORIZATION_ENDPOINT: http://keycloak:8080/realms/alex-tap-local/protocol/openid-connect/auth
+      KEYCLOAK_TOKEN_ENDPOINT: http://keycloak:8080/realms/alex-tap-local/protocol/openid-connect/token
+      KEYCLOAK_LOGOUT_ENDPOINT: http://keycloak:8080/realms/alex-tap-local/protocol/openid-connect/logout
+      KEYCLOAK_JWKS_URI: http://keycloak:8080/realms/alex-tap-local/protocol/openid-connect/certs
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mailhog:
+        condition: service_started
+    command: ["npm", "run", "start:worker"]
+
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.3.2

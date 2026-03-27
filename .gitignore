@@ -43,8 +43,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-#keycloak-realm
-/keycloak
-
 .idea
 .vscode
