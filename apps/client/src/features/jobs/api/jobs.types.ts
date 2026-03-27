@@ -88,6 +88,37 @@ export type JobDetailsDto = {
     updatedAt: string;
 };
 
+export type JobListItemDto = {
+    id: string;
+    workerId?: string | null;
+    workerIds: string[];
+    startAt: string;
+    endAt: string;
+    status: JobStatus;
+    location?: string | null;
+    clientName?: string | null;
+    clientEmail?: string | null;
+    totalCents: number;
+    currency?: string | null;
+    serviceName?: string | null;
+    workerName?: string | null;
+    colorTag?: string | null;
+};
+
+export type ListJobsParams = {
+    status?: JobStatus;
+    from?: string;
+    to?: string;
+    take?: number;
+    cursor?: string;
+};
+
+export type JobsListResponse = {
+    items: JobListItemDto[];
+    nextCursor: string | null;
+    timezone: string | null;
+};
+
 export type UpdateJobInput = {
     title?: string;
     description?: string;

@@ -4,6 +4,7 @@ import {
     completeJob,
     createJobComment,
     getJob,
+    listJobs,
     reopenJob,
     requestJobPayment,
     updateInternalNotes,
@@ -13,12 +14,21 @@ import type {
     CreateJobCommentInput,
     JobCommentDto,
     JobDetailsDto,
+    JobsListResponse,
+    ListJobsParams,
     RequestJobPaymentInput,
     UpdateInternalNotesInput,
     UpdateJobInput,
 } from '../api/jobs.types';
 import { activityQueryKeys } from '@/features/activity/hooks/activity.queries';
 import { notificationQueryKeys } from '@/features/notifications/hooks/notifications.queries';
+
+export function useJobs(params: ListJobsParams = {}) {
+    return useQuery<JobsListResponse>({
+        queryKey: ['jobs', params],
+        queryFn: () => listJobs(params),
+    });
+}
 
 export function useJob(jobId: string | undefined) {
     return useQuery({
@@ -36,6 +46,7 @@ export function useUpdateJob(jobId: string) {
         onSuccess: (data) => {
             qc.setQueryData(['job', jobId], data);
             qc.invalidateQueries({ queryKey: ['jobs'] });
+            qc.invalidateQueries({ queryKey: activityQueryKeys.all });
         },
     });
 }
@@ -68,6 +79,7 @@ export function useCompleteJob(jobId: string) {
         onSuccess: (data) => {
             qc.setQueryData(['job', jobId], data);
             qc.invalidateQueries({ queryKey: ['jobs'] });
+            qc.invalidateQueries({ queryKey: activityQueryKeys.all });
             qc.invalidateQueries({ queryKey: activityQueryKeys.job(jobId) });
             qc.invalidateQueries({ queryKey: notificationQueryKeys.job(jobId) });
         },
@@ -82,6 +94,7 @@ export function useCancelJob(jobId: string) {
         onSuccess: (data) => {
             qc.setQueryData(['job', jobId], data);
             qc.invalidateQueries({ queryKey: ['jobs'] });
+            qc.invalidateQueries({ queryKey: activityQueryKeys.all });
             qc.invalidateQueries({ queryKey: activityQueryKeys.job(jobId) });
             qc.invalidateQueries({ queryKey: notificationQueryKeys.job(jobId) });
         },
@@ -96,6 +109,7 @@ export function useReopenJob(jobId: string) {
         onSuccess: (data) => {
             qc.setQueryData(['job', jobId], data);
             qc.invalidateQueries({ queryKey: ['jobs'] });
+            qc.invalidateQueries({ queryKey: activityQueryKeys.all });
             qc.invalidateQueries({ queryKey: notificationQueryKeys.job(jobId) });
         },
     });

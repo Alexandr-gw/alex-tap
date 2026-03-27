@@ -6,9 +6,10 @@ const links = [{ to: ".", label: "Dashboard" }];
 
 const adminLinks = [
     { to: "schedule", label: "Schedule" },
+    { to: "new-bookings", label: "New bookings" },
+    { to: "jobs", label: "Jobs" },
     { to: "clients", label: "Clients" },
     { to: "settings", label: "Settings" },
-    { to: "jobs", label: "Jobs" },
     { to: "services", label: "Services" },
 ];
 

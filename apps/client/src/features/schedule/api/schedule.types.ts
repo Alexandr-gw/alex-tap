@@ -13,6 +13,8 @@ export type JobDto = {
     endAt: string;
     clientName?: string;
     clientEmail?: string | null;
+    totalCents: number;
+    currency?: string | null;
     serviceName?: string;
     workerName?: string | null;
     colorTag?: string | null;

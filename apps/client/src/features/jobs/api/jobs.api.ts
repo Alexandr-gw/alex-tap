@@ -2,6 +2,8 @@ import { api } from '@/lib/api/apiClient';
 import type {
     CreateJobCommentInput,
     JobDetailsDto,
+    JobsListResponse,
+    ListJobsParams,
     RequestJobPaymentInput,
     RequestJobPaymentResponse,
     UpdateInternalNotesInput,
@@ -9,6 +11,33 @@ import type {
 } from './jobs.types';
 
 const JOBS_BASE = '/api/v1/jobs';
+
+export function listJobs(params: ListJobsParams = {}) {
+    const searchParams = new URLSearchParams();
+
+    if (params.status) {
+        searchParams.set('status', params.status);
+    }
+
+    if (params.from) {
+        searchParams.set('from', params.from);
+    }
+
+    if (params.to) {
+        searchParams.set('to', params.to);
+    }
+
+    if (params.take) {
+        searchParams.set('take', String(params.take));
+    }
+
+    if (params.cursor) {
+        searchParams.set('cursor', params.cursor);
+    }
+
+    const query = searchParams.toString();
+    return api<JobsListResponse>(query ? `${JOBS_BASE}?${query}` : JOBS_BASE);
+}
 
 export function getJob(jobId: string) {
     return api<JobDetailsDto>(`${JOBS_BASE}/${jobId}`);

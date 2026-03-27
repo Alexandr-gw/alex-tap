@@ -1,15 +1,19 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
     createCheckout,
+    getPublicBookingDetails,
     getPublicSlotsDay,
     listPublicServices,
+    requestPublicBookingChanges,
 } from "@/features/booking/api/booking.api";
 import type {
     CreateCheckoutInput,
     CreateCheckoutResponse,
     PaymentSessionSummaryDto,
+    PublicBookingDetailsDto,
     PublicServicesListDto,
     PublicSlotsResponse,
+    RequestBookingChangesResponse,
 } from "@/features/booking/api/booking.types";
 import {
     getPrivateCheckoutSessionSummary,
@@ -63,6 +67,24 @@ export function usePublicSlotsDay(
 export function useCreateCheckout() {
     return useMutation<CreateCheckoutResponse, Error, CreateCheckoutInput>({
         mutationFn: (input) => createCheckout(input),
+    });
+}
+
+export function usePublicBookingDetails(accessToken: string | null) {
+    return useQuery<PublicBookingDetailsDto>({
+        queryKey: ["publicBookingDetails", accessToken],
+        enabled: !!accessToken,
+        queryFn: () => {
+            if (!accessToken) throw new Error("Missing access token");
+            return getPublicBookingDetails(accessToken);
+        },
+        retry: false,
+    });
+}
+
+export function useRequestPublicBookingChanges() {
+    return useMutation<RequestBookingChangesResponse, Error, string>({
+        mutationFn: (accessToken) => requestPublicBookingChanges(accessToken),
     });
 }
 

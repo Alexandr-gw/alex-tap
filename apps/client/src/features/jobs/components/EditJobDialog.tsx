@@ -4,6 +4,8 @@ import { toast } from 'sonner';
 import { getWorkers } from '@/features/schedule/api/schedule.api';
 import { isApiError } from '@/lib/api/apiError';
 import { JobNotificationsCard } from '@/features/notifications/components/JobNotificationsCard';
+import { useJobNotifications } from '@/features/notifications/hooks/notifications.queries';
+import { getJobNotificationHint } from '@/features/notifications/utils/notificationSummary';
 import { JobWorkerPicker } from './JobWorkerPicker';
 import type { JobDetailsDto } from '../api/jobs.types';
 import { useUpdateJob } from '../hooks/jobs.queries';
@@ -27,6 +29,7 @@ function centsToDollars(cents: number) {
 
 export function EditJobDialog({ job, open, onClose }: Props) {
     const mutation = useUpdateJob(job?.id ?? '');
+    const notificationsQuery = useJobNotifications(open ? (job?.id ?? undefined) : undefined);
     const workersQuery = useQuery({
         queryKey: ['workers'],
         queryFn: getWorkers,
@@ -62,6 +65,14 @@ export function EditJobDialog({ job, open, onClose }: Props) {
             return sum + item.quantity * item.unitPriceCents;
         }, 0);
     }, [lineItems]);
+    const isPendingReview = job?.status === 'PENDING_CONFIRMATION';
+    const notificationHint = useMemo(
+        () =>
+            notificationsQuery.data
+                ? getJobNotificationHint(notificationsQuery.data)
+                : null,
+        [notificationsQuery.data],
+    );
 
     if (!open || !job) return null;
 
@@ -100,6 +111,18 @@ export function EditJobDialog({ job, open, onClose }: Props) {
                             <h2 className="text-2xl font-semibold text-slate-900">
                                 {job.title}
                             </h2>
+                            {notificationHint ? (
+                                <p
+                                    className={[
+                                        "mt-2 text-xs font-medium",
+                                        notificationHint.tone === "warning"
+                                            ? "text-amber-700"
+                                            : "text-sky-700",
+                                    ].join(" ")}
+                                >
+                                    {notificationHint.label}: {notificationHint.title}
+                                </p>
+                            ) : null}
                         </div>
 
                         <button
@@ -149,6 +172,7 @@ export function EditJobDialog({ job, open, onClose }: Props) {
                                 <input
                                     type="checkbox"
                                     checked={completed}
+                                    disabled={isPendingReview}
                                     onChange={(e) => setCompleted(e.target.checked)}
                                     className="h-5 w-5 rounded border-slate-300"
                                 />
@@ -156,6 +180,11 @@ export function EditJobDialog({ job, open, onClose }: Props) {
                                     Completed
                                 </span>
                             </label>
+                            {isPendingReview ? (
+                                <p className="text-xs text-amber-700">
+                                    Public bookings must be reviewed and confirmed in New bookings before they can be completed.
+                                </p>
+                            ) : null}
                         </div>
 
                         <div className="space-y-4">

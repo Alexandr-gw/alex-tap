@@ -1,4 +1,7 @@
-import { WORKER_SIDEBAR_WIDTH, type ScheduleWorkerRow } from "../utils/schedule-row-layout";
+import {
+    FIXED_WORKER_SIDEBAR_STYLE,
+    type ScheduleWorkerRow,
+} from "../utils/schedule-row-layout";
 
 type Props = {
     rows: ScheduleWorkerRow[];
@@ -8,7 +11,7 @@ export function WorkerSidebar({ rows }: Props) {
     return (
         <aside
             className="shrink-0 border-r border-slate-200 bg-white"
-            style={{ width: `${WORKER_SIDEBAR_WIDTH}px` }}
+            style={FIXED_WORKER_SIDEBAR_STYLE}
         >
             {rows.map((row, rowIndex) => (
                 <div

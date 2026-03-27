@@ -49,6 +49,7 @@ export function BookingWizardPage() {
                     <StepConfirm
                         wizard={wizard}
                         companyId={companyId}
+                        companySlug={companySlug}
                         serviceId={serviceId}
                         selectedService={selectedService}
                     />

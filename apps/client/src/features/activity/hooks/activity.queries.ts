@@ -31,5 +31,6 @@ export function useRecentActivity(hours = 24, enabled = true) {
         enabled,
         staleTime: 60_000,
         refetchOnWindowFocus: false,
+        refetchInterval: enabled ? 60_000 : false,
     });
 }

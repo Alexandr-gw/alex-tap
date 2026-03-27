@@ -11,7 +11,27 @@ import {
     minutesToLeft,
 } from "./schedule-time";
 
-export const WORKER_SIDEBAR_WIDTH = 240;
+export const WORKER_SIDEBAR_WIDTH = 216;
+export const SCHEDULE_HEADER_HORIZONTAL_PADDING = 12;
+export const SCHEDULE_HEADER_COLUMN_GAP = 12;
+export const SCHEDULE_HEADER_SPACER_WIDTH =
+    WORKER_SIDEBAR_WIDTH -
+    SCHEDULE_HEADER_HORIZONTAL_PADDING -
+    SCHEDULE_HEADER_COLUMN_GAP;
+
+export const FIXED_WORKER_SIDEBAR_STYLE = {
+    width: `${WORKER_SIDEBAR_WIDTH}px`,
+    minWidth: `${WORKER_SIDEBAR_WIDTH}px`,
+    maxWidth: `${WORKER_SIDEBAR_WIDTH}px`,
+    flexBasis: `${WORKER_SIDEBAR_WIDTH}px`,
+} as const;
+
+export const FIXED_SCHEDULE_HEADER_SPACER_STYLE = {
+    width: `${SCHEDULE_HEADER_SPACER_WIDTH}px`,
+    minWidth: `${SCHEDULE_HEADER_SPACER_WIDTH}px`,
+    maxWidth: `${SCHEDULE_HEADER_SPACER_WIDTH}px`,
+    flexBasis: `${SCHEDULE_HEADER_SPACER_WIDTH}px`,
+} as const;
 
 const CARD_HEIGHT = 44;
 const ROW_VERTICAL_PADDING = 6;

@@ -5,6 +5,8 @@ import type {
     CreateCheckoutInput,
     CreateCheckoutResponse,
     PublicServicesListDto,
+    PublicBookingDetailsDto,
+    RequestBookingChangesResponse,
 } from "./booking.types";
 
 export function getPublicService(companySlug: string, serviceSlug: string) {
@@ -30,6 +32,23 @@ export function createCheckout(input: CreateCheckoutInput) {
         body: input,
         companyId: null,
     });
+}
+
+export function getPublicBookingDetails(accessToken: string) {
+    return api<PublicBookingDetailsDto>(
+        `/api/v1/public/bookings/access/${accessToken}`,
+        { companyId: null },
+    );
+}
+
+export function requestPublicBookingChanges(accessToken: string) {
+    return api<RequestBookingChangesResponse>(
+        `/api/v1/public/bookings/access/${accessToken}/request-changes`,
+        {
+            method: "POST",
+            companyId: null,
+        },
+    );
 }
 
 export type GetPublicSlotsDayParams = {

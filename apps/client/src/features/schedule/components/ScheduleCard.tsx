@@ -1,4 +1,3 @@
-import { JobNotificationIndicator } from "@/features/notifications/components/JobNotificationIndicator";
 import type { ScheduleRowItem } from "../types/schedule-ui.types";
 import { formatTimeLabel } from "../utils/schedule-time";
 
@@ -82,13 +81,6 @@ export function ScheduleCard({
                 {formatTimeLabel(item.startAt, timezone)} - {formatTimeLabel(item.endAt, timezone)}
                 {subtitle ? ` - ${subtitle}` : ""}
             </div>
-
-            {!isTask ? (
-                <div className="absolute right-3 top-2">
-                    <JobNotificationIndicator jobId={item.entityId} />
-                </div>
-            ) : null}
-
             {isSyncing ? (
                 <div className="absolute inset-y-0 right-3 flex items-center">
                     <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-emerald-600" />

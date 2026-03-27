@@ -22,7 +22,8 @@ function formatDateTime(value?: string | null) {
 export function JobPreviewCard({ job, onEdit, onClose }: Props) {
     const firstVisit = job.visits[0];
     const completeMutation = useCompleteJob(job.id);
-    const canComplete = !job.completed && job.status !== 'CANCELED';
+    const isPendingReview = job.status === 'PENDING_CONFIRMATION';
+    const canComplete = !job.completed && job.status !== 'CANCELED' && !isPendingReview;
 
     async function handleComplete() {
         await completeMutation.mutateAsync();
@@ -107,6 +108,14 @@ export function JobPreviewCard({ job, onEdit, onClose }: Props) {
                     >
                         {completeMutation.isPending ? 'Completing...' : 'Complete'}
                     </button>
+                ) : isPendingReview ? (
+                    <Link
+                        to={`/app/new-bookings?jobId=${job.id}`}
+                        onClick={onClose}
+                        className="rounded-xl bg-slate-900 px-4 py-2.5 text-center font-medium text-white hover:bg-slate-800"
+                    >
+                        Review booking
+                    </Link>
                 ) : null}
 
                 <button

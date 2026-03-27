@@ -7,7 +7,7 @@ export const bookingInitialDraft: BookingDraft = {
 
     range: { from: null, to: null },
     slot: null,
-    client: { name: "" },
+    client: { name: "", addressLine1: "", addressLine2: "" },
 
     status: "active",
     updatedAt: undefined,

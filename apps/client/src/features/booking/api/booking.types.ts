@@ -34,6 +34,8 @@ export type CreateCheckoutInput = {
     companyId: string;
     serviceId: string;
     start: string;
+    successUrl?: string;
+    cancelUrl?: string;
     client: {
         name: string;
         email?: string;
@@ -46,6 +48,7 @@ export type CreateCheckoutInput = {
 export type CreateCheckoutResponse = {
     checkoutUrl: string; // Stripe hosted checkout URL
     sessionId?: string;
+    bookingAccessPath?: string;
 };
 
 export type PaymentSessionSummaryDto = {
@@ -60,4 +63,35 @@ export type PaymentSessionSummaryDto = {
     receiptUrl?: string | null;
     paymentId?: string;
     customerMessage?: string | null;
+    bookingAccessPath?: string | null;
+};
+
+export type PublicBookingDetailsDto = {
+    booking: {
+        token: string;
+        companyName: string;
+        jobId: string;
+        status: string;
+        title: string;
+        serviceName: string;
+        scheduledAt: string;
+        endsAt: string;
+        timezone: string;
+        clientName: string;
+        clientEmail: string | null;
+        location: string | null;
+        workerName: string | null;
+        totalCents: number;
+        currency: string;
+        notes: string | null;
+        paymentStatus: string | null;
+        paymentAmountCents: number | null;
+        requestChangesEmail: string | null;
+        expiresAt: string | null;
+    };
+};
+
+export type RequestBookingChangesResponse = {
+    ok: true;
+    message: string;
 };

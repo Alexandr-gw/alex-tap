@@ -217,7 +217,13 @@ export function AlertsInboxPage() {
     const markRead = useMarkAlertRead();
     const reviewJob = useReviewJob();
 
-    const selectedAlertId = searchParams.get("alertId") ?? alertsQuery.data?.items[0]?.id ?? "";
+    const selectedJobId = searchParams.get("jobId");
+    const matchedAlertId =
+        selectedJobId
+            ? alertsQuery.data?.items.find((item) => item.job.id === selectedJobId)?.id
+            : null;
+    const selectedAlertId =
+        searchParams.get("alertId") ?? matchedAlertId ?? alertsQuery.data?.items[0]?.id ?? "";
     const detailQuery = useAlertDetail(selectedAlertId, !!selectedAlertId);
 
     const [workerId, setWorkerId] = useState("");
@@ -225,10 +231,15 @@ export function AlertsInboxPage() {
 
     useEffect(() => {
         const firstId = alertsQuery.data?.items[0]?.id;
-        if (!searchParams.get("alertId") && firstId) {
-            setSearchParams({ alertId: firstId }, { replace: true });
+        const nextAlertId = matchedAlertId ?? firstId;
+
+        if (!searchParams.get("alertId") && nextAlertId) {
+            const nextParams = new URLSearchParams(searchParams);
+            nextParams.set("alertId", nextAlertId);
+            nextParams.delete("jobId");
+            setSearchParams(nextParams, { replace: true });
         }
-    }, [alertsQuery.data?.items, searchParams, setSearchParams]);
+    }, [alertsQuery.data?.items, matchedAlertId, searchParams, setSearchParams]);
 
     useEffect(() => {
         const detail = detailQuery.data;
@@ -295,7 +306,7 @@ export function AlertsInboxPage() {
                         alertsQuery.data.items.map((alert) => (
                             <Link
                                 key={alert.id}
-                                to={`/app/jobs?alertId=${alert.id}`}
+                                to={`/app/new-bookings?alertId=${alert.id}`}
                                 className="block"
                             >
                                 <AlertRow alert={alert} selected={alert.id === selectedAlertId} />

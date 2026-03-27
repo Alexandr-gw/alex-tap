@@ -5,6 +5,15 @@ export function bookingDraftKey(companySlug: string) {
     return `bookingDraft:${companySlug}`;
 }
 
+export function companySlugFromBookingDraftKey(key: string | null | undefined) {
+    if (!key?.startsWith("bookingDraft:")) {
+        return null;
+    }
+
+    const slug = key.slice("bookingDraft:".length).trim();
+    return slug || null;
+}
+
 const TTL_MS = 24 * 60 * 60 * 1000;
 const LAST_BOOKING_DRAFT_KEY = "bookingDraft:lastActiveKey";
 
@@ -91,6 +100,10 @@ export function getLastActiveBookingDraftKey() {
     } catch {
         return null;
     }
+}
+
+export function getLastActiveBookingSlug() {
+    return companySlugFromBookingDraftKey(getLastActiveBookingDraftKey());
 }
 
 export function clearLastActiveBookingDraftKey() {

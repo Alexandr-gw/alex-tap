@@ -4,6 +4,7 @@ import { useCheckoutSessionSummary } from "@/features/booking/hooks/payment.quer
 import { useMe } from "@/features/me/hooks/useMe";
 import {
     clearLastActiveBookingDraftKey,
+    getLastActiveBookingSlug,
     getLastActiveBookingDraftKey,
     markBookingDraftCompleted,
 } from "@/features/booking/draft.utils";
@@ -58,6 +59,8 @@ function getMessageTextClasses(status: string) {
 export function BookingSuccessPage() {
     const [sp] = useSearchParams();
     const sessionId = sp.get("session_id");
+    const companySlug = sp.get("companySlug") ?? getLastActiveBookingSlug();
+    const bookingPath = companySlug ? `/book/${companySlug}` : "/";
 
     const { data, isLoading, isError, error } = useCheckoutSessionSummary(
         sessionId,
@@ -174,9 +177,17 @@ export function BookingSuccessPage() {
                     <div className="mt-6 flex flex-wrap gap-3">
                         {data.status === "SUCCEEDED" ? (
                             <>
+                                {data.bookingAccessPath ? (
+                                    <Link
+                                        to={data.bookingAccessPath}
+                                        className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white"
+                                    >
+                                        View booking details
+                                    </Link>
+                                ) : null}
                                 <Link
                                     to="/"
-                                    className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white"
+                                    className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium"
                                 >
                                     Go home
                                 </Link>
@@ -192,7 +203,7 @@ export function BookingSuccessPage() {
                             </>
                         ) : (
                             <Link
-                                to="/"
+                                to={bookingPath}
                                 className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium"
                             >
                                 Back

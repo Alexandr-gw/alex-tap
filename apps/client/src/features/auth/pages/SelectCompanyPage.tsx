@@ -1,6 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useMe } from "@/features/me/hooks/useMe";
+import { setActiveCompanyId } from "@/lib/session/company";
 
 export default function SelectCompanyPage() {
     const { data, isLoading } = useMe();
@@ -24,7 +25,7 @@ export default function SelectCompanyPage() {
                             key={m.companyId}
                             className="flex items-center justify-between rounded-xl border p-4 text-left hover:bg-muted"
                             onClick={async () => {
-                                localStorage.setItem("activeCompanyId", m.companyId);
+                                setActiveCompanyId(m.companyId);
                                 await qc.invalidateQueries({ queryKey: ["me"] });
                                 nav("/app", { replace: true });
                             }}

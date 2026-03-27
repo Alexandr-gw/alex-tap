@@ -2,14 +2,25 @@ import { useCreateCheckout } from "../hooks/booking.queries";
 import type { PublicServiceListItemDto } from "../api/booking.types";
 import { setLastActiveBookingDraftKey } from "../draft.utils";
 
+function buildClientAddress(client: {
+    addressLine1?: string;
+    addressLine2?: string;
+}) {
+    return [client.addressLine1?.trim(), client.addressLine2?.trim()]
+        .filter(Boolean)
+        .join(", ");
+}
+
 export function StepConfirm({
                                 wizard,
                                 companyId,
+                                companySlug,
                                 serviceId,
                                 selectedService,
                             }: {
     wizard: any;
     companyId: string;
+    companySlug: string;
     serviceId: string;
     selectedService: PublicServiceListItemDto;
 }) {
@@ -17,18 +28,24 @@ export function StepConfirm({
 
     const slot = wizard.draft.slot;
     const client = wizard.draft.client;
+    const clientAddress = buildClientAddress(client);
 
     async function onPayAndBook() {
         if (!slot) return;
+
+        const origin = window.location.origin;
 
         const res = await checkoutM.mutateAsync({
             companyId,
             serviceId,
             start: slot.start,
+            successUrl: `${origin}/payment/success?companySlug=${encodeURIComponent(companySlug)}&session_id={CHECKOUT_SESSION_ID}`,
+            cancelUrl: `${origin}/payment/cancel?companySlug=${encodeURIComponent(companySlug)}&session_id={CHECKOUT_SESSION_ID}`,
             client: {
                 name: client.name,
                 email: client.email || undefined,
                 phone: client.phone || undefined,
+                address: clientAddress || undefined,
                 notes: client.notes || undefined,
             },
         });
@@ -51,6 +68,9 @@ export function StepConfirm({
                 </div>
 
                 <div className="text-sm text-slate-700">Client: {client.name}</div>
+                {clientAddress ? (
+                    <div className="text-sm text-slate-700">Address: {clientAddress}</div>
+                ) : null}
             </div>
 
             {checkoutM.isError ? (

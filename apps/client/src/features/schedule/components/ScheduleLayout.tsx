@@ -3,7 +3,6 @@ import { EditJobDialog } from "@/features/jobs/components/EditJobDialog";
 import { JobPreviewCard } from "@/features/jobs/components/JobPreviewCard";
 import { useJob } from "@/features/jobs/hooks/jobs.queries";
 import { useNavigate } from "react-router-dom";
-import { JobNotificationIndicator } from "@/features/notifications/components/JobNotificationIndicator";
 import { TaskFormModal } from "@/features/tasks/components/TaskFormModal";
 import type { TaskCustomerOption, TaskDto } from "@/features/tasks/api/tasks.types";
 import type { JobDto, WorkerDto } from "../api/schedule.types";
@@ -15,7 +14,7 @@ import { ScheduleGrid } from "./ScheduleGrid";
 import { CreateItemPopover } from "./CreateItemPopover";
 import { formatMinutesLabel, getMinutesFromIso } from "../utils/schedule-time";
 import {
-    WORKER_SIDEBAR_WIDTH,
+    FIXED_SCHEDULE_HEADER_SPACER_STYLE,
     buildScheduleWorkerRows,
 } from "../utils/schedule-row-layout";
 import { useScheduleInteractions } from "../hooks/useScheduleInteractions";
@@ -84,17 +83,24 @@ export function ScheduleLayout({
     const [createMenu, setCreateMenu] = useState<CreateMenuState>(null);
     const [taskModal, setTaskModal] = useState<TaskModalState>(null);
     const [editJobOpen, setEditJobOpen] = useState(false);
+    const visibleJobs = useMemo(
+        () => jobs.filter((job) => job.status !== "CANCELED"),
+        [jobs],
+    );
 
     const jobsQueryKey = ["jobs", date] as const;
     const tasksQueryKey = ["tasks", { from: `${date}T00:00:00`, to: `${date}T23:59:59` }] as const;
-    const unassignedJobs = useMemo(() => jobs.filter((job) => job.workerIds.length === 0), [jobs]);
+    const unassignedJobs = useMemo(
+        () => visibleJobs.filter((job) => job.workerIds.length === 0),
+        [visibleJobs],
+    );
     const unassignedTasks = useMemo(
         () => tasks.filter((task) => task.assigneeIds.length === 0),
         [tasks],
     );
     const rows = useMemo(
-        () => buildScheduleWorkerRows(workers, jobs, tasks, timezone),
-        [workers, jobs, tasks, timezone],
+        () => buildScheduleWorkerRows(workers, visibleJobs, tasks, timezone),
+        [workers, visibleJobs, tasks, timezone],
     );
     const workerOptions = useMemo(
         () => workers.map((worker) => ({ id: worker.id, name: worker.name })),
@@ -225,7 +231,7 @@ export function ScheduleLayout({
                 <div className="flex items-center gap-3 border-b border-slate-200 bg-slate-50 px-3 py-2">
                     <div
                         className="shrink-0 rounded-xl border border-slate-200 bg-white"
-                        style={{ width: `${WORKER_SIDEBAR_WIDTH}px`, height: "34px" }}
+                        style={{ ...FIXED_SCHEDULE_HEADER_SPACER_STYLE, height: "34px" }}
                     />
                     <TimeHeader scrollLeft={scrollLeft} />
                 </div>
@@ -299,15 +305,12 @@ export function ScheduleLayout({
                                         onClick={() => selectUnassignedJob(job)}
                                         className="w-full rounded-xl border border-slate-200 p-3 text-left hover:bg-slate-50"
                                     >
-                                        <div className="flex items-start justify-between gap-3">
                                             <div className="text-sm font-medium text-slate-900">
                                                 {job.serviceName ?? "Job"}
                                             </div>
-                                            <JobNotificationIndicator jobId={job.id} />
-                                        </div>
-                                        <div className="mt-1 text-xs text-slate-600">
-                                            {job.clientName ?? "No client"}
-                                        </div>
+                                            <div className="mt-1 text-xs text-slate-600">
+                                                {job.clientName ?? "No client"}
+                                            </div>
                                     </button>
                                 ))}
                             </div>
@@ -394,4 +397,3 @@ export function ScheduleLayout({
         </div>
     );
 }
-

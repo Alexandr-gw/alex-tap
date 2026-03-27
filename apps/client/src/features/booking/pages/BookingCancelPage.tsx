@@ -1,8 +1,11 @@
 import { Link, useSearchParams } from "react-router-dom";
+import { getLastActiveBookingSlug } from "@/features/booking/draft.utils";
 
 export function BookingCancelPage() {
     const [sp] = useSearchParams();
     const sessionId = sp.get("session_id");
+    const companySlug = sp.get("companySlug") ?? getLastActiveBookingSlug();
+    const bookingPath = companySlug ? `/book/${companySlug}` : "/";
 
     return (
         <div className="mx-auto max-w-2xl p-6">
@@ -26,7 +29,7 @@ export function BookingCancelPage() {
                     Go home
                 </Link>
                 <Link
-                    to="/book"
+                    to={bookingPath}
                     className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium"
                 >
                     Back to booking

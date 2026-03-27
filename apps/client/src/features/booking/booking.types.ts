@@ -15,6 +15,8 @@ export type BookingClientDraft = {
     name: string;
     email?: string;
     phone?: string;
+    addressLine1?: string;
+    addressLine2?: string;
     notes?: string;
 };
 

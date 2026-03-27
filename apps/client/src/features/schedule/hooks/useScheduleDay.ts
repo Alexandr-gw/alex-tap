@@ -23,7 +23,7 @@ export function useScheduleDay(date: string) {
 
     return {
         workers: workersQuery.data ?? [],
-        jobs: jobsQuery.data?.items ?? [],
+        jobs: (jobsQuery.data?.items ?? []).filter((job) => job.status !== "CANCELED"),
         tasks: tasksQuery.data?.items ?? [],
         timezone: jobsQuery.data?.timezone ?? null,
         isLoading: workersQuery.isLoading || jobsQuery.isLoading || tasksQuery.isLoading,

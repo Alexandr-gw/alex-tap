@@ -18,10 +18,12 @@ import { AlertsInboxPage } from '@/features/alerts/pages/AlertsInboxPage';
 import { BookingWizardPage } from '@/features/booking/pages/BookingWizardPage';
 import { BookingSuccessPage } from '@/features/booking/pages/BookingSuccessPage';
 import { BookingCancelPage } from '@/features/booking/pages/BookingCancelPage';
+import { BookingAccessPage } from '@/features/booking/pages/BookingAccessPage';
 
 import { SchedulePage } from '@/features/schedule/pages/SchedulePage';
 import { CreateJobPage } from '@/features/jobs/pages/CreateJobPage.tsx';
 import { JobDetailsPage } from '@/features/jobs/pages/JobDetailsPage';
+import { JobsPage } from '@/features/jobs/pages/JobsPage';
 import { ClientsPage } from '@/features/clients/pages/ClientsPage';
 import { ClientDetailsPage } from '@/features/clients/pages/ClientDetailsPage';
 import { SettingsHomePage } from '@/features/settings/pages/SettingsHomePage';
@@ -35,6 +37,7 @@ function Placeholder({ title }: { title: string }) {
 export const router = createBrowserRouter([
     { path: '/', element: <LandingPage /> },
     { path: '/book/:companySlug', element: <BookingWizardPage /> },
+    { path: '/booking/:accessToken', element: <BookingAccessPage /> },
     { path: '/payment/success', element: <BookingSuccessPage /> },
     { path: '/payment/cancel', element: <BookingCancelPage /> },
     { path: '/login', element: <LoginPage /> },
@@ -63,7 +66,8 @@ export const router = createBrowserRouter([
                                     { path: 'settings', element: <SettingsHomePage /> },
                                     { path: 'settings/company', element: <CompanySettingsPage /> },
                                     { path: 'settings/workers', element: <WorkersSettingsPage /> },
-                                    { path: 'jobs', element: <AlertsInboxPage /> },
+                                    { path: 'jobs', element: <JobsPage /> },
+                                    { path: 'new-bookings', element: <AlertsInboxPage /> },
                                     { path: 'services', element: <ServicesAdminPage /> },
                                     { path: 'users', element: <Placeholder title="Users" /> },
                                 ],
