@@ -177,6 +177,8 @@ let JobsService = class JobsService {
                     location: job.location ?? job.client.address,
                     clientName: job.client.name,
                     clientEmail: job.client.email,
+                    totalCents: job.totalCents,
+                    currency: job.currency,
                     serviceName: job.title ??
                         job.lineItems[0]?.service?.name ??
                         job.lineItems[0]?.description ??
@@ -225,6 +227,8 @@ let JobsService = class JobsService {
             const existingWorkerIds = this.getAssignedWorkerIds(existing);
             const workerIdsChanged = nextWorkerIds !== null &&
                 !this.areStringArraysEqual(existingWorkerIds, nextWorkerIds);
+            const statusChanged = typeof input.dto.status !== 'undefined' &&
+                input.dto.status !== existing.status;
             if (typeof input.dto.title === 'string') {
                 data.title = this.normalizeOptionalText(input.dto.title);
                 auditChanges.title = input.dto.title;
@@ -276,8 +280,11 @@ let JobsService = class JobsService {
                     })),
                 });
             }
-            if (typeof input.dto.status !== 'undefined' &&
-                input.dto.status !== existing.status) {
+            if (statusChanged) {
+                if (existing.status === client_1.JobStatus.PENDING_CONFIRMATION &&
+                    input.dto.status === client_1.JobStatus.DONE) {
+                    throw new common_1.BadRequestException('Pending bookings must be confirmed before they can be completed');
+                }
                 data.status = input.dto.status;
                 auditChanges.status = { from: existing.status, to: input.dto.status };
             }
@@ -302,6 +309,44 @@ let JobsService = class JobsService {
                     },
                 });
             }
+            if (statusChanged) {
+                const actorLabel = access.userName || 'Team member';
+                const jobLabel = this.getActivityJobLabel(existing);
+                if (input.dto.status === client_1.JobStatus.DONE) {
+                    await this.activity.logJobCompleted({
+                        db: tx,
+                        companyId: input.companyId,
+                        jobId: existing.id,
+                        clientId: existing.client.id,
+                        actorId: access.userId,
+                        actorLabel,
+                        message: `${jobLabel} was completed by ${actorLabel} for ${existing.client.name}.`,
+                        metadata: {
+                            clientName: existing.client.name,
+                            jobTitle: jobLabel,
+                        },
+                    });
+                }
+                if (input.dto.status === client_1.JobStatus.CANCELED ||
+                    input.dto.status === client_1.JobStatus.NO_SHOW) {
+                    await this.activity.logJobCanceled({
+                        db: tx,
+                        companyId: input.companyId,
+                        jobId: existing.id,
+                        clientId: existing.client.id,
+                        actorId: access.userId,
+                        actorLabel,
+                        message: input.dto.status === client_1.JobStatus.NO_SHOW
+                            ? `${existing.client.name} was marked as a no-show for ${jobLabel}.`
+                            : `${jobLabel} was canceled for ${existing.client.name}.`,
+                        metadata: {
+                            clientName: existing.client.name,
+                            jobTitle: jobLabel,
+                            status: input.dto.status,
+                        },
+                    });
+                }
+            }
             return this.findDetailedJobOrThrow(tx, input.companyId, existing.id);
         });
         if (typeof input.dto.status !== 'undefined') {
@@ -313,6 +358,9 @@ let JobsService = class JobsService {
         const access = await this.resolveAccess(input.companyId, input.roles, input.userSub);
         const job = await this.findDetailedJobOrThrow(this.prisma, input.companyId, input.id);
         this.assertCanAccessJob(job, access);
+        if (job.status === client_1.JobStatus.PENDING_CONFIRMATION) {
+            throw new common_1.BadRequestException('Pending bookings must be confirmed before they can be completed');
+        }
         const updated = await this.prisma.$transaction(async (tx) => {
             await tx.job.update({
                 where: { id: input.id },
@@ -335,6 +383,11 @@ let JobsService = class JobsService {
                 clientId: job.client.id,
                 actorId: access.userId,
                 actorLabel: access.userName,
+                message: `${this.getActivityJobLabel(job)} was completed by ${access.userName || 'Team member'} for ${job.client.name}.`,
+                metadata: {
+                    clientName: job.client.name,
+                    jobTitle: this.getActivityJobLabel(job),
+                },
             });
             return this.findDetailedJobOrThrow(tx, input.companyId, input.id);
         });
@@ -368,6 +421,12 @@ let JobsService = class JobsService {
                 clientId: job.client.id,
                 actorId: access.userId,
                 actorLabel: access.userName,
+                message: `${this.getActivityJobLabel(job)} was canceled for ${job.client.name}.`,
+                metadata: {
+                    clientName: job.client.name,
+                    jobTitle: this.getActivityJobLabel(job),
+                    status: client_1.JobStatus.CANCELED,
+                },
             });
             return this.findDetailedJobOrThrow(tx, input.companyId, input.id);
         });
@@ -637,6 +696,11 @@ let JobsService = class JobsService {
                 clientId,
                 actorId: access.userId,
                 actorLabel: access.userName,
+                message: `${created.title || normalizedLineItems[0]?.name || 'Job'} was scheduled for ${input.dto.client?.name ?? 'this client'}.`,
+                metadata: {
+                    clientName: input.dto.client?.name ?? null,
+                    jobTitle: created.title || normalizedLineItems[0]?.name || 'Job',
+                },
             });
             if (input.idempotencyKey) {
                 await tx.idempotencyKey.update({
@@ -769,6 +833,11 @@ let JobsService = class JobsService {
                 clientId,
                 actorId: actorUserId,
                 actorLabel: actorUserLabel,
+                message: `${service.name} was scheduled for ${input.dto.client?.name ?? 'this client'}.`,
+                metadata: {
+                    clientName: input.dto.client?.name ?? null,
+                    jobTitle: service.name,
+                },
             });
             if (input.idempotencyKey) {
                 await tx.idempotencyKey.update({
@@ -780,6 +849,11 @@ let JobsService = class JobsService {
         }, { isolationLevel: 'Serializable' });
         await this.notifications.scheduleJobReminders(input.companyId, job.id);
         return this.mapJobDetails(job);
+    }
+    getActivityJobLabel(job) {
+        return (job.title?.trim() ||
+            job.lineItems?.find((item) => item.description?.trim())?.description?.trim() ||
+            'Job');
     }
     async resolveAccess(companyId, roles, userSub) {
         if (!userSub)

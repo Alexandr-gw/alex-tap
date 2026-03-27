@@ -12,10 +12,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ServicesService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../../prisma/prisma.service");
+const audit_log_service_1 = require("../../observability/audit-log.service");
 let ServicesService = class ServicesService {
     prisma;
-    constructor(prisma) {
+    audit;
+    constructor(prisma, audit) {
         this.prisma = prisma;
+        this.audit = audit;
     }
     async list(companyId, params) {
         const page = Math.max(1, Number(params.page ?? 1));
@@ -54,14 +57,18 @@ let ServicesService = class ServicesService {
         };
         try {
             const created = await this.prisma.service.create({ data });
-            await this.prisma.auditLog.create({
-                data: {
-                    companyId,
-                    actorUserId: userId,
-                    entityType: 'service',
-                    entityId: created.id,
-                    action: 'create',
-                    changes: created,
+            await this.audit.record({
+                companyId,
+                actorUserId: userId,
+                entityType: 'service',
+                entityId: created.id,
+                action: 'SERVICE_CREATED',
+                changes: {
+                    name: created.name,
+                    active: created.active,
+                    basePriceCents: created.basePriceCents,
+                    durationMins: created.durationMins,
+                    currency: created.currency,
                 },
             });
             return created;
@@ -87,14 +94,27 @@ let ServicesService = class ServicesService {
         };
         try {
             const updated = await this.prisma.service.update({ where: { id }, data: updateData });
-            await this.prisma.auditLog.create({
-                data: {
-                    companyId,
-                    actorUserId: userId,
-                    entityType: 'service',
-                    entityId: id,
-                    action: 'update',
-                    changes: { before: existing, after: updated },
+            await this.audit.record({
+                companyId,
+                actorUserId: userId,
+                entityType: 'service',
+                entityId: id,
+                action: 'SERVICE_UPDATED',
+                changes: {
+                    before: {
+                        name: existing.name,
+                        active: existing.active,
+                        basePriceCents: existing.basePriceCents,
+                        durationMins: existing.durationMins,
+                        currency: existing.currency,
+                    },
+                    after: {
+                        name: updated.name,
+                        active: updated.active,
+                        basePriceCents: updated.basePriceCents,
+                        durationMins: updated.durationMins,
+                        currency: updated.currency,
+                    },
                 },
             });
             return updated;
@@ -151,6 +171,7 @@ let ServicesService = class ServicesService {
 exports.ServicesService = ServicesService;
 exports.ServicesService = ServicesService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        audit_log_service_1.AuditLogService])
 ], ServicesService);
 //# sourceMappingURL=services.service.js.map

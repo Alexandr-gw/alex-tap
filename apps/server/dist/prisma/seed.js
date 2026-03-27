@@ -256,6 +256,9 @@ function addDays(date, days) {
 function addMinutes(date, minutes) {
     return new Date(date.getTime() + minutes * 60 * 1000);
 }
+function minDate(left, right) {
+    return left.getTime() <= right.getTime() ? left : right;
+}
 function setTime(date, hour, minute = 0) {
     const next = new Date(date);
     next.setHours(hour, minute, 0, 0);
@@ -594,7 +597,14 @@ async function main() {
     const ensuredManagerMembership = managerMembership;
     const ensuredManagerUser = managerUser;
     const seededJobs = [];
+    const seededTasks = [];
     let jobSequence = 1;
+    let rollingRecentSeedOffsetMinutes = 45;
+    function nextRecentSeedEventTime() {
+        const next = addMinutes(now, -rollingRecentSeedOffsetMinutes);
+        rollingRecentSeedOffsetMinutes += 45;
+        return next;
+    }
     async function createJobSeed(params) {
         const lineItems = [params.primaryService, params.secondaryService].filter((service) => Boolean(service));
         const subtotalCents = lineItems.reduce((total, service) => total + service.basePriceCents, 0);
@@ -611,7 +621,7 @@ async function main() {
         }));
         const endAt = addMinutes(params.startAt, lineItems.reduce((total, service) => total + service.durationMins, 0));
         const assignedWorkers = [params.worker, params.secondaryWorker].filter((worker) => Boolean(worker));
-        const createdAt = params.startAt < now ? addDays(params.startAt, -4) : addDays(params.startAt, -6);
+        const createdAt = params.startAt < now ? addDays(params.startAt, -4) : nextRecentSeedEventTime();
         const job = await prisma.job.create({
             data: {
                 companyId: company.id,
@@ -832,6 +842,23 @@ async function main() {
             await prisma.activity.create({
                 data: {
                     companyId: company.id,
+                    type: client_1.ActivityType.INVOICE_SENT,
+                    entityType: "Invoice",
+                    entityId: `invoice-${job.id}`,
+                    jobId: job.id,
+                    clientId: params.client.id,
+                    actorType: client_1.ActivityActorType.SYSTEM,
+                    actorLabel: "Billing automation",
+                    message: `Invoice was sent to ${params.client.name} for ${params.primaryService.name}.`,
+                    metadata: {
+                        totalCents
+                    },
+                    createdAt: addMinutes(endAt, 40)
+                }
+            });
+            await prisma.activity.create({
+                data: {
+                    companyId: company.id,
                     type: client_1.ActivityType.PAYMENT_SUCCEEDED,
                     entityType: "Payment",
                     entityId: job.id,
@@ -865,7 +892,7 @@ async function main() {
                     metadata: {
                         status: params.status
                     },
-                    createdAt: addMinutes(params.startAt, -30)
+                    createdAt: addMinutes(createdAt, 15)
                 }
             });
         }
@@ -1008,18 +1035,19 @@ async function main() {
         const startsBeforeJob = job.startAt < now ? addDays(job.startAt, -1) : addMinutes(job.startAt, -120);
         const taskStart = job.startAt < now ? setTime(startsBeforeJob, 14) : startsBeforeJob;
         const taskEnd = addMinutes(taskStart, 45);
-        await prisma.task.create({
+        const subject = pick([
+            "Confirm materials and access notes",
+            "Load specialist tools and supplies",
+            "Send arrival ETA and parking details",
+            "Review before-and-after photo checklist",
+            "Prepare follow-up estimate options",
+            "Verify invoice and completion summary"
+        ], index);
+        const task = await prisma.task.create({
             data: {
                 companyId: company.id,
                 customerId: job.client.id,
-                subject: pick([
-                    "Confirm materials and access notes",
-                    "Load specialist tools and supplies",
-                    "Send arrival ETA and parking details",
-                    "Review before-and-after photo checklist",
-                    "Prepare follow-up estimate options",
-                    "Verify invoice and completion summary"
-                ], index),
+                subject,
                 description: `Support task for ${job.trade.replace(/-/g, " ")} work at ${job.client.name}.`,
                 startAt: taskStart,
                 endAt: taskEnd,
@@ -1034,8 +1062,192 @@ async function main() {
                 }
             }
         });
+        seededTasks.push({
+            id: task.id,
+            subject,
+            client: job.client,
+            worker: job.worker,
+            startAt: taskStart,
+            endAt: taskEnd
+        });
+        await prisma.activity.create({
+            data: {
+                companyId: company.id,
+                type: client_1.ActivityType.TASK_CREATED,
+                entityType: "Task",
+                entityId: task.id,
+                clientId: job.client.id,
+                actorType: client_1.ActivityActorType.USER,
+                actorId: ensuredManagerUser.id,
+                actorLabel: "Mina Manager",
+                message: `${subject} task was created for ${job.client.name}.`,
+                metadata: {
+                    taskSubject: subject,
+                    worker: job.worker.displayName
+                },
+                createdAt: addDays(taskStart, -1)
+            }
+        });
+        if (job.startAt < now) {
+            await prisma.activity.create({
+                data: {
+                    companyId: company.id,
+                    type: client_1.ActivityType.TASK_COMPLETED,
+                    entityType: "Task",
+                    entityId: task.id,
+                    clientId: job.client.id,
+                    actorType: client_1.ActivityActorType.USER,
+                    actorId: ensuredManagerUser.id,
+                    actorLabel: job.worker.displayName,
+                    message: `${subject} task was completed by ${job.worker.displayName}.`,
+                    metadata: {
+                        taskSubject: subject
+                    },
+                    createdAt: addMinutes(taskEnd, 15)
+                }
+            });
+        }
     }
-    console.log(`Seed complete: ${clients.length} clients, ${services.length} services, ${workers.length} workers, ${seededJobs.length} jobs.`);
+    const futureJobs = seededJobs.filter(job => job.startAt >= today);
+    const taskSubjects = [
+        "Check customer access notes",
+        "Prepare estimate summary",
+        "Stage tools and materials",
+        "Send reminder and ETA",
+        "Verify invoice details"
+    ];
+    for (let dayOffset = 0; dayOffset < 90; dayOffset += 1) {
+        const activityDate = addDays(today, dayOffset);
+        const job = pick(futureJobs.length ? futureJobs : seededJobs, dayOffset);
+        const taskSubject = pick(taskSubjects, dayOffset);
+        const taskStart = dayOffset === 0 ? addMinutes(now, -75) : setTime(activityDate, 11 + (dayOffset % 2), 15);
+        const taskEnd = addMinutes(taskStart, 40);
+        const dailyTask = await prisma.task.create({
+            data: {
+                companyId: company.id,
+                customerId: job.client.id,
+                subject: taskSubject,
+                description: `Daily demo task for ${job.client.name}.`,
+                startAt: taskStart,
+                endAt: taskEnd,
+                completed: dayOffset === 0,
+                createdAt: dayOffset === 0 ? addMinutes(now, -95) : addDays(taskStart, -1),
+                assignments: {
+                    create: [
+                        {
+                            workerId: job.worker.id
+                        }
+                    ]
+                }
+            }
+        });
+        seededTasks.push({
+            id: dailyTask.id,
+            subject: taskSubject,
+            client: job.client,
+            worker: job.worker,
+            startAt: taskStart,
+            endAt: taskEnd
+        });
+        const activityBase = addMinutes(now, -(dayOffset * 75 + 160));
+        const activityTimes = [
+            activityBase,
+            addMinutes(activityBase, 20),
+            addMinutes(activityBase, 60),
+            addMinutes(activityBase, 105),
+            minDate(addMinutes(activityBase, 135), now)
+        ];
+        await prisma.activity.create({
+            data: {
+                companyId: company.id,
+                type: client_1.ActivityType.BOOKING_SUBMITTED,
+                entityType: "Job",
+                entityId: job.id,
+                jobId: job.id,
+                clientId: job.client.id,
+                actorType: client_1.ActivityActorType.PUBLIC,
+                actorLabel: job.client.name,
+                message: `${job.client.name} submitted a booking request for ${job.trade.replace(/-/g, " ")} service.`,
+                metadata: {
+                    source: "public",
+                    clientName: job.client.name
+                },
+                createdAt: activityTimes[0]
+            }
+        });
+        await prisma.activity.create({
+            data: {
+                companyId: company.id,
+                type: client_1.ActivityType.JOB_CREATED,
+                entityType: "Job",
+                entityId: job.id,
+                jobId: job.id,
+                clientId: job.client.id,
+                actorType: client_1.ActivityActorType.USER,
+                actorId: ensuredManagerUser.id,
+                actorLabel: "Mina Manager",
+                message: `${job.trade.replace(/-/g, " ")} job was scheduled for ${job.client.name}.`,
+                metadata: {
+                    worker: job.worker.displayName
+                },
+                createdAt: activityTimes[1]
+            }
+        });
+        await prisma.activity.create({
+            data: {
+                companyId: company.id,
+                type: client_1.ActivityType.TASK_CREATED,
+                entityType: "Task",
+                entityId: dailyTask.id,
+                clientId: job.client.id,
+                actorType: client_1.ActivityActorType.USER,
+                actorId: ensuredManagerUser.id,
+                actorLabel: "Mina Manager",
+                message: `${taskSubject} task was created for ${job.client.name}.`,
+                metadata: {
+                    taskSubject,
+                    worker: job.worker.displayName
+                },
+                createdAt: activityTimes[2]
+            }
+        });
+        await prisma.activity.create({
+            data: {
+                companyId: company.id,
+                type: client_1.ActivityType.JOB_COMPLETED,
+                entityType: "Job",
+                entityId: job.id,
+                jobId: job.id,
+                clientId: job.client.id,
+                actorType: client_1.ActivityActorType.USER,
+                actorId: ensuredManagerUser.id,
+                actorLabel: job.worker.displayName,
+                message: `${job.trade.replace(/-/g, " ")} job was completed by ${job.worker.displayName} for ${job.client.name}.`,
+                metadata: {
+                    worker: job.worker.displayName
+                },
+                createdAt: activityTimes[3]
+            }
+        });
+        await prisma.activity.create({
+            data: {
+                companyId: company.id,
+                type: client_1.ActivityType.INVOICE_SENT,
+                entityType: "Invoice",
+                entityId: `invoice-daily-${dayOffset}-${job.id}`,
+                jobId: job.id,
+                clientId: job.client.id,
+                actorType: client_1.ActivityActorType.SYSTEM,
+                actorLabel: "Billing automation",
+                message: `Invoice was sent to ${job.client.name} for the ${job.trade.replace(/-/g, " ")} visit.`,
+                metadata: {
+                    totalCents: job.totalCents
+                },
+                createdAt: activityTimes[4]
+            }
+        });
+    }
+    console.log(`Seed complete: ${clients.length} clients, ${services.length} services, ${workers.length} workers, ${seededJobs.length} jobs, ${seededTasks.length} tasks.`);
 }
 main()
     .catch(error => {

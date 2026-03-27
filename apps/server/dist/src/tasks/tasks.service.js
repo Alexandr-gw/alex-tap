@@ -11,12 +11,15 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TasksService = void 0;
 const common_1 = require("@nestjs/common");
+const activity_service_1 = require("../activity/activity.service");
 const roles_util_1 = require("../common/utils/roles.util");
 const prisma_service_1 = require("../prisma/prisma.service");
 let TasksService = class TasksService {
     prisma;
-    constructor(prisma) {
+    activity;
+    constructor(prisma, activity) {
         this.prisma = prisma;
+        this.activity = activity;
     }
     async list(input) {
         const access = await this.resolveAccess(input.companyId, input.roles, input.userSub);
@@ -89,6 +92,7 @@ let TasksService = class TasksService {
     }
     async create(input) {
         await this.requireManager(input.companyId, input.roles, input.userSub);
+        const actorLabel = await this.resolveActorLabel(input.userSub);
         const range = this.parseRange(input.dto.startAt, input.dto.endAt);
         const customerId = await this.validateCustomerId(input.companyId, input.dto.customerId);
         const assigneeIds = await this.validateAssigneeIds(input.companyId, input.dto.assigneeIds ?? []);
@@ -112,12 +116,25 @@ let TasksService = class TasksService {
                     })),
                 });
             }
+            await this.activity.logTaskCreated({
+                db: tx,
+                companyId: input.companyId,
+                taskId: created.id,
+                clientId: customerId,
+                actorLabel,
+                message: `${created.subject} task was created by ${actorLabel}.`,
+                metadata: {
+                    customerId,
+                    subject: created.subject,
+                },
+            });
             return this.findTaskOrThrow(tx, input.companyId, created.id);
         });
         return this.mapTask(task);
     }
     async update(input) {
         await this.requireManager(input.companyId, input.roles, input.userSub);
+        const actorLabel = await this.resolveActorLabel(input.userSub);
         const existing = await this.findTaskOrThrow(this.prisma, input.companyId, input.taskId);
         const data = {};
         if (typeof input.dto.subject === 'string') {
@@ -158,6 +175,20 @@ let TasksService = class TasksService {
                         })),
                     });
                 }
+            }
+            if (!existing.completed && input.dto.completed === true) {
+                await this.activity.logTaskCompleted({
+                    db: tx,
+                    companyId: input.companyId,
+                    taskId: input.taskId,
+                    clientId: existing.customerId,
+                    actorLabel,
+                    message: `${existing.subject} was completed by ${actorLabel}.`,
+                    metadata: {
+                        customerId: existing.customerId,
+                        subject: existing.subject,
+                    },
+                });
             }
             return this.findTaskOrThrow(tx, input.companyId, input.taskId);
         });
@@ -288,6 +319,16 @@ let TasksService = class TasksService {
             throw new common_1.ForbiddenException();
         return access;
     }
+    async resolveActorLabel(userSub) {
+        if (!userSub) {
+            return 'Team member';
+        }
+        const user = await this.prisma.user.findUnique({
+            where: { sub: userSub },
+            select: { name: true, email: true },
+        });
+        return user?.name?.trim() || user?.email?.trim() || 'Team member';
+    }
     async resolveAccess(companyId, roles, userSub) {
         if ((0, roles_util_1.hasAnyRole)(roles, ['admin', 'manager'])) {
             return { isManager: true, workerId: null };
@@ -311,6 +352,7 @@ let TasksService = class TasksService {
 exports.TasksService = TasksService;
 exports.TasksService = TasksService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        activity_service_1.ActivityService])
 ], TasksService);
 //# sourceMappingURL=tasks.service.js.map

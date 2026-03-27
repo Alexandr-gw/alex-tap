@@ -41,6 +41,8 @@ export declare class ActivityService {
         clientId?: string | null;
         actorId?: string | null;
         actorLabel?: string | null;
+        message?: string | null;
+        metadata?: Prisma.InputJsonValue | null;
     }): Promise<{
         companyId: string;
         id: string;
@@ -63,6 +65,8 @@ export declare class ActivityService {
         clientId?: string | null;
         actorId?: string | null;
         actorLabel?: string | null;
+        message?: string | null;
+        metadata?: Prisma.InputJsonValue | null;
     }): Promise<{
         companyId: string;
         id: string;
@@ -85,6 +89,32 @@ export declare class ActivityService {
         clientId?: string | null;
         actorId?: string | null;
         actorLabel?: string | null;
+        message?: string | null;
+        metadata?: Prisma.InputJsonValue | null;
+    }): Promise<{
+        companyId: string;
+        id: string;
+        clientId: string | null;
+        createdAt: Date;
+        type: import("@prisma/client").$Enums.ActivityType;
+        entityType: string;
+        entityId: string;
+        jobId: string | null;
+        actorType: import("@prisma/client").$Enums.ActivityActorType;
+        actorId: string | null;
+        actorLabel: string;
+        message: string | null;
+        metadata: Prisma.JsonValue | null;
+    }>;
+    logJobRescheduled(input: {
+        db?: DbClient;
+        companyId: string;
+        jobId: string;
+        clientId?: string | null;
+        actorId?: string | null;
+        actorLabel?: string | null;
+        message?: string | null;
+        metadata?: Prisma.InputJsonValue | null;
     }): Promise<{
         companyId: string;
         id: string;
@@ -107,6 +137,8 @@ export declare class ActivityService {
         actorType?: ActivityActorType;
         actorId?: string | null;
         actorLabel?: string | null;
+        message?: string | null;
+        metadata?: Prisma.InputJsonValue | null;
     }): Promise<{
         companyId: string;
         id: string;
@@ -128,6 +160,7 @@ export declare class ActivityService {
         jobId: string;
         clientId?: string | null;
         actorLabel?: string | null;
+        message?: string | null;
         metadata?: Prisma.InputJsonValue | null;
     }): Promise<{
         companyId: string;
@@ -152,6 +185,81 @@ export declare class ActivityService {
         clientId?: string | null;
         actorType?: ActivityActorType;
         actorLabel?: string | null;
+        message?: string | null;
+        metadata?: Prisma.InputJsonValue | null;
+    }): Promise<{
+        companyId: string;
+        id: string;
+        clientId: string | null;
+        createdAt: Date;
+        type: import("@prisma/client").$Enums.ActivityType;
+        entityType: string;
+        entityId: string;
+        jobId: string | null;
+        actorType: import("@prisma/client").$Enums.ActivityActorType;
+        actorId: string | null;
+        actorLabel: string;
+        message: string | null;
+        metadata: Prisma.JsonValue | null;
+    }>;
+    logInvoiceSent(input: {
+        db?: DbClient;
+        companyId: string;
+        entityId: string;
+        jobId?: string | null;
+        clientId?: string | null;
+        actorType?: ActivityActorType;
+        actorId?: string | null;
+        actorLabel?: string | null;
+        message?: string | null;
+        metadata?: Prisma.InputJsonValue | null;
+    }): Promise<{
+        companyId: string;
+        id: string;
+        clientId: string | null;
+        createdAt: Date;
+        type: import("@prisma/client").$Enums.ActivityType;
+        entityType: string;
+        entityId: string;
+        jobId: string | null;
+        actorType: import("@prisma/client").$Enums.ActivityActorType;
+        actorId: string | null;
+        actorLabel: string;
+        message: string | null;
+        metadata: Prisma.JsonValue | null;
+    }>;
+    logTaskCreated(input: {
+        db?: DbClient;
+        companyId: string;
+        taskId: string;
+        clientId?: string | null;
+        actorId?: string | null;
+        actorLabel?: string | null;
+        message?: string | null;
+        metadata?: Prisma.InputJsonValue | null;
+    }): Promise<{
+        companyId: string;
+        id: string;
+        clientId: string | null;
+        createdAt: Date;
+        type: import("@prisma/client").$Enums.ActivityType;
+        entityType: string;
+        entityId: string;
+        jobId: string | null;
+        actorType: import("@prisma/client").$Enums.ActivityActorType;
+        actorId: string | null;
+        actorLabel: string;
+        message: string | null;
+        metadata: Prisma.JsonValue | null;
+    }>;
+    logTaskCompleted(input: {
+        db?: DbClient;
+        companyId: string;
+        taskId: string;
+        clientId?: string | null;
+        actorId?: string | null;
+        actorLabel?: string | null;
+        message?: string | null;
         metadata?: Prisma.InputJsonValue | null;
     }): Promise<{
         companyId: string;
@@ -178,6 +286,8 @@ export declare class ActivityService {
     }): Promise<JobActivityResponseDto>;
     private mapActivityItem;
     private mapMetadata;
+    private resolveResponseType;
+    private withActivityType;
     private normalizeActorLabel;
     private requireManager;
 }

@@ -13,6 +13,7 @@ import { ListClientsDto } from './dto/list-clients.dto';
 import { UpdateClientDto } from './dto/update-client.dto';
 import { NotificationService } from '@/notifications/notification.service';
 import { ActivityService } from '@/activity/activity.service';
+import { AuditLogService } from '@/observability/audit-log.service';
 
 @Injectable()
 export class ClientsService {
@@ -20,6 +21,7 @@ export class ClientsService {
         private readonly prisma: PrismaService,
         private readonly notifications: NotificationService,
         private readonly activity: ActivityService,
+        private readonly audit: AuditLogService,
     ) {}
 
     async list(input: {
@@ -284,6 +286,20 @@ export class ClientsService {
             },
         });
 
+        await this.audit.record({
+            companyId: input.companyId,
+            actorUserId: actor.userId,
+            entityType: 'client',
+            entityId: client.id,
+            action: 'CLIENT_CREATED',
+            changes: {
+                name: client.name,
+                email: client.email,
+                phone: client.phone,
+                address: client.address,
+            },
+        });
+
         await this.activity.logClientCreated({
             companyId: input.companyId,
             clientId: client.id,
@@ -306,7 +322,7 @@ export class ClientsService {
         clientId: string;
         dto: UpdateClientDto;
     }) {
-        await this.requireManager(input.companyId, input.roles, input.userSub);
+        const actor = await this.requireManager(input.companyId, input.roles, input.userSub);
 
         const existing = await this.prisma.clientProfile.findFirst({
             where: {
@@ -314,7 +330,14 @@ export class ClientsService {
                 companyId: input.companyId,
                 deletedAt: null,
             },
-            select: { id: true },
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                phone: true,
+                address: true,
+                internalNotes: true,
+            },
         });
 
         if (!existing) {
@@ -367,6 +390,30 @@ export class ClientsService {
         await this.prisma.clientProfile.update({
             where: { id: input.clientId },
             data,
+        });
+
+        await this.audit.record({
+            companyId: input.companyId,
+            actorUserId: actor.userId,
+            entityType: 'client',
+            entityId: input.clientId,
+            action: 'CLIENT_UPDATED',
+            changes: {
+                before: {
+                    name: existing.name,
+                    email: existing.email,
+                    phone: existing.phone,
+                    address: existing.address,
+                    internalNotes: existing.internalNotes,
+                },
+                requestedChanges: {
+                    name: data.name ?? undefined,
+                    email: data.email ?? undefined,
+                    phone: data.phone ?? undefined,
+                    address: data.address ?? undefined,
+                    internalNotes: data.internalNotes ?? undefined,
+                },
+            },
         });
 
         return this.getOne({

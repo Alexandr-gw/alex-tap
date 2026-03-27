@@ -260,6 +260,8 @@ export class JobsService {
           location: job.location ?? job.client.address,
           clientName: job.client.name,
           clientEmail: job.client.email,
+          totalCents: job.totalCents,
+          currency: job.currency,
           serviceName:
             job.title ??
             job.lineItems[0]?.service?.name ??
@@ -390,6 +392,9 @@ export class JobsService {
       const workerIdsChanged =
         nextWorkerIds !== null &&
         !this.areStringArraysEqual(existingWorkerIds, nextWorkerIds);
+      const statusChanged =
+        typeof input.dto.status !== 'undefined' &&
+        input.dto.status !== existing.status;
 
       if (typeof input.dto.title === 'string') {
         data.title = this.normalizeOptionalText(input.dto.title);
@@ -449,10 +454,16 @@ export class JobsService {
         });
       }
 
-      if (
-        typeof input.dto.status !== 'undefined' &&
-        input.dto.status !== existing.status
-      ) {
+      if (statusChanged) {
+        if (
+          existing.status === JobStatus.PENDING_CONFIRMATION &&
+          input.dto.status === JobStatus.DONE
+        ) {
+          throw new BadRequestException(
+            'Pending bookings must be confirmed before they can be completed',
+          );
+        }
+
         data.status = input.dto.status;
         auditChanges.status = { from: existing.status, to: input.dto.status };
       }
@@ -479,6 +490,50 @@ export class JobsService {
             changes: auditChanges as Prisma.InputJsonValue,
           },
         });
+      }
+
+      if (statusChanged) {
+        const actorLabel = access.userName || 'Team member';
+        const jobLabel = this.getActivityJobLabel(existing);
+
+        if (input.dto.status === JobStatus.DONE) {
+          await this.activity.logJobCompleted({
+            db: tx,
+            companyId: input.companyId,
+            jobId: existing.id,
+            clientId: existing.client.id,
+            actorId: access.userId,
+            actorLabel,
+            message: `${jobLabel} was completed by ${actorLabel} for ${existing.client.name}.`,
+            metadata: {
+              clientName: existing.client.name,
+              jobTitle: jobLabel,
+            },
+          });
+        }
+
+        if (
+          input.dto.status === JobStatus.CANCELED ||
+          input.dto.status === JobStatus.NO_SHOW
+        ) {
+          await this.activity.logJobCanceled({
+            db: tx,
+            companyId: input.companyId,
+            jobId: existing.id,
+            clientId: existing.client.id,
+            actorId: access.userId,
+            actorLabel,
+            message:
+              input.dto.status === JobStatus.NO_SHOW
+                ? `${existing.client.name} was marked as a no-show for ${jobLabel}.`
+                : `${jobLabel} was canceled for ${existing.client.name}.`,
+            metadata: {
+              clientName: existing.client.name,
+              jobTitle: jobLabel,
+              status: input.dto.status,
+            },
+          });
+        }
       }
 
       return this.findDetailedJobOrThrow(tx, input.companyId, existing.id);
@@ -513,6 +568,12 @@ export class JobsService {
     );
     this.assertCanAccessJob(job, access);
 
+    if (job.status === JobStatus.PENDING_CONFIRMATION) {
+      throw new BadRequestException(
+        'Pending bookings must be confirmed before they can be completed',
+      );
+    }
+
     const updated = await this.prisma.$transaction(async (tx) => {
       await tx.job.update({
         where: { id: input.id },
@@ -537,6 +598,11 @@ export class JobsService {
         clientId: job.client.id,
         actorId: access.userId,
         actorLabel: access.userName,
+        message: `${this.getActivityJobLabel(job)} was completed by ${access.userName || 'Team member'} for ${job.client.name}.`,
+        metadata: {
+          clientName: job.client.name,
+          jobTitle: this.getActivityJobLabel(job),
+        },
       });
 
       return this.findDetailedJobOrThrow(tx, input.companyId, input.id);
@@ -593,6 +659,12 @@ export class JobsService {
         clientId: job.client.id,
         actorId: access.userId,
         actorLabel: access.userName,
+        message: `${this.getActivityJobLabel(job)} was canceled for ${job.client.name}.`,
+        metadata: {
+          clientName: job.client.name,
+          jobTitle: this.getActivityJobLabel(job),
+          status: JobStatus.CANCELED,
+        },
       });
 
       return this.findDetailedJobOrThrow(tx, input.companyId, input.id);
@@ -1019,6 +1091,11 @@ export class JobsService {
           clientId,
           actorId: access.userId,
           actorLabel: access.userName,
+          message: `${created.title || normalizedLineItems[0]?.name || 'Job'} was scheduled for ${input.dto.client?.name ?? 'this client'}.`,
+          metadata: {
+            clientName: input.dto.client?.name ?? null,
+            jobTitle: created.title || normalizedLineItems[0]?.name || 'Job',
+          },
         });
 
         if (input.idempotencyKey) {
@@ -1205,6 +1282,11 @@ export class JobsService {
           clientId,
           actorId: actorUserId,
           actorLabel: actorUserLabel,
+          message: `${service.name} was scheduled for ${input.dto.client?.name ?? 'this client'}.`,
+          metadata: {
+            clientName: input.dto.client?.name ?? null,
+            jobTitle: service.name,
+          },
         });
 
         if (input.idempotencyKey) {
@@ -1223,6 +1305,18 @@ export class JobsService {
 
     return this.mapJobDetails(job);
   }
+
+  private getActivityJobLabel(job: {
+    title?: string | null;
+    lineItems?: Array<{ description?: string | null }>;
+  }) {
+    return (
+      job.title?.trim() ||
+      job.lineItems?.find((item) => item.description?.trim())?.description?.trim() ||
+      'Job'
+    );
+  }
+
   private async resolveAccess(
     companyId: string,
     roles: string[],

@@ -48,6 +48,8 @@ class PublicCheckoutDto {
     serviceId;
     start;
     client;
+    successUrl;
+    cancelUrl;
 }
 exports.PublicCheckoutDto = PublicCheckoutDto;
 __decorate([
@@ -68,4 +70,14 @@ __decorate([
     (0, class_transformer_1.Type)(() => PublicClientDto),
     __metadata("design:type", PublicClientDto)
 ], PublicCheckoutDto.prototype, "client", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], PublicCheckoutDto.prototype, "successUrl", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], PublicCheckoutDto.prototype, "cancelUrl", void 0);
 //# sourceMappingURL=public-checkout.dto.js.map

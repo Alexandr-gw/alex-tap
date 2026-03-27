@@ -17,9 +17,10 @@ const common_1 = require("@nestjs/common");
 const client_1 = require("@prisma/client");
 const prisma_service_1 = require("../prisma/prisma.service");
 const email_provider_1 = require("./providers/email.provider");
-const email_worker_1 = require("./workers/email.worker");
+const notification_queue_service_1 = require("./queue/notification-queue.service");
 const notification_constants_1 = require("./notification.constants");
 const jobConfirmation_1 = require("./templates/jobConfirmation");
+const public_booking_utils_1 = require("../public-booking/public-booking.utils");
 const EMAIL_REMINDER_DEFINITIONS = [
     {
         key: '24h',
@@ -42,9 +43,11 @@ const JOB_EMAIL_NOTIFICATION_TYPES = [
 ];
 let NotificationService = class NotificationService {
     prisma;
+    queues;
     emailProvider;
-    constructor(prisma, emailProvider) {
+    constructor(prisma, queues, emailProvider) {
         this.prisma = prisma;
+        this.queues = queues;
         this.emailProvider = emailProvider;
     }
     async scheduleJobReminders(companyId, jobId) {
@@ -54,11 +57,12 @@ let NotificationService = class NotificationService {
             return [];
         }
         const notifications = [];
+        const manageUrl = await this.getJobManageUrl(companyId, job.id);
         const basePayload = {
             jobId: job.id,
             clientId: job.clientId,
             workerId: job.workerId ?? null,
-            manageUrl: null,
+            manageUrl,
         };
         const recipient = job.client.email?.trim().toLowerCase() ?? null;
         const now = Date.now();
@@ -83,16 +87,12 @@ let NotificationService = class NotificationService {
                 },
             });
             try {
-                await email_worker_1.emailQueue.add('send', { companyId, notificationId: notification.id }, {
-                    jobId: this.buildEmailReminderQueueJobId(job.id, reminder.key),
-                    delay: Math.max(0, scheduledAt.getTime() - now),
-                    attempts: notification_constants_1.MAX_ATTEMPTS,
-                    backoff: {
-                        type: 'exponential',
-                        delay: 5_000,
-                    },
-                    removeOnComplete: true,
-                    removeOnFail: false,
+                await this.queues.scheduleEmailReminder({
+                    jobId: job.id,
+                    reminderKey: reminder.key,
+                    companyId,
+                    notificationId: notification.id,
+                    scheduledAt,
                 });
                 notifications.push(this.mapNotification(notification));
             }
@@ -110,9 +110,7 @@ let NotificationService = class NotificationService {
         return notifications;
     }
     async cancelJobReminders(companyId, jobId, reason = 'Reminder canceled') {
-        await Promise.all(EMAIL_REMINDER_DEFINITIONS.map((reminder) => email_worker_1.emailQueue
-            .remove(this.buildEmailReminderQueueJobId(jobId, reminder.key))
-            .catch(() => undefined)));
+        await Promise.all(EMAIL_REMINDER_DEFINITIONS.map((reminder) => this.queues.cancelEmailReminder(jobId, reminder.key)));
         await this.prisma.notification.updateMany({
             where: {
                 companyId,
@@ -180,6 +178,7 @@ let NotificationService = class NotificationService {
             throw new common_1.BadRequestException(blockedReason);
         }
         const recipient = job.client.email.trim().toLowerCase();
+        const manageUrl = await this.getJobManageUrl(companyId, job.id);
         const notification = await this.prisma.notification.create({
             data: {
                 companyId,
@@ -192,7 +191,7 @@ let NotificationService = class NotificationService {
                     jobId: job.id,
                     clientId: job.clientId,
                     workerId: job.workerId ?? null,
-                    manageUrl: null,
+                    manageUrl,
                 },
                 recipient,
                 providerMessageId: null,
@@ -274,9 +273,6 @@ let NotificationService = class NotificationService {
             status === client_1.JobStatus.SCHEDULED &&
             Boolean(clientEmail?.trim()));
     }
-    buildEmailReminderQueueJobId(jobId, reminderKey) {
-        return `job:${jobId}:email:${reminderKey}`;
-    }
     async findJobForNotifications(companyId, jobId) {
         const job = await this.prisma.job.findFirst({
             where: {
@@ -287,6 +283,9 @@ let NotificationService = class NotificationService {
                 company: true,
                 client: true,
                 worker: true,
+                bookingAccessLink: {
+                    select: { token: true },
+                },
             },
         });
         if (!job) {
@@ -404,8 +403,23 @@ let NotificationService = class NotificationService {
             startAtISO: job.startAt.toISOString(),
             timezone: job.company.timezone,
             location: job.location ?? job.client.address ?? null,
-            manageUrl: null,
+            manageUrl: job.bookingAccessLink?.token
+                ? (0, public_booking_utils_1.buildBookingAccessUrl)(job.bookingAccessLink.token)
+                : null,
         });
+    }
+    async getJobManageUrl(companyId, jobId) {
+        const link = await this.prisma.bookingAccessLink.upsert({
+            where: { jobId },
+            create: {
+                companyId,
+                jobId,
+                token: (0, public_booking_utils_1.createBookingAccessToken)(),
+                expiresAt: (0, public_booking_utils_1.getBookingAccessExpiry)(),
+            },
+            update: {},
+        });
+        return (0, public_booking_utils_1.buildBookingAccessUrl)(link.token);
     }
     mapClientLastCommunication(notification) {
         if (!notification.sentAt) {
@@ -451,7 +465,8 @@ let NotificationService = class NotificationService {
 exports.NotificationService = NotificationService;
 exports.NotificationService = NotificationService = __decorate([
     (0, common_1.Injectable)(),
-    __param(1, (0, common_1.Inject)(email_provider_1.EMAIL_PROVIDER)),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService, Object])
+    __param(2, (0, common_1.Inject)(email_provider_1.EMAIL_PROVIDER)),
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        notification_queue_service_1.NotificationQueueService, Object])
 ], NotificationService);
 //# sourceMappingURL=notification.service.js.map

@@ -20,9 +20,11 @@ import {TasksModule} from '@/tasks/tasks.module';
 import {ClientsModule} from '@/clients/clients.module';
 import {SettingsModule} from '@/settings/settings.module';
 import {ActivityModule} from '@/activity/activity.module';
+import {ObservabilityModule} from '@/observability/observability.module';
 
 @Module({
     imports: [
+        ObservabilityModule,
         AuthModule,
         ConfigModule.forRoot({ isGlobal: true }),
         MeModule,

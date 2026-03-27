@@ -81,6 +81,8 @@ enum ActivityType {
   JOB_CREATED
   JOB_COMPLETED
   JOB_CANCELED
+  TASK_CREATED
+  TASK_COMPLETED
   CLIENT_CREATED
   BOOKING_SUBMITTED
   PAYMENT_SUCCEEDED
@@ -111,6 +113,7 @@ model Company {
   tasks                 Task[]
   payments              Payment[]
   notifications         Notification[]
+  bookingAccessLinks    BookingAccessLink[]
   activities            Activity[]
   alerts                Alert[]
   auditLogs             AuditLog[]
@@ -301,6 +304,7 @@ model Job {
   lineItems      JobLineItem[]
   comments       JobComment[]
   payments       Payment[]
+  bookingAccessLink BookingAccessLink?
   alerts         Alert[]
   IdempotencyKey IdempotencyKey[]
 
@@ -427,6 +431,22 @@ model Notification {
 
   @@index([companyId, status, scheduledAt])
   @@index([targetType, targetId, channel, type])
+}
+
+model BookingAccessLink {
+  id        String    @id @default(cuid())
+  companyId String
+  jobId     String    @unique
+  token     String    @unique
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  job     Job     @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, createdAt])
+  @@index([companyId, expiresAt])
 }
 
 model Activity {

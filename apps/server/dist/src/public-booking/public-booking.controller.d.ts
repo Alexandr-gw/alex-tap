@@ -33,6 +33,35 @@ export declare class PublicBookingController {
     checkout(dto: PublicCheckoutDto): Promise<{
         checkoutUrl: string;
         jobId: string;
+        bookingAccessPath: string;
+    }>;
+    getBookingByAccessToken(token: string): Promise<{
+        booking: {
+            token: string;
+            companyName: string;
+            jobId: string;
+            status: import("@prisma/client").$Enums.JobStatus;
+            title: string;
+            serviceName: string;
+            scheduledAt: string;
+            endsAt: string;
+            timezone: string;
+            clientName: string;
+            clientEmail: string | null;
+            location: string | null;
+            workerName: string | null;
+            totalCents: number;
+            currency: string;
+            notes: string | null;
+            paymentStatus: import("@prisma/client").$Enums.PaymentStatus | null;
+            paymentAmountCents: number | null;
+            requestChangesEmail: string | null;
+            expiresAt: string | null;
+        };
+    }>;
+    requestBookingChanges(token: string): Promise<{
+        ok: boolean;
+        message: string;
     }>;
     getPublicCheckoutSessionSummary(sessionId: string): Promise<{
         ok: true;
@@ -46,5 +75,6 @@ export declare class PublicBookingController {
         receiptUrl?: string | null;
         paymentId?: string;
         customerMessage?: string | null;
+        bookingAccessPath?: string | null;
     }>;
 }

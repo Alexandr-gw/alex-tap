@@ -87,6 +87,8 @@ export declare class JobsController {
             location: string | null;
             clientName: string;
             clientEmail: string | null;
+            totalCents: number;
+            currency: string;
             serviceName: string;
             workerName: string;
             colorTag: string | null;

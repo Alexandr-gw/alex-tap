@@ -29,12 +29,14 @@ const tasks_module_1 = require("./tasks/tasks.module");
 const clients_module_1 = require("./clients/clients.module");
 const settings_module_1 = require("./settings/settings.module");
 const activity_module_1 = require("./activity/activity.module");
+const observability_module_1 = require("./observability/observability.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
 exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
         imports: [
+            observability_module_1.ObservabilityModule,
             auth_module_1.AuthModule,
             config_1.ConfigModule.forRoot({ isGlobal: true }),
             me_module_1.MeModule,

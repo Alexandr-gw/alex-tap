@@ -1,9 +1,11 @@
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
+import { AppLogger } from '@/observability/app-logger.service';
 export declare class AuthController {
     private readonly AuthService;
     private cfg;
-    constructor(AuthService: AuthService, cfg: ConfigService);
+    private readonly logger;
+    constructor(AuthService: AuthService, cfg: ConfigService, logger: AppLogger);
     private getCookieOptions;
     private normalizeReturnTo;
     private buildAppRedirect;

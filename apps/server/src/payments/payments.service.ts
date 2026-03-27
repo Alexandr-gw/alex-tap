@@ -12,6 +12,7 @@ import { PaymentProvider, PaymentStatus, JobStatus } from '@prisma/client';
 import { CreateCheckoutDto } from './dto/create-checkout.dto';
 import { randomUUID } from 'crypto';
 import Stripe from 'stripe';
+import { buildBookingAccessUrl, createBookingAccessToken, getBookingAccessExpiry } from '@/public-booking/public-booking.utils';
 
 type CheckoutSummaryDto = {
     ok: true;
@@ -25,6 +26,7 @@ type CheckoutSummaryDto = {
     receiptUrl?: string | null;
     paymentId?: string;
     customerMessage?: string | null;
+    bookingAccessPath?: string | null;
 };
 
 @Injectable()
@@ -189,6 +191,7 @@ export class PaymentsService {
                 job: {
                     select: {
                         id: true,
+                        companyId: true,
                         source: true,
                         startAt: true,
                         client: {
@@ -217,6 +220,11 @@ export class PaymentsService {
             payment.status,
             stripeSession,
         );
+        const bookingAccessPath = await this.getBookingAccessPath(
+            payment.job.id,
+            payment.job.companyId,
+            payment.job.source,
+        );
 
         return {
             ok: true,
@@ -229,6 +237,7 @@ export class PaymentsService {
             scheduledAt: payment.job.startAt?.toISOString() ?? null,
             receiptUrl: payment.receiptUrl ?? null,
             customerMessage: this.getCustomerMessage(effectiveStatus),
+            bookingAccessPath,
         };
     }
 
@@ -252,6 +261,8 @@ export class PaymentsService {
                 job: {
                     select: {
                         id: true,
+                        companyId: true,
+                        source: true,
                         startAt: true,
                         client: {
                             select: { name: true },
@@ -292,6 +303,11 @@ export class PaymentsService {
             receiptUrl: payment.receiptUrl ?? null,
             paymentId: payment.id,
             customerMessage: this.getCustomerMessage(effectiveStatus),
+            bookingAccessPath: await this.getBookingAccessPath(
+                payment.job.id,
+                payment.job.companyId,
+                payment.job.source,
+            ),
         };
     }
 
@@ -397,9 +413,11 @@ export class PaymentsService {
                 jobId,
                 clientId: job.clientId,
                 actorLabel: job.client.name ?? 'Customer',
+                message: `${job.client.name ?? 'Customer'} paid for the scheduled job.`,
                 metadata: {
                     amountCents: payment.amountCents,
                     provider: payment.provider,
+                    clientName: job.client.name ?? 'Customer',
                 },
             });
         });
@@ -597,6 +615,35 @@ export class PaymentsService {
                 : paymentIntent.latest_charge;
 
         return latestCharge?.receipt_url ?? null;
+    }
+
+    private async getBookingAccessPath(
+        jobId: string,
+        companyId: string,
+        source: string | null,
+    ) {
+        if (source !== 'PUBLIC') {
+            return null;
+        }
+
+        const link = await this.prisma.bookingAccessLink.upsert({
+            where: { jobId },
+            create: {
+                companyId,
+                jobId,
+                token: createBookingAccessToken(),
+                expiresAt: getBookingAccessExpiry(),
+            },
+            update: {},
+            select: { token: true },
+        });
+
+        try {
+            const url = new URL(buildBookingAccessUrl(link.token));
+            return `${url.pathname}${url.search}${url.hash}`;
+        } catch {
+            return `/booking/${link.token}`;
+        }
     }
 }
 

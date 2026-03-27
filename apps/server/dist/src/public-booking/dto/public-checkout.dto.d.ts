@@ -10,5 +10,7 @@ export declare class PublicCheckoutDto {
     serviceId: string;
     start: string;
     client: PublicClientDto;
+    successUrl?: string;
+    cancelUrl?: string;
 }
 export {};

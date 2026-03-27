@@ -8,6 +8,9 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PublicBookingService = void 0;
 const common_1 = require("@nestjs/common");
@@ -18,16 +21,26 @@ const prisma_service_1 = require("../prisma/prisma.service");
 const slots_service_1 = require("../slots/slots.service");
 const payments_service_1 = require("../payments/payments.service");
 const activity_service_1 = require("../activity/activity.service");
+const alerts_service_1 = require("../alerts/alerts.service");
+const audit_log_service_1 = require("../observability/audit-log.service");
+const email_provider_1 = require("../notifications/providers/email.provider");
+const public_booking_utils_1 = require("./public-booking.utils");
 let PublicBookingService = class PublicBookingService {
     prisma;
     slots;
     payments;
     activity;
-    constructor(prisma, slots, payments, activity) {
+    alerts;
+    audit;
+    emailProvider;
+    constructor(prisma, slots, payments, activity, alerts, audit, emailProvider) {
         this.prisma = prisma;
         this.slots = slots;
         this.payments = payments;
         this.activity = activity;
+        this.alerts = alerts;
+        this.audit = audit;
+        this.emailProvider = emailProvider;
     }
     async getPublicService(companySlug, serviceSlug) {
         const company = await this.prisma.company.findFirst({
@@ -203,6 +216,7 @@ let PublicBookingService = class PublicBookingService {
                     companyId: dto.companyId,
                     clientId,
                     workerId: null,
+                    title: service.name,
                     startAt: start,
                     endAt: end,
                     status: client_1.JobStatus.PENDING_CONFIRMATION,
@@ -235,8 +249,8 @@ let PublicBookingService = class PublicBookingService {
         }, { isolationLevel: 'Serializable' }));
         const session = await this.payments.createCheckoutSession(dto.companyId, 'public', {
             jobId: booking.jobId,
-            successUrl: process.env.PUBLIC_BOOKING_SUCCESS_URL,
-            cancelUrl: process.env.PUBLIC_BOOKING_CANCEL_URL,
+            successUrl: dto.successUrl ?? process.env.PUBLIC_BOOKING_SUCCESS_URL,
+            cancelUrl: dto.cancelUrl ?? process.env.PUBLIC_BOOKING_CANCEL_URL,
             idempotencyKey: `public:job:${booking.jobId}`,
         });
         if (booking.clientWasCreated) {
@@ -245,6 +259,11 @@ let PublicBookingService = class PublicBookingService {
                 clientId: booking.clientId,
                 actorType: 'PUBLIC',
                 actorLabel: dto.client.name?.trim() || 'Customer',
+                message: `${dto.client.name?.trim() || 'Customer'} profile was created from a public booking.`,
+                metadata: {
+                    source: 'public',
+                    clientName: dto.client.name?.trim() || 'Customer',
+                },
             });
         }
         await this.activity.logBookingSubmitted({
@@ -252,9 +271,19 @@ let PublicBookingService = class PublicBookingService {
             jobId: booking.jobId,
             clientId: booking.clientId,
             actorLabel: dto.client.name?.trim() || 'Customer',
-            metadata: { source: 'public' },
+            message: `${dto.client.name?.trim() || 'Customer'} submitted a booking request for ${service.name}.`,
+            metadata: {
+                source: 'public',
+                serviceName: service.name,
+                clientName: dto.client.name?.trim() || 'Customer',
+            },
         });
-        return { checkoutUrl: session.url, jobId: booking.jobId };
+        const accessLink = await this.ensureBookingAccessLink(dto.companyId, booking.jobId);
+        return {
+            checkoutUrl: session.url,
+            jobId: booking.jobId,
+            bookingAccessPath: `/booking/${accessLink.token}`,
+        };
     }
     async listPublicServices(companySlug) {
         const company = await this.prisma.company.findFirst({
@@ -286,6 +315,176 @@ let PublicBookingService = class PublicBookingService {
             services,
         };
     }
+    async getBookingByAccessToken(token) {
+        const booking = await this.findBookingAccessLink(token);
+        const payment = await this.prisma.payment.findFirst({
+            where: {
+                jobId: booking.job.id,
+                status: { in: [client_1.PaymentStatus.SUCCEEDED, client_1.PaymentStatus.PENDING, client_1.PaymentStatus.REQUIRES_ACTION] },
+            },
+            select: {
+                status: true,
+                amountCents: true,
+                currency: true,
+            },
+            orderBy: { createdAt: 'desc' },
+        });
+        return {
+            booking: {
+                token: booking.token,
+                companyName: booking.company.name,
+                jobId: booking.job.id,
+                status: booking.job.status,
+                title: booking.job.title ?? booking.job.lineItems[0]?.description ?? 'Booking',
+                serviceName: booking.job.lineItems[0]?.description ?? booking.job.title ?? 'Service',
+                scheduledAt: booking.job.startAt.toISOString(),
+                endsAt: booking.job.endAt.toISOString(),
+                timezone: booking.company.timezone ?? 'America/Edmonton',
+                clientName: booking.job.client.name,
+                clientEmail: booking.job.client.email,
+                location: booking.job.location ?? booking.job.client.address ?? null,
+                workerName: booking.job.worker?.displayName ?? null,
+                totalCents: booking.job.totalCents,
+                currency: booking.job.currency,
+                notes: booking.job.client.notes ?? null,
+                paymentStatus: payment?.status ?? null,
+                paymentAmountCents: payment?.amountCents ?? null,
+                requestChangesEmail: process.env.NOTIFY_FROM_EMAIL?.trim() || null,
+                expiresAt: booking.expiresAt?.toISOString() ?? null,
+            },
+        };
+    }
+    async requestBookingChanges(token) {
+        const booking = await this.findBookingAccessLink(token);
+        const actorLabel = booking.job.client.name?.trim() || 'Customer';
+        await this.audit.record({
+            companyId: booking.companyId,
+            entityType: 'BOOKING_ACCESS',
+            entityId: booking.job.id,
+            action: 'BOOKING_CHANGE_REQUESTED',
+            changes: {
+                jobId: booking.job.id,
+                clientId: booking.job.clientId,
+                actorLabel,
+                requestedAt: new Date().toISOString(),
+                source: 'public_booking_link',
+            },
+        });
+        await this.alerts.createBookingReviewAlerts({
+            companyId: booking.companyId,
+            jobId: booking.job.id,
+        });
+        const emailSent = await this.sendBookingChangeRequestEmail({
+            companyName: booking.company.name,
+            clientName: actorLabel,
+            clientEmail: booking.job.client.email,
+            jobId: booking.job.id,
+            serviceName: booking.job.lineItems[0]?.description ?? booking.job.title ?? 'Service',
+            scheduledAt: booking.job.startAt,
+            timezone: booking.company.timezone ?? 'America/Edmonton',
+            accessUrl: (0, public_booking_utils_1.buildBookingAccessUrl)(booking.token),
+        });
+        return {
+            ok: true,
+            message: emailSent
+                ? 'Your request was sent to the team.'
+                : 'Your request was recorded and the team will follow up shortly.',
+        };
+    }
+    async ensureBookingAccessLink(companyId, jobId) {
+        const existing = await this.prisma.bookingAccessLink.findUnique({
+            where: { jobId },
+        });
+        if (existing && (!existing.expiresAt || existing.expiresAt.getTime() > Date.now())) {
+            return existing;
+        }
+        return this.prisma.bookingAccessLink.upsert({
+            where: { jobId },
+            create: {
+                companyId,
+                jobId,
+                token: (0, public_booking_utils_1.createBookingAccessToken)(),
+                expiresAt: (0, public_booking_utils_1.getBookingAccessExpiry)(),
+            },
+            update: {
+                companyId,
+                token: (0, public_booking_utils_1.createBookingAccessToken)(),
+                expiresAt: (0, public_booking_utils_1.getBookingAccessExpiry)(),
+            },
+        });
+    }
+    async findBookingAccessLink(token) {
+        const booking = await this.prisma.bookingAccessLink.findUnique({
+            where: { token },
+            include: {
+                company: {
+                    select: {
+                        id: true,
+                        name: true,
+                        timezone: true,
+                    },
+                },
+                job: {
+                    include: {
+                        client: {
+                            select: {
+                                id: true,
+                                name: true,
+                                email: true,
+                                address: true,
+                                notes: true,
+                            },
+                        },
+                        worker: {
+                            select: {
+                                displayName: true,
+                            },
+                        },
+                        lineItems: {
+                            select: {
+                                description: true,
+                            },
+                            orderBy: { id: 'asc' },
+                            take: 1,
+                        },
+                    },
+                },
+            },
+        });
+        if (!booking || booking.job.source !== 'PUBLIC') {
+            throw new common_1.NotFoundException('Booking not found');
+        }
+        if (booking.expiresAt && booking.expiresAt.getTime() <= Date.now()) {
+            throw new common_1.NotFoundException('Booking link has expired');
+        }
+        return booking;
+    }
+    async sendBookingChangeRequestEmail(input) {
+        const from = process.env.NOTIFY_FROM_EMAIL?.trim();
+        if (!from) {
+            return false;
+        }
+        const scheduledFor = luxon_1.DateTime.fromJSDate(input.scheduledAt, { zone: 'utc' })
+            .setZone(input.timezone)
+            .toLocaleString(luxon_1.DateTime.DATETIME_FULL);
+        const result = await this.emailProvider.sendEmail({
+            from,
+            to: from,
+            subject: `${input.clientName} requested booking changes`,
+            html: `
+                <div style="font-family: Arial, sans-serif; color: #0f172a; line-height: 1.6;">
+                    <p>${input.clientName} requested changes to a booking.</p>
+                    <p><strong>Service:</strong> ${input.serviceName}</p>
+                    <p><strong>When:</strong> ${scheduledFor}</p>
+                    <p><strong>Client email:</strong> ${input.clientEmail ?? 'Not provided'}</p>
+                    <p><strong>Job ID:</strong> ${input.jobId}</p>
+                    <p><a href="${input.accessUrl}">Open public booking page</a></p>
+                    <p>Please follow up with the customer to confirm the requested update.</p>
+                </div>
+            `,
+        });
+        return result.ok;
+    }
     async acquireCompanyDayBookingLock(tx, companyId, bookingDay) {
         await tx.$executeRaw `
             SELECT pg_advisory_xact_lock(hashtext(${companyId}), hashtext(${`public-booking:${bookingDay}`}))
@@ -311,9 +510,12 @@ let PublicBookingService = class PublicBookingService {
 exports.PublicBookingService = PublicBookingService;
 exports.PublicBookingService = PublicBookingService = __decorate([
     (0, common_1.Injectable)(),
+    __param(6, (0, common_1.Inject)(email_provider_1.EMAIL_PROVIDER)),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
         slots_service_1.SlotsService,
         payments_service_1.PaymentsService,
-        activity_service_1.ActivityService])
+        activity_service_1.ActivityService,
+        alerts_service_1.AlertsService,
+        audit_log_service_1.AuditLogService, Object])
 ], PublicBookingService);
 //# sourceMappingURL=public-booking.service.js.map

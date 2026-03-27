@@ -4,11 +4,13 @@ import { ListClientsDto } from './dto/list-clients.dto';
 import { UpdateClientDto } from './dto/update-client.dto';
 import { NotificationService } from '@/notifications/notification.service';
 import { ActivityService } from '@/activity/activity.service';
+import { AuditLogService } from '@/observability/audit-log.service';
 export declare class ClientsService {
     private readonly prisma;
     private readonly notifications;
     private readonly activity;
-    constructor(prisma: PrismaService, notifications: NotificationService, activity: ActivityService);
+    private readonly audit;
+    constructor(prisma: PrismaService, notifications: NotificationService, activity: ActivityService, audit: AuditLogService);
     list(input: {
         companyId: string;
         roles: string[];

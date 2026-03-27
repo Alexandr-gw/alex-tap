@@ -10,13 +10,14 @@ exports.ScheduleModule = void 0;
 const common_1 = require("@nestjs/common");
 const notification_module_1 = require("../notifications/notification.module");
 const alerts_module_1 = require("../alerts/alerts.module");
+const activity_module_1 = require("../activity/activity.module");
 const schedule_service_1 = require("./schedule.service");
 let ScheduleModule = class ScheduleModule {
 };
 exports.ScheduleModule = ScheduleModule;
 exports.ScheduleModule = ScheduleModule = __decorate([
     (0, common_1.Module)({
-        imports: [notification_module_1.NotificationModule, alerts_module_1.AlertsModule],
+        imports: [notification_module_1.NotificationModule, alerts_module_1.AlertsModule, activity_module_1.ActivityModule],
         providers: [schedule_service_1.ScheduleService],
         exports: [schedule_service_1.ScheduleService],
     })

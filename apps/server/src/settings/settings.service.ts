@@ -12,10 +12,14 @@ import { CreateSettingsWorkerDto } from './dto/create-settings-worker.dto';
 import { ListSettingsWorkersDto } from './dto/list-settings-workers.dto';
 import { UpdateCompanySettingsDto } from './dto/update-company-settings.dto';
 import { UpdateSettingsWorkerDto } from './dto/update-settings-worker.dto';
+import { AuditLogService } from '@/observability/audit-log.service';
 
 @Injectable()
 export class SettingsService {
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly audit: AuditLogService,
+    ) {}
 
     async getCompanySettings(input: {
         companyId: string;
@@ -51,14 +55,19 @@ export class SettingsService {
         userSub: string | null;
         dto: UpdateCompanySettingsDto;
     }) {
-        await this.requireManager(input.companyId, input.roles, input.userSub);
+        const actor = await this.requireManager(input.companyId, input.roles, input.userSub);
 
         const existing = await this.prisma.company.findFirst({
             where: {
                 id: input.companyId,
                 deletedAt: null,
             },
-            select: { id: true },
+            select: {
+                id: true,
+                name: true,
+                timezone: true,
+                slug: true,
+            },
         });
 
         if (!existing) {
@@ -88,9 +97,29 @@ export class SettingsService {
         }
 
         try {
-            await this.prisma.company.update({
+            const updated = await this.prisma.company.update({
                 where: { id: input.companyId },
                 data,
+            });
+
+            await this.audit.record({
+                companyId: input.companyId,
+                actorUserId: actor.userId,
+                entityType: 'company',
+                entityId: input.companyId,
+                action: 'COMPANY_SETTINGS_UPDATED',
+                changes: {
+                    before: {
+                        name: existing.name,
+                        timezone: existing.timezone,
+                        bookingSlug: existing.slug,
+                    },
+                    after: {
+                        name: updated.name,
+                        timezone: updated.timezone,
+                        bookingSlug: updated.slug,
+                    },
+                },
             });
         } catch (error) {
             if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
@@ -112,7 +141,7 @@ export class SettingsService {
         userSub: string | null;
         query: ListSettingsWorkersDto;
     }) {
-        await this.requireManager(input.companyId, input.roles, input.userSub);
+        const actor = await this.requireManager(input.companyId, input.roles, input.userSub);
 
         const search = input.query.search?.trim();
         const page = input.query.page ?? 1;
@@ -176,7 +205,7 @@ export class SettingsService {
         userSub: string | null;
         dto: CreateSettingsWorkerDto;
     }) {
-        await this.requireManager(input.companyId, input.roles, input.userSub);
+        const actor = await this.requireManager(input.companyId, input.roles, input.userSub);
 
         const name = input.dto.name.trim();
         if (!name) {
@@ -212,6 +241,20 @@ export class SettingsService {
             },
         });
 
+        await this.audit.record({
+            companyId: input.companyId,
+            actorUserId: actor.userId,
+            entityType: 'worker',
+            entityId: worker.id,
+            action: 'WORKER_CREATED',
+            changes: {
+                name: worker.displayName,
+                phone: worker.phone,
+                colorTag: worker.colorTag,
+                active: worker.active,
+            },
+        });
+
         return this.mapWorker(worker);
     }
 
@@ -222,7 +265,7 @@ export class SettingsService {
         workerId: string;
         dto: UpdateSettingsWorkerDto;
     }) {
-        await this.requireManager(input.companyId, input.roles, input.userSub);
+        const actor = await this.requireManager(input.companyId, input.roles, input.userSub);
 
         const existing = await this.prisma.worker.findFirst({
             where: {
@@ -231,6 +274,10 @@ export class SettingsService {
             },
             select: {
                 id: true,
+                displayName: true,
+                phone: true,
+                colorTag: true,
+                active: true,
                 userId: true,
                 user: {
                     select: {
@@ -321,6 +368,30 @@ export class SettingsService {
             },
         });
 
+        await this.audit.record({
+            companyId: input.companyId,
+            actorUserId: actor.userId,
+            entityType: 'worker',
+            entityId: worker.id,
+            action: 'WORKER_UPDATED',
+            changes: {
+                before: {
+                    name: existing.displayName,
+                    phone: existing.phone,
+                    colorTag: existing.colorTag,
+                    active: existing.active,
+                    role: existing.user?.memberships[0]?.role ?? null,
+                },
+                after: {
+                    name: worker.displayName,
+                    phone: worker.phone,
+                    colorTag: worker.colorTag,
+                    active: worker.active,
+                    role: worker.user?.memberships[0]?.role ?? null,
+                },
+            },
+        });
+
         return this.mapWorker(worker);
     }
 
@@ -402,7 +473,10 @@ export class SettingsService {
                 companyId,
                 user: { sub: userSub },
             },
-            select: { id: true },
+            select: {
+                id: true,
+                userId: true,
+            },
         });
 
         if (!membership) {

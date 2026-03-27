@@ -16,6 +16,7 @@ type CheckoutSummaryDto = {
     receiptUrl?: string | null;
     paymentId?: string;
     customerMessage?: string | null;
+    bookingAccessPath?: string | null;
 };
 export declare class PaymentsService {
     private readonly prisma;
@@ -43,5 +44,6 @@ export declare class PaymentsService {
     private safeRetrieveCheckoutSession;
     private getSessionUrl;
     private getReceiptUrl;
+    private getBookingAccessPath;
 }
 export {};

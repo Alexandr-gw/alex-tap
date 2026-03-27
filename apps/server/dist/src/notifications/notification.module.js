@@ -9,6 +9,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.NotificationModule = void 0;
 const common_1 = require("@nestjs/common");
 const notification_service_1 = require("./notification.service");
+const notification_queue_service_1 = require("./queue/notification-queue.service");
 const email_provider_1 = require("./providers/email.provider");
 const resend_provider_1 = require("./providers/resend.provider");
 const smtp_provider_1 = require("./providers/smtp.provider");
@@ -20,6 +21,7 @@ exports.NotificationModule = NotificationModule = __decorate([
     (0, common_1.Module)({
         providers: [
             notification_service_1.NotificationService,
+            notification_queue_service_1.NotificationQueueService,
             smtp_provider_1.SmtpEmailProvider,
             resend_provider_1.ResendEmailProvider,
             twilio_provider_1.TwilioSmsProvider,
@@ -32,7 +34,12 @@ exports.NotificationModule = NotificationModule = __decorate([
                 }),
             },
         ],
-        exports: [notification_service_1.NotificationService],
+        exports: [
+            notification_service_1.NotificationService,
+            notification_queue_service_1.NotificationQueueService,
+            twilio_provider_1.TwilioSmsProvider,
+            email_provider_1.EMAIL_PROVIDER,
+        ],
     })
 ], NotificationModule);
 //# sourceMappingURL=notification.module.js.map

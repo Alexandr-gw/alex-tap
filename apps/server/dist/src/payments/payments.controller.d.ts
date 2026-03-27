@@ -19,5 +19,6 @@ export declare class PaymentsController {
         receiptUrl?: string | null;
         paymentId?: string;
         customerMessage?: string | null;
+        bookingAccessPath?: string | null;
     }>;
 }

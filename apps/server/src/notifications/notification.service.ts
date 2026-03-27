@@ -24,14 +24,14 @@ import {
   EMAIL_PROVIDER,
   type EmailProvider,
 } from './providers/email.provider';
-import { emailQueue } from './workers/email.worker';
+import { NotificationQueueService } from './queue/notification-queue.service';
 import {
-  MAX_ATTEMPTS,
   TYPE_JOB_CONFIRMATION,
   TYPE_JOB_REMINDER_1H,
   TYPE_JOB_REMINDER_24H,
 } from './notification.constants';
 import { jobConfirmation } from './templates/jobConfirmation';
+import { buildBookingAccessUrl, createBookingAccessToken, getBookingAccessExpiry } from '@/public-booking/public-booking.utils';
 
 const EMAIL_REMINDER_DEFINITIONS = [
   {
@@ -59,6 +59,7 @@ const JOB_EMAIL_NOTIFICATION_TYPES = [
 export class NotificationService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly queues: NotificationQueueService,
     @Inject(EMAIL_PROVIDER)
     private readonly emailProvider: EmailProvider,
   ) {}
@@ -80,11 +81,12 @@ export class NotificationService {
     }
 
     const notifications: JobNotificationDto[] = [];
+    const manageUrl = await this.getJobManageUrl(companyId, job.id);
     const basePayload = {
       jobId: job.id,
       clientId: job.clientId,
       workerId: job.workerId ?? null,
-      manageUrl: null as string | null,
+      manageUrl,
     };
     const recipient = job.client.email?.trim().toLowerCase() ?? null;
     const now = Date.now();
@@ -112,21 +114,13 @@ export class NotificationService {
       });
 
       try {
-        await emailQueue.add(
-          'send',
-          { companyId, notificationId: notification.id },
-          {
-            jobId: this.buildEmailReminderQueueJobId(job.id, reminder.key),
-            delay: Math.max(0, scheduledAt.getTime() - now),
-            attempts: MAX_ATTEMPTS,
-            backoff: {
-              type: 'exponential',
-              delay: 5_000,
-            },
-            removeOnComplete: true,
-            removeOnFail: false,
-          },
-        );
+        await this.queues.scheduleEmailReminder({
+          jobId: job.id,
+          reminderKey: reminder.key,
+          companyId,
+          notificationId: notification.id,
+          scheduledAt,
+        });
 
         notifications.push(this.mapNotification(notification));
       } catch (error: any) {
@@ -153,9 +147,7 @@ export class NotificationService {
   ) {
     await Promise.all(
       EMAIL_REMINDER_DEFINITIONS.map((reminder) =>
-        emailQueue
-          .remove(this.buildEmailReminderQueueJobId(jobId, reminder.key))
-          .catch(() => undefined),
+        this.queues.cancelEmailReminder(jobId, reminder.key),
       ),
     );
 
@@ -258,6 +250,7 @@ export class NotificationService {
     }
 
     const recipient = job.client.email!.trim().toLowerCase();
+    const manageUrl = await this.getJobManageUrl(companyId, job.id);
     const notification = await this.prisma.notification.create({
       data: {
         companyId,
@@ -270,7 +263,7 @@ export class NotificationService {
           jobId: job.id,
           clientId: job.clientId,
           workerId: job.workerId ?? null,
-          manageUrl: null,
+          manageUrl,
         } as any,
         recipient,
         providerMessageId: null,
@@ -372,13 +365,6 @@ export class NotificationService {
     );
   }
 
-  private buildEmailReminderQueueJobId(
-    jobId: string,
-    reminderKey: (typeof EMAIL_REMINDER_DEFINITIONS)[number]['key'],
-  ) {
-    return `job:${jobId}:email:${reminderKey}`;
-  }
-
   private async findJobForNotifications(companyId: string, jobId: string) {
     const job = await this.prisma.job.findFirst({
       where: {
@@ -389,6 +375,9 @@ export class NotificationService {
         company: true,
         client: true,
         worker: true,
+        bookingAccessLink: {
+          select: { token: true },
+        },
       },
     });
 
@@ -560,6 +549,7 @@ export class NotificationService {
     title: string | null;
     startAt: Date;
     location: string | null;
+    bookingAccessLink?: { token: string } | null;
   }) {
     return jobConfirmation({
       companyName: job.company.name,
@@ -569,8 +559,25 @@ export class NotificationService {
       startAtISO: job.startAt.toISOString(),
       timezone: job.company.timezone,
       location: job.location ?? job.client.address ?? null,
-      manageUrl: null,
+      manageUrl: job.bookingAccessLink?.token
+        ? buildBookingAccessUrl(job.bookingAccessLink.token)
+        : null,
     });
+  }
+
+  private async getJobManageUrl(companyId: string, jobId: string) {
+    const link = await this.prisma.bookingAccessLink.upsert({
+      where: { jobId },
+      create: {
+        companyId,
+        jobId,
+        token: createBookingAccessToken(),
+        expiresAt: getBookingAccessExpiry(),
+      },
+      update: {},
+    });
+
+    return buildBookingAccessUrl(link.token);
   }
 
   private mapClientLastCommunication(notification: {

@@ -52,6 +52,8 @@ export class ActivityService {
     clientId?: string | null;
     actorId?: string | null;
     actorLabel?: string | null;
+    message?: string | null;
+    metadata?: Prisma.InputJsonValue | null;
   }) {
     const actorLabel = this.normalizeActorLabel('USER', input.actorLabel);
 
@@ -66,7 +68,8 @@ export class ActivityService {
       actorType: ActivityActorType.USER,
       actorId: input.actorId ?? null,
       actorLabel,
-      message: `${actorLabel} created this job`,
+      message: input.message ?? `${actorLabel} created this job`,
+      metadata: input.metadata ?? null,
     });
   }
 
@@ -77,6 +80,8 @@ export class ActivityService {
     clientId?: string | null;
     actorId?: string | null;
     actorLabel?: string | null;
+    message?: string | null;
+    metadata?: Prisma.InputJsonValue | null;
   }) {
     const actorLabel = this.normalizeActorLabel('USER', input.actorLabel);
 
@@ -91,7 +96,8 @@ export class ActivityService {
       actorType: ActivityActorType.USER,
       actorId: input.actorId ?? null,
       actorLabel,
-      message: `${actorLabel} completed this job`,
+      message: input.message ?? `${actorLabel} completed this job`,
+      metadata: input.metadata ?? null,
     });
   }
 
@@ -102,6 +108,8 @@ export class ActivityService {
     clientId?: string | null;
     actorId?: string | null;
     actorLabel?: string | null;
+    message?: string | null;
+    metadata?: Prisma.InputJsonValue | null;
   }) {
     const actorLabel = this.normalizeActorLabel('USER', input.actorLabel);
 
@@ -116,7 +124,39 @@ export class ActivityService {
       actorType: ActivityActorType.USER,
       actorId: input.actorId ?? null,
       actorLabel,
-      message: `${actorLabel} canceled this job`,
+      message: input.message ?? `${actorLabel} canceled this job`,
+      metadata: input.metadata ?? null,
+    });
+  }
+
+  async logJobRescheduled(input: {
+    db?: DbClient;
+    companyId: string;
+    jobId: string;
+    clientId?: string | null;
+    actorId?: string | null;
+    actorLabel?: string | null;
+    message?: string | null;
+    metadata?: Prisma.InputJsonValue | null;
+  }) {
+    const actorLabel = this.normalizeActorLabel('USER', input.actorLabel);
+
+    return this.logEvent({
+      db: input.db,
+      companyId: input.companyId,
+      type: ActivityType.JOB_CREATED,
+      entityType: 'job',
+      entityId: input.jobId,
+      jobId: input.jobId,
+      clientId: input.clientId ?? null,
+      actorType: ActivityActorType.USER,
+      actorId: input.actorId ?? null,
+      actorLabel,
+      message: input.message ?? `${actorLabel} rescheduled this job`,
+      metadata: this.withActivityType(
+        input.metadata ?? null,
+        'JOB_RESCHEDULED',
+      ),
     });
   }
 
@@ -127,6 +167,8 @@ export class ActivityService {
     actorType?: ActivityActorType;
     actorId?: string | null;
     actorLabel?: string | null;
+    message?: string | null;
+    metadata?: Prisma.InputJsonValue | null;
   }) {
     const actorType = input.actorType ?? ActivityActorType.USER;
     const actorLabel = this.normalizeActorLabel(actorType, input.actorLabel);
@@ -141,7 +183,8 @@ export class ActivityService {
       actorType,
       actorId: input.actorId ?? null,
       actorLabel,
-      message: `${actorLabel} created this client`,
+      message: input.message ?? `${actorLabel} created this client`,
+      metadata: input.metadata ?? null,
     });
   }
 
@@ -151,6 +194,7 @@ export class ActivityService {
     jobId: string;
     clientId?: string | null;
     actorLabel?: string | null;
+    message?: string | null;
     metadata?: Prisma.InputJsonValue | null;
   }) {
     const actorLabel = this.normalizeActorLabel('PUBLIC', input.actorLabel);
@@ -166,7 +210,7 @@ export class ActivityService {
       actorType: ActivityActorType.PUBLIC,
       actorId: null,
       actorLabel,
-      message: `${actorLabel} submitted a booking`,
+      message: input.message ?? `${actorLabel} submitted a booking`,
       metadata: input.metadata ?? null,
     });
   }
@@ -179,6 +223,7 @@ export class ActivityService {
     clientId?: string | null;
     actorType?: ActivityActorType;
     actorLabel?: string | null;
+    message?: string | null;
     metadata?: Prisma.InputJsonValue | null;
   }) {
     const actorType = input.actorType ?? ActivityActorType.PUBLIC;
@@ -195,7 +240,92 @@ export class ActivityService {
       actorType,
       actorId: null,
       actorLabel,
-      message: `${actorLabel} paid`,
+      message: input.message ?? `${actorLabel} paid`,
+      metadata: input.metadata ?? null,
+    });
+  }
+
+  async logInvoiceSent(input: {
+    db?: DbClient;
+    companyId: string;
+    entityId: string;
+    jobId?: string | null;
+    clientId?: string | null;
+    actorType?: ActivityActorType;
+    actorId?: string | null;
+    actorLabel?: string | null;
+    message?: string | null;
+    metadata?: Prisma.InputJsonValue | null;
+  }) {
+    const actorType = input.actorType ?? ActivityActorType.SYSTEM;
+    const actorLabel = this.normalizeActorLabel(actorType, input.actorLabel);
+
+    return this.logEvent({
+      db: input.db,
+      companyId: input.companyId,
+      type: ActivityType.INVOICE_SENT,
+      entityType: 'invoice',
+      entityId: input.entityId,
+      jobId: input.jobId ?? null,
+      clientId: input.clientId ?? null,
+      actorType,
+      actorId: input.actorId ?? null,
+      actorLabel,
+      message: input.message ?? `${actorLabel} sent an invoice`,
+      metadata: input.metadata ?? null,
+    });
+  }
+
+  async logTaskCreated(input: {
+    db?: DbClient;
+    companyId: string;
+    taskId: string;
+    clientId?: string | null;
+    actorId?: string | null;
+    actorLabel?: string | null;
+    message?: string | null;
+    metadata?: Prisma.InputJsonValue | null;
+  }) {
+    const actorLabel = this.normalizeActorLabel('USER', input.actorLabel);
+
+    return this.logEvent({
+      db: input.db,
+      companyId: input.companyId,
+      type: ActivityType.TASK_CREATED,
+      entityType: 'task',
+      entityId: input.taskId,
+      clientId: input.clientId ?? null,
+      actorType: ActivityActorType.USER,
+      actorId: input.actorId ?? null,
+      actorLabel,
+      message: input.message ?? `${actorLabel} created a task`,
+      metadata: input.metadata ?? null,
+    });
+  }
+
+  async logTaskCompleted(input: {
+    db?: DbClient;
+    companyId: string;
+    taskId: string;
+    clientId?: string | null;
+    actorId?: string | null;
+    actorLabel?: string | null;
+    message?: string | null;
+    metadata?: Prisma.InputJsonValue | null;
+  }) {
+    const actorLabel = this.normalizeActorLabel('USER', input.actorLabel);
+
+    return this.logEvent({
+      db: input.db,
+      companyId: input.companyId,
+      type: ActivityType.TASK_COMPLETED,
+      entityType: 'task',
+      entityId: input.taskId,
+      clientId: input.clientId ?? null,
+      actorType: ActivityActorType.USER,
+      actorId: input.actorId ?? null,
+      actorLabel,
+      message: input.message ?? `${actorLabel} completed a task`,
       metadata: input.metadata ?? null,
     });
   }
@@ -231,6 +361,7 @@ export class ActivityService {
   }): Promise<JobActivityResponseDto> {
     await this.requireManager(input.companyId, input.roles, input.userSub);
 
+    const windowEnd = new Date();
     const windowStart = new Date(Date.now() - input.hours * 60 * 60 * 1000);
 
     const items = await this.prisma.activity.findMany({
@@ -238,6 +369,7 @@ export class ActivityService {
         companyId: input.companyId,
         createdAt: {
           gte: windowStart,
+          lte: windowEnd,
         },
       },
       orderBy: { createdAt: 'desc' },
@@ -263,7 +395,7 @@ export class ActivityService {
   }): ActivityItemDto {
     return {
       id: item.id,
-      type: item.type,
+      type: this.resolveResponseType(item),
       actorType: item.actorType,
       actorId: item.actorId,
       actorLabel: item.actorLabel,
@@ -283,6 +415,34 @@ export class ActivityService {
     }
 
     return metadata as Record<string, unknown>;
+  }
+
+  private resolveResponseType(item: {
+    type: ActivityType;
+    metadata: Prisma.JsonValue | null;
+  }): ActivityItemDto['type'] {
+    const metadata = this.mapMetadata(item.metadata);
+    const responseType = metadata?.activityType;
+
+    if (responseType === 'JOB_RESCHEDULED') {
+      return responseType;
+    }
+
+    return item.type as ActivityItemDto['type'];
+  }
+
+  private withActivityType(
+    metadata: Prisma.InputJsonValue | null,
+    activityType: ActivityItemDto['type'],
+  ) {
+    if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
+      return { activityType } as Prisma.InputJsonValue;
+    }
+
+    return {
+      ...(metadata as Record<string, unknown>),
+      activityType,
+    } as Prisma.InputJsonValue;
   }
 
   private normalizeActorLabel(

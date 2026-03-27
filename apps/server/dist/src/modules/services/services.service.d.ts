@@ -1,7 +1,9 @@
 import { PrismaService } from '@/prisma/prisma.service';
+import { AuditLogService } from '@/observability/audit-log.service';
 export declare class ServicesService {
     private prisma;
-    constructor(prisma: PrismaService);
+    private readonly audit;
+    constructor(prisma: PrismaService, audit: AuditLogService);
     list(companyId: string, params: {
         search?: string;
         page?: number;

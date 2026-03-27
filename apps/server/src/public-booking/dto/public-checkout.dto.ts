@@ -28,4 +28,10 @@ export class PublicCheckoutDto {
     @ValidateNested()
     @Type(() => PublicClientDto)
     client!: PublicClientDto;
+
+    @IsOptional() @IsString()
+    successUrl?: string;
+
+    @IsOptional() @IsString()
+    cancelUrl?: string;
 }

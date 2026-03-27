@@ -14,10 +14,13 @@ const common_1 = require("@nestjs/common");
 const client_1 = require("@prisma/client");
 const prisma_service_1 = require("../prisma/prisma.service");
 const roles_util_1 = require("../common/utils/roles.util");
+const audit_log_service_1 = require("../observability/audit-log.service");
 let SettingsService = class SettingsService {
     prisma;
-    constructor(prisma) {
+    audit;
+    constructor(prisma, audit) {
         this.prisma = prisma;
+        this.audit = audit;
     }
     async getCompanySettings(input) {
         await this.requireManager(input.companyId, input.roles, input.userSub);
@@ -40,13 +43,18 @@ let SettingsService = class SettingsService {
         return this.mapCompany(company);
     }
     async updateCompanySettings(input) {
-        await this.requireManager(input.companyId, input.roles, input.userSub);
+        const actor = await this.requireManager(input.companyId, input.roles, input.userSub);
         const existing = await this.prisma.company.findFirst({
             where: {
                 id: input.companyId,
                 deletedAt: null,
             },
-            select: { id: true },
+            select: {
+                id: true,
+                name: true,
+                timezone: true,
+                slug: true,
+            },
         });
         if (!existing) {
             throw new common_1.NotFoundException('Company not found');
@@ -70,9 +78,28 @@ let SettingsService = class SettingsService {
             data.slug = this.normalizeSlug(input.dto.bookingSlug);
         }
         try {
-            await this.prisma.company.update({
+            const updated = await this.prisma.company.update({
                 where: { id: input.companyId },
                 data,
+            });
+            await this.audit.record({
+                companyId: input.companyId,
+                actorUserId: actor.userId,
+                entityType: 'company',
+                entityId: input.companyId,
+                action: 'COMPANY_SETTINGS_UPDATED',
+                changes: {
+                    before: {
+                        name: existing.name,
+                        timezone: existing.timezone,
+                        bookingSlug: existing.slug,
+                    },
+                    after: {
+                        name: updated.name,
+                        timezone: updated.timezone,
+                        bookingSlug: updated.slug,
+                    },
+                },
             });
         }
         catch (error) {
@@ -88,7 +115,7 @@ let SettingsService = class SettingsService {
         });
     }
     async listWorkers(input) {
-        await this.requireManager(input.companyId, input.roles, input.userSub);
+        const actor = await this.requireManager(input.companyId, input.roles, input.userSub);
         const search = input.query.search?.trim();
         const page = input.query.page ?? 1;
         const limit = input.query.limit ?? 20;
@@ -142,7 +169,7 @@ let SettingsService = class SettingsService {
         };
     }
     async createWorker(input) {
-        await this.requireManager(input.companyId, input.roles, input.userSub);
+        const actor = await this.requireManager(input.companyId, input.roles, input.userSub);
         const name = input.dto.name.trim();
         if (!name) {
             throw new common_1.BadRequestException('Worker name is required');
@@ -175,10 +202,23 @@ let SettingsService = class SettingsService {
                 },
             },
         });
+        await this.audit.record({
+            companyId: input.companyId,
+            actorUserId: actor.userId,
+            entityType: 'worker',
+            entityId: worker.id,
+            action: 'WORKER_CREATED',
+            changes: {
+                name: worker.displayName,
+                phone: worker.phone,
+                colorTag: worker.colorTag,
+                active: worker.active,
+            },
+        });
         return this.mapWorker(worker);
     }
     async updateWorker(input) {
-        await this.requireManager(input.companyId, input.roles, input.userSub);
+        const actor = await this.requireManager(input.companyId, input.roles, input.userSub);
         const existing = await this.prisma.worker.findFirst({
             where: {
                 id: input.workerId,
@@ -186,6 +226,10 @@ let SettingsService = class SettingsService {
             },
             select: {
                 id: true,
+                displayName: true,
+                phone: true,
+                colorTag: true,
+                active: true,
                 userId: true,
                 user: {
                     select: {
@@ -263,6 +307,29 @@ let SettingsService = class SettingsService {
                 },
             },
         });
+        await this.audit.record({
+            companyId: input.companyId,
+            actorUserId: actor.userId,
+            entityType: 'worker',
+            entityId: worker.id,
+            action: 'WORKER_UPDATED',
+            changes: {
+                before: {
+                    name: existing.displayName,
+                    phone: existing.phone,
+                    colorTag: existing.colorTag,
+                    active: existing.active,
+                    role: existing.user?.memberships[0]?.role ?? null,
+                },
+                after: {
+                    name: worker.displayName,
+                    phone: worker.phone,
+                    colorTag: worker.colorTag,
+                    active: worker.active,
+                    role: worker.user?.memberships[0]?.role ?? null,
+                },
+            },
+        });
         return this.mapWorker(worker);
     }
     mapCompany(company) {
@@ -317,7 +384,10 @@ let SettingsService = class SettingsService {
                 companyId,
                 user: { sub: userSub },
             },
-            select: { id: true },
+            select: {
+                id: true,
+                userId: true,
+            },
         });
         if (!membership) {
             throw new common_1.ForbiddenException();
@@ -328,6 +398,7 @@ let SettingsService = class SettingsService {
 exports.SettingsService = SettingsService;
 exports.SettingsService = SettingsService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        audit_log_service_1.AuditLogService])
 ], SettingsService);
 //# sourceMappingURL=settings.service.js.map

@@ -3,9 +3,11 @@ import { CreateSettingsWorkerDto } from './dto/create-settings-worker.dto';
 import { ListSettingsWorkersDto } from './dto/list-settings-workers.dto';
 import { UpdateCompanySettingsDto } from './dto/update-company-settings.dto';
 import { UpdateSettingsWorkerDto } from './dto/update-settings-worker.dto';
+import { AuditLogService } from '@/observability/audit-log.service';
 export declare class SettingsService {
     private readonly prisma;
-    constructor(prisma: PrismaService);
+    private readonly audit;
+    constructor(prisma: PrismaService, audit: AuditLogService);
     getCompanySettings(input: {
         companyId: string;
         roles: string[];

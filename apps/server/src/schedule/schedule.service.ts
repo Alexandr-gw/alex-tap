@@ -10,6 +10,7 @@ import { JobStatus, Prisma, Role } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import { NotificationService } from '@/notifications/notification.service';
 import { AlertsService } from '@/alerts/alerts.service';
+import { ActivityService } from '@/activity/activity.service';
 import { hashRequestBody } from '@/common/utils/idempotency.util';
 import { CreateJobDto } from '@/jobs/dto/create-job.dto';
 import { ReviewJobDto } from '@/jobs/dto/review-job.dto';
@@ -20,6 +21,7 @@ export class ScheduleService {
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationService,
     private readonly alerts: AlertsService,
+    private readonly activity: ActivityService,
   ) {}
 
   async createScheduledJob(input: {
@@ -378,6 +380,29 @@ export class ScheduleService {
         },
       });
 
+      if (auditChanges.schedule) {
+        const actorLabel = actor.user?.name ?? actor.user?.email ?? 'Team member';
+        const jobLabel =
+          updatedJob.lineItems[0]?.service?.name ??
+          updatedJob.lineItems[0]?.description ??
+          'Job';
+
+        await this.activity.logJobRescheduled({
+          db: tx,
+          companyId: input.companyId,
+          jobId: job.id,
+          clientId: updatedJob.client.id,
+          actorId: actor.userId,
+          actorLabel,
+          message: `${jobLabel} was rescheduled for ${updatedJob.client.name}.`,
+          metadata: {
+            clientName: updatedJob.client.name,
+            jobTitle: jobLabel,
+            schedule: auditChanges.schedule,
+          },
+        });
+      }
+
       return updatedJob;
     });
 
@@ -422,6 +447,12 @@ export class ScheduleService {
         id: true,
         role: true,
         userId: true,
+        user: {
+          select: {
+            name: true,
+            email: true,
+          },
+        },
       },
     });
 

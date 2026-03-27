@@ -50,7 +50,8 @@ let ActivityService = class ActivityService {
             actorType: client_1.ActivityActorType.USER,
             actorId: input.actorId ?? null,
             actorLabel,
-            message: `${actorLabel} created this job`,
+            message: input.message ?? `${actorLabel} created this job`,
+            metadata: input.metadata ?? null,
         });
     }
     async logJobCompleted(input) {
@@ -66,7 +67,8 @@ let ActivityService = class ActivityService {
             actorType: client_1.ActivityActorType.USER,
             actorId: input.actorId ?? null,
             actorLabel,
-            message: `${actorLabel} completed this job`,
+            message: input.message ?? `${actorLabel} completed this job`,
+            metadata: input.metadata ?? null,
         });
     }
     async logJobCanceled(input) {
@@ -82,7 +84,25 @@ let ActivityService = class ActivityService {
             actorType: client_1.ActivityActorType.USER,
             actorId: input.actorId ?? null,
             actorLabel,
-            message: `${actorLabel} canceled this job`,
+            message: input.message ?? `${actorLabel} canceled this job`,
+            metadata: input.metadata ?? null,
+        });
+    }
+    async logJobRescheduled(input) {
+        const actorLabel = this.normalizeActorLabel('USER', input.actorLabel);
+        return this.logEvent({
+            db: input.db,
+            companyId: input.companyId,
+            type: client_1.ActivityType.JOB_CREATED,
+            entityType: 'job',
+            entityId: input.jobId,
+            jobId: input.jobId,
+            clientId: input.clientId ?? null,
+            actorType: client_1.ActivityActorType.USER,
+            actorId: input.actorId ?? null,
+            actorLabel,
+            message: input.message ?? `${actorLabel} rescheduled this job`,
+            metadata: this.withActivityType(input.metadata ?? null, 'JOB_RESCHEDULED'),
         });
     }
     async logClientCreated(input) {
@@ -98,7 +118,8 @@ let ActivityService = class ActivityService {
             actorType,
             actorId: input.actorId ?? null,
             actorLabel,
-            message: `${actorLabel} created this client`,
+            message: input.message ?? `${actorLabel} created this client`,
+            metadata: input.metadata ?? null,
         });
     }
     async logBookingSubmitted(input) {
@@ -114,7 +135,7 @@ let ActivityService = class ActivityService {
             actorType: client_1.ActivityActorType.PUBLIC,
             actorId: null,
             actorLabel,
-            message: `${actorLabel} submitted a booking`,
+            message: input.message ?? `${actorLabel} submitted a booking`,
             metadata: input.metadata ?? null,
         });
     }
@@ -132,7 +153,57 @@ let ActivityService = class ActivityService {
             actorType,
             actorId: null,
             actorLabel,
-            message: `${actorLabel} paid`,
+            message: input.message ?? `${actorLabel} paid`,
+            metadata: input.metadata ?? null,
+        });
+    }
+    async logInvoiceSent(input) {
+        const actorType = input.actorType ?? client_1.ActivityActorType.SYSTEM;
+        const actorLabel = this.normalizeActorLabel(actorType, input.actorLabel);
+        return this.logEvent({
+            db: input.db,
+            companyId: input.companyId,
+            type: client_1.ActivityType.INVOICE_SENT,
+            entityType: 'invoice',
+            entityId: input.entityId,
+            jobId: input.jobId ?? null,
+            clientId: input.clientId ?? null,
+            actorType,
+            actorId: input.actorId ?? null,
+            actorLabel,
+            message: input.message ?? `${actorLabel} sent an invoice`,
+            metadata: input.metadata ?? null,
+        });
+    }
+    async logTaskCreated(input) {
+        const actorLabel = this.normalizeActorLabel('USER', input.actorLabel);
+        return this.logEvent({
+            db: input.db,
+            companyId: input.companyId,
+            type: client_1.ActivityType.TASK_CREATED,
+            entityType: 'task',
+            entityId: input.taskId,
+            clientId: input.clientId ?? null,
+            actorType: client_1.ActivityActorType.USER,
+            actorId: input.actorId ?? null,
+            actorLabel,
+            message: input.message ?? `${actorLabel} created a task`,
+            metadata: input.metadata ?? null,
+        });
+    }
+    async logTaskCompleted(input) {
+        const actorLabel = this.normalizeActorLabel('USER', input.actorLabel);
+        return this.logEvent({
+            db: input.db,
+            companyId: input.companyId,
+            type: client_1.ActivityType.TASK_COMPLETED,
+            entityType: 'task',
+            entityId: input.taskId,
+            clientId: input.clientId ?? null,
+            actorType: client_1.ActivityActorType.USER,
+            actorId: input.actorId ?? null,
+            actorLabel,
+            message: input.message ?? `${actorLabel} completed a task`,
             metadata: input.metadata ?? null,
         });
     }
@@ -154,12 +225,14 @@ let ActivityService = class ActivityService {
     }
     async listRecentActivity(input) {
         await this.requireManager(input.companyId, input.roles, input.userSub);
+        const windowEnd = new Date();
         const windowStart = new Date(Date.now() - input.hours * 60 * 60 * 1000);
         const items = await this.prisma.activity.findMany({
             where: {
                 companyId: input.companyId,
                 createdAt: {
                     gte: windowStart,
+                    lte: windowEnd,
                 },
             },
             orderBy: { createdAt: 'desc' },
@@ -170,7 +243,7 @@ let ActivityService = class ActivityService {
     mapActivityItem(item) {
         return {
             id: item.id,
-            type: item.type,
+            type: this.resolveResponseType(item),
             actorType: item.actorType,
             actorId: item.actorId,
             actorLabel: item.actorLabel,
@@ -188,6 +261,23 @@ let ActivityService = class ActivityService {
             return null;
         }
         return metadata;
+    }
+    resolveResponseType(item) {
+        const metadata = this.mapMetadata(item.metadata);
+        const responseType = metadata?.activityType;
+        if (responseType === 'JOB_RESCHEDULED') {
+            return responseType;
+        }
+        return item.type;
+    }
+    withActivityType(metadata, activityType) {
+        if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
+            return { activityType };
+        }
+        return {
+            ...metadata,
+            activityType,
+        };
     }
     normalizeActorLabel(actorType, actorLabel) {
         const normalized = actorLabel?.trim();

@@ -1,17 +1,22 @@
 import {
     BadRequestException,
+    Inject,
     Injectable,
     NotFoundException,
     UnprocessableEntityException,
 } from '@nestjs/common';
-import { Prisma, JobStatus } from '@prisma/client';
+import { Prisma, JobStatus, PaymentStatus } from '@prisma/client';
 import { addMinutes, parseISO } from 'date-fns';
 import { DateTime } from 'luxon';
 import { PrismaService } from '@/prisma/prisma.service';
 import { SlotsService } from '@/slots/slots.service';
 import { PaymentsService } from '@/payments/payments.service';
 import { ActivityService } from '@/activity/activity.service';
+import { AlertsService } from '@/alerts/alerts.service';
+import { AuditLogService } from '@/observability/audit-log.service';
+import { EMAIL_PROVIDER, type EmailProvider } from '@/notifications/providers/email.provider';
 import { PublicCheckoutDto } from './dto/public-checkout.dto';
+import { buildBookingAccessUrl, createBookingAccessToken, getBookingAccessExpiry } from './public-booking.utils';
 
 @Injectable()
 export class PublicBookingService {
@@ -20,6 +25,10 @@ export class PublicBookingService {
         private readonly slots: SlotsService,
         private readonly payments: PaymentsService,
         private readonly activity: ActivityService,
+        private readonly alerts: AlertsService,
+        private readonly audit: AuditLogService,
+        @Inject(EMAIL_PROVIDER)
+        private readonly emailProvider: EmailProvider,
     ) {}
 
     async getPublicService(companySlug: string, serviceSlug: string) {
@@ -212,6 +221,7 @@ export class PublicBookingService {
                             companyId: dto.companyId,
                             clientId,
                             workerId: null,
+                            title: service.name,
                             startAt: start,
                             endAt: end,
                             status: JobStatus.PENDING_CONFIRMATION,
@@ -250,8 +260,8 @@ export class PublicBookingService {
 
         const session = await this.payments.createCheckoutSession(dto.companyId, 'public', {
             jobId: booking.jobId,
-            successUrl: process.env.PUBLIC_BOOKING_SUCCESS_URL,
-            cancelUrl: process.env.PUBLIC_BOOKING_CANCEL_URL,
+            successUrl: dto.successUrl ?? process.env.PUBLIC_BOOKING_SUCCESS_URL,
+            cancelUrl: dto.cancelUrl ?? process.env.PUBLIC_BOOKING_CANCEL_URL,
             idempotencyKey: `public:job:${booking.jobId}`,
         });
 
@@ -261,6 +271,11 @@ export class PublicBookingService {
                 clientId: booking.clientId,
                 actorType: 'PUBLIC',
                 actorLabel: dto.client.name?.trim() || 'Customer',
+                message: `${dto.client.name?.trim() || 'Customer'} profile was created from a public booking.`,
+                metadata: {
+                    source: 'public',
+                    clientName: dto.client.name?.trim() || 'Customer',
+                },
             });
         }
 
@@ -269,10 +284,21 @@ export class PublicBookingService {
             jobId: booking.jobId,
             clientId: booking.clientId,
             actorLabel: dto.client.name?.trim() || 'Customer',
-            metadata: { source: 'public' },
+            message: `${dto.client.name?.trim() || 'Customer'} submitted a booking request for ${service.name}.`,
+            metadata: {
+                source: 'public',
+                serviceName: service.name,
+                clientName: dto.client.name?.trim() || 'Customer',
+            },
         });
 
-        return { checkoutUrl: session.url, jobId: booking.jobId };
+        const accessLink = await this.ensureBookingAccessLink(dto.companyId, booking.jobId);
+
+        return {
+            checkoutUrl: session.url,
+            jobId: booking.jobId,
+            bookingAccessPath: `/booking/${accessLink.token}`,
+        };
     }
 
     async listPublicServices(companySlug: string) {
@@ -307,6 +333,204 @@ export class PublicBookingService {
             companyName: company.name,
             services,
         };
+    }
+
+    async getBookingByAccessToken(token: string) {
+        const booking = await this.findBookingAccessLink(token);
+
+        const payment = await this.prisma.payment.findFirst({
+            where: {
+                jobId: booking.job.id,
+                status: { in: [PaymentStatus.SUCCEEDED, PaymentStatus.PENDING, PaymentStatus.REQUIRES_ACTION] },
+            },
+            select: {
+                status: true,
+                amountCents: true,
+                currency: true,
+            },
+            orderBy: { createdAt: 'desc' },
+        });
+
+        return {
+            booking: {
+                token: booking.token,
+                companyName: booking.company.name,
+                jobId: booking.job.id,
+                status: booking.job.status,
+                title: booking.job.title ?? booking.job.lineItems[0]?.description ?? 'Booking',
+                serviceName: booking.job.lineItems[0]?.description ?? booking.job.title ?? 'Service',
+                scheduledAt: booking.job.startAt.toISOString(),
+                endsAt: booking.job.endAt.toISOString(),
+                timezone: booking.company.timezone ?? 'America/Edmonton',
+                clientName: booking.job.client.name,
+                clientEmail: booking.job.client.email,
+                location: booking.job.location ?? booking.job.client.address ?? null,
+                workerName: booking.job.worker?.displayName ?? null,
+                totalCents: booking.job.totalCents,
+                currency: booking.job.currency,
+                notes: booking.job.client.notes ?? null,
+                paymentStatus: payment?.status ?? null,
+                paymentAmountCents: payment?.amountCents ?? null,
+                requestChangesEmail: process.env.NOTIFY_FROM_EMAIL?.trim() || null,
+                expiresAt: booking.expiresAt?.toISOString() ?? null,
+            },
+        };
+    }
+
+    async requestBookingChanges(token: string) {
+        const booking = await this.findBookingAccessLink(token);
+        const actorLabel = booking.job.client.name?.trim() || 'Customer';
+
+        await this.audit.record({
+            companyId: booking.companyId,
+            entityType: 'BOOKING_ACCESS',
+            entityId: booking.job.id,
+            action: 'BOOKING_CHANGE_REQUESTED',
+            changes: {
+                jobId: booking.job.id,
+                clientId: booking.job.clientId,
+                actorLabel,
+                requestedAt: new Date().toISOString(),
+                source: 'public_booking_link',
+            },
+        });
+
+        await this.alerts.createBookingReviewAlerts({
+            companyId: booking.companyId,
+            jobId: booking.job.id,
+        });
+
+        const emailSent = await this.sendBookingChangeRequestEmail({
+            companyName: booking.company.name,
+            clientName: actorLabel,
+            clientEmail: booking.job.client.email,
+            jobId: booking.job.id,
+            serviceName: booking.job.lineItems[0]?.description ?? booking.job.title ?? 'Service',
+            scheduledAt: booking.job.startAt,
+            timezone: booking.company.timezone ?? 'America/Edmonton',
+            accessUrl: buildBookingAccessUrl(booking.token),
+        });
+
+        return {
+            ok: true,
+            message: emailSent
+                ? 'Your request was sent to the team.'
+                : 'Your request was recorded and the team will follow up shortly.',
+        };
+    }
+
+    async ensureBookingAccessLink(companyId: string, jobId: string) {
+        const existing = await this.prisma.bookingAccessLink.findUnique({
+            where: { jobId },
+        });
+
+        if (existing && (!existing.expiresAt || existing.expiresAt.getTime() > Date.now())) {
+            return existing;
+        }
+
+        return this.prisma.bookingAccessLink.upsert({
+            where: { jobId },
+            create: {
+                companyId,
+                jobId,
+                token: createBookingAccessToken(),
+                expiresAt: getBookingAccessExpiry(),
+            },
+            update: {
+                companyId,
+                token: createBookingAccessToken(),
+                expiresAt: getBookingAccessExpiry(),
+            },
+        });
+    }
+
+    private async findBookingAccessLink(token: string) {
+        const booking = await this.prisma.bookingAccessLink.findUnique({
+            where: { token },
+            include: {
+                company: {
+                    select: {
+                        id: true,
+                        name: true,
+                        timezone: true,
+                    },
+                },
+                job: {
+                    include: {
+                        client: {
+                            select: {
+                                id: true,
+                                name: true,
+                                email: true,
+                                address: true,
+                                notes: true,
+                            },
+                        },
+                        worker: {
+                            select: {
+                                displayName: true,
+                            },
+                        },
+                        lineItems: {
+                            select: {
+                                description: true,
+                            },
+                            orderBy: { id: 'asc' },
+                            take: 1,
+                        },
+                    },
+                },
+            },
+        });
+
+        if (!booking || booking.job.source !== 'PUBLIC') {
+            throw new NotFoundException('Booking not found');
+        }
+
+        if (booking.expiresAt && booking.expiresAt.getTime() <= Date.now()) {
+            throw new NotFoundException('Booking link has expired');
+        }
+
+        return booking;
+    }
+
+    private async sendBookingChangeRequestEmail(input: {
+        companyName: string;
+        clientName: string;
+        clientEmail: string | null;
+        jobId: string;
+        serviceName: string;
+        scheduledAt: Date;
+        timezone: string;
+        accessUrl: string;
+    }) {
+        const from = process.env.NOTIFY_FROM_EMAIL?.trim();
+        if (!from) {
+            return false;
+        }
+
+        const scheduledFor = DateTime.fromJSDate(input.scheduledAt, { zone: 'utc' })
+            .setZone(input.timezone)
+            .toLocaleString(DateTime.DATETIME_FULL);
+
+        const result = await this.emailProvider.sendEmail({
+            from,
+            to: from,
+            subject: `${input.clientName} requested booking changes`,
+            html: `
+                <div style="font-family: Arial, sans-serif; color: #0f172a; line-height: 1.6;">
+                    <p>${input.clientName} requested changes to a booking.</p>
+                    <p><strong>Service:</strong> ${input.serviceName}</p>
+                    <p><strong>When:</strong> ${scheduledFor}</p>
+                    <p><strong>Client email:</strong> ${input.clientEmail ?? 'Not provided'}</p>
+                    <p><strong>Job ID:</strong> ${input.jobId}</p>
+                    <p><a href="${input.accessUrl}">Open public booking page</a></p>
+                    <p>Please follow up with the customer to confirm the requested update.</p>
+                </div>
+            `,
+        });
+
+        return result.ok;
     }
 
     private async acquireCompanyDayBookingLock(

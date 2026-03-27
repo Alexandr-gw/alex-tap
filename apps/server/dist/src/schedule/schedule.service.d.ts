@@ -2,13 +2,15 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import { NotificationService } from '@/notifications/notification.service';
 import { AlertsService } from '@/alerts/alerts.service';
+import { ActivityService } from '@/activity/activity.service';
 import { CreateJobDto } from '@/jobs/dto/create-job.dto';
 import { ReviewJobDto } from '@/jobs/dto/review-job.dto';
 export declare class ScheduleService {
     private readonly prisma;
     private readonly notifications;
     private readonly alerts;
-    constructor(prisma: PrismaService, notifications: NotificationService, alerts: AlertsService);
+    private readonly activity;
+    constructor(prisma: PrismaService, notifications: NotificationService, alerts: AlertsService, activity: ActivityService);
     createScheduledJob(input: {
         dto: CreateJobDto;
         idempotencyKey?: string;

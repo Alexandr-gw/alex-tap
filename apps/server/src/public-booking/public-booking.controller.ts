@@ -44,6 +44,16 @@ export class PublicBookingController {
         return this.svc.createPublicCheckout(dto);
     }
 
+    @Get("bookings/access/:token")
+    async getBookingByAccessToken(@Param("token") token: string) {
+        return this.svc.getBookingByAccessToken(token);
+    }
+
+    @Post("bookings/access/:token/request-changes")
+    async requestBookingChanges(@Param("token") token: string) {
+        return this.svc.requestBookingChanges(token);
+    }
+
     @Get("payments/checkout-session/:sessionId")
     async getPublicCheckoutSessionSummary(@Param("sessionId") sessionId: string) {
         return this.payments.getCheckoutSessionSummaryPublic({ sessionId });

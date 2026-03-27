@@ -1,10 +1,15 @@
 import { Controller, Get, Post, Req, Res } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
+import { AppLogger } from '@/observability/app-logger.service';
 
 @Controller('auth')
 export class AuthController {
-    constructor(private readonly AuthService: AuthService, private cfg: ConfigService) {}
+    constructor(
+        private readonly AuthService: AuthService,
+        private cfg: ConfigService,
+        private readonly logger: AppLogger,
+    ) {}
 
     private getCookieOptions() {
         const appBase = this.cfg.get<string>('APP_BASE_URL') ?? '';
@@ -163,7 +168,7 @@ export class AuthController {
             res.clearCookie('oidc_nonce', cookieOpts);
             res.clearCookie('pkce_verifier', cookieOpts);
             res.clearCookie('post_login_redirect', cookieOpts);
-            console.log('Auth callback error:', err);
+            this.logger.errorEvent('auth.callback.failed', {}, err);
             return res.redirect(this.buildAppRedirect('/401'));
         }
     }

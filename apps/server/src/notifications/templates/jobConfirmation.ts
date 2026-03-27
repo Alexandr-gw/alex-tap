@@ -12,6 +12,7 @@ export function jobConfirmation(vars: NotificationTemplateVars) {
   const serviceName = vars.serviceName?.trim() || 'your upcoming job';
   const location = vars.location?.trim() || 'the address on file';
   const workerName = vars.workerName?.trim() || 'our team';
+  const manageUrl = vars.manageUrl ? escapeHtml(vars.manageUrl) : null;
 
   return {
     subject: `${vars.companyName}: your appointment is confirmed`,
@@ -22,6 +23,7 @@ export function jobConfirmation(vars: NotificationTemplateVars) {
         <p><strong>When:</strong> ${escapeHtml(scheduledFor)}</p>
         <p><strong>Where:</strong> ${escapeHtml(location)}</p>
         <p><strong>Assigned team:</strong> ${escapeHtml(workerName)}</p>
+        ${manageUrl ? `<p><a href="${manageUrl}">View your booking details</a></p>` : ''}
         <p>If anything changes, please reply to this email and ${escapeHtml(vars.companyName)} will help.</p>
         <p>Thanks,<br />${escapeHtml(vars.companyName)}</p>
       </div>

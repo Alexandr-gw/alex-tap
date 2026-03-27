@@ -5,6 +5,7 @@ import {
     NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { ActivityService } from '@/activity/activity.service';
 import { hasAnyRole } from '@/common/utils/roles.util';
 import { PrismaService } from '@/prisma/prisma.service';
 import { CreateTaskDto } from './dto/create-task.dto';
@@ -35,7 +36,10 @@ type TaskRecord = Prisma.TaskGetPayload<{
 
 @Injectable()
 export class TasksService {
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly activity: ActivityService,
+    ) {}
 
     async list(input: {
         companyId: string;
@@ -130,6 +134,7 @@ export class TasksService {
         dto: CreateTaskDto;
     }) {
         await this.requireManager(input.companyId, input.roles, input.userSub);
+        const actorLabel = await this.resolveActorLabel(input.userSub);
 
         const range = this.parseRange(input.dto.startAt, input.dto.endAt);
         const customerId = await this.validateCustomerId(input.companyId, input.dto.customerId);
@@ -157,6 +162,19 @@ export class TasksService {
                 });
             }
 
+            await this.activity.logTaskCreated({
+                db: tx,
+                companyId: input.companyId,
+                taskId: created.id,
+                clientId: customerId,
+                actorLabel,
+                message: `${created.subject} task was created by ${actorLabel}.`,
+                metadata: {
+                    customerId,
+                    subject: created.subject,
+                },
+            });
+
             return this.findTaskOrThrow(tx, input.companyId, created.id);
         });
 
@@ -171,6 +189,7 @@ export class TasksService {
         dto: UpdateTaskDto;
     }) {
         await this.requireManager(input.companyId, input.roles, input.userSub);
+        const actorLabel = await this.resolveActorLabel(input.userSub);
         const existing = await this.findTaskOrThrow(this.prisma, input.companyId, input.taskId);
 
         const data: Prisma.TaskUpdateInput = {};
@@ -224,6 +243,21 @@ export class TasksService {
                         })),
                     });
                 }
+            }
+
+            if (!existing.completed && input.dto.completed === true) {
+                await this.activity.logTaskCompleted({
+                    db: tx,
+                    companyId: input.companyId,
+                    taskId: input.taskId,
+                    clientId: existing.customerId,
+                    actorLabel,
+                    message: `${existing.subject} was completed by ${actorLabel}.`,
+                    metadata: {
+                        customerId: existing.customerId,
+                        subject: existing.subject,
+                    },
+                });
             }
 
             return this.findTaskOrThrow(tx, input.companyId, input.taskId);
@@ -382,6 +416,19 @@ export class TasksService {
         const access = await this.resolveAccess(companyId, roles, userSub);
         if (!access.isManager) throw new ForbiddenException();
         return access;
+    }
+
+    private async resolveActorLabel(userSub: string | null) {
+        if (!userSub) {
+            return 'Team member';
+        }
+
+        const user = await this.prisma.user.findUnique({
+            where: { sub: userSub },
+            select: { name: true, email: true },
+        });
+
+        return user?.name?.trim() || user?.email?.trim() || 'Team member';
     }
 
     private async resolveAccess(companyId: string, roles: string[], userSub: string | null) {

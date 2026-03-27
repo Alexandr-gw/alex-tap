@@ -12,6 +12,7 @@ function jobConfirmation(vars) {
     const serviceName = vars.serviceName?.trim() || 'your upcoming job';
     const location = vars.location?.trim() || 'the address on file';
     const workerName = vars.workerName?.trim() || 'our team';
+    const manageUrl = vars.manageUrl ? (0, template_utils_1.escapeHtml)(vars.manageUrl) : null;
     return {
         subject: `${vars.companyName}: your appointment is confirmed`,
         html: `
@@ -21,6 +22,7 @@ function jobConfirmation(vars) {
         <p><strong>When:</strong> ${(0, template_utils_1.escapeHtml)(scheduledFor)}</p>
         <p><strong>Where:</strong> ${(0, template_utils_1.escapeHtml)(location)}</p>
         <p><strong>Assigned team:</strong> ${(0, template_utils_1.escapeHtml)(workerName)}</p>
+        ${manageUrl ? `<p><a href="${manageUrl}">View your booking details</a></p>` : ''}
         <p>If anything changes, please reply to this email and ${(0, template_utils_1.escapeHtml)(vars.companyName)} will help.</p>
         <p>Thanks,<br />${(0, template_utils_1.escapeHtml)(vars.companyName)}</p>
       </div>

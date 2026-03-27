@@ -16,15 +16,18 @@ const client_1 = require("@prisma/client");
 const prisma_service_1 = require("../prisma/prisma.service");
 const notification_service_1 = require("../notifications/notification.service");
 const alerts_service_1 = require("../alerts/alerts.service");
+const activity_service_1 = require("../activity/activity.service");
 const idempotency_util_1 = require("../common/utils/idempotency.util");
 let ScheduleService = class ScheduleService {
     prisma;
     notifications;
     alerts;
-    constructor(prisma, notifications, alerts) {
+    activity;
+    constructor(prisma, notifications, alerts, activity) {
         this.prisma = prisma;
         this.notifications = notifications;
         this.alerts = alerts;
+        this.activity = activity;
     }
     async createScheduledJob(input) {
         const actor = await this.requireManagerActor(input.companyId, input.userSub);
@@ -324,6 +327,26 @@ let ScheduleService = class ScheduleService {
                     },
                 },
             });
+            if (auditChanges.schedule) {
+                const actorLabel = actor.user?.name ?? actor.user?.email ?? 'Team member';
+                const jobLabel = updatedJob.lineItems[0]?.service?.name ??
+                    updatedJob.lineItems[0]?.description ??
+                    'Job';
+                await this.activity.logJobRescheduled({
+                    db: tx,
+                    companyId: input.companyId,
+                    jobId: job.id,
+                    clientId: updatedJob.client.id,
+                    actorId: actor.userId,
+                    actorLabel,
+                    message: `${jobLabel} was rescheduled for ${updatedJob.client.name}.`,
+                    metadata: {
+                        clientName: updatedJob.client.name,
+                        jobTitle: jobLabel,
+                        schedule: auditChanges.schedule,
+                    },
+                });
+            }
             return updatedJob;
         });
         await this.notifications.rescheduleJobReminders(input.companyId, result.id);
@@ -361,6 +384,12 @@ let ScheduleService = class ScheduleService {
                 id: true,
                 role: true,
                 userId: true,
+                user: {
+                    select: {
+                        name: true,
+                        email: true,
+                    },
+                },
             },
         });
         if (!membership)
@@ -376,6 +405,7 @@ exports.ScheduleService = ScheduleService = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
         notification_service_1.NotificationService,
-        alerts_service_1.AlertsService])
+        alerts_service_1.AlertsService,
+        activity_service_1.ActivityService])
 ], ScheduleService);
 //# sourceMappingURL=schedule.service.js.map

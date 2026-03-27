@@ -16,12 +16,15 @@ exports.AuthController = void 0;
 const common_1 = require("@nestjs/common");
 const config_1 = require("@nestjs/config");
 const auth_service_1 = require("./auth.service");
+const app_logger_service_1 = require("../observability/app-logger.service");
 let AuthController = class AuthController {
     AuthService;
     cfg;
-    constructor(AuthService, cfg) {
+    logger;
+    constructor(AuthService, cfg, logger) {
         this.AuthService = AuthService;
         this.cfg = cfg;
+        this.logger = logger;
     }
     getCookieOptions() {
         const appBase = this.cfg.get('APP_BASE_URL') ?? '';
@@ -150,7 +153,7 @@ let AuthController = class AuthController {
             res.clearCookie('oidc_nonce', cookieOpts);
             res.clearCookie('pkce_verifier', cookieOpts);
             res.clearCookie('post_login_redirect', cookieOpts);
-            console.log('Auth callback error:', err);
+            this.logger.errorEvent('auth.callback.failed', {}, err);
             return res.redirect(this.buildAppRedirect('/401'));
         }
     }
@@ -257,6 +260,8 @@ __decorate([
 ], AuthController.prototype, "logout", null);
 exports.AuthController = AuthController = __decorate([
     (0, common_1.Controller)('auth'),
-    __metadata("design:paramtypes", [auth_service_1.AuthService, config_1.ConfigService])
+    __metadata("design:paramtypes", [auth_service_1.AuthService,
+        config_1.ConfigService,
+        app_logger_service_1.AppLogger])
 ], AuthController);
 //# sourceMappingURL=auth.controller.js.map

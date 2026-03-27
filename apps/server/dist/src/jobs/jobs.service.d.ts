@@ -36,6 +36,8 @@ export declare class JobsService {
             location: string | null;
             clientName: string;
             clientEmail: string | null;
+            totalCents: number;
+            currency: string;
             serviceName: string;
             workerName: string;
             colorTag: string | null;
@@ -711,6 +713,7 @@ export declare class JobsService {
     }>;
     private createManagerJob;
     private createWorkerJob;
+    private getActivityJobLabel;
     private resolveAccess;
     private assertCanAccessJob;
     private findDetailedJobOrThrow;

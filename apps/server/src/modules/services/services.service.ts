@@ -1,10 +1,14 @@
 import {Injectable, NotFoundException, ConflictException} from '@nestjs/common';
 import {PrismaService} from '@/prisma/prisma.service';
 import {Prisma} from '@prisma/client';
+import { AuditLogService } from '@/observability/audit-log.service';
 
 @Injectable()
 export class ServicesService {
-    constructor(private prisma: PrismaService) {
+    constructor(
+        private prisma: PrismaService,
+        private readonly audit: AuditLogService,
+    ) {
     }
 
     async list(
@@ -56,15 +60,18 @@ export class ServicesService {
         try {
             const created = await this.prisma.service.create({data});
 
-            // Adjust to your AuditLog schema: entityType + changes (no before/after JSON in your model)
-            await this.prisma.auditLog.create({
-                data: {
-                    companyId,
-                    actorUserId: userId,
-                    entityType: 'service',
-                    entityId: created.id,
-                    action: 'create',
-                    changes: created,
+            await this.audit.record({
+                companyId,
+                actorUserId: userId,
+                entityType: 'service',
+                entityId: created.id,
+                action: 'SERVICE_CREATED',
+                changes: {
+                    name: created.name,
+                    active: created.active,
+                    basePriceCents: created.basePriceCents,
+                    durationMins: created.durationMins,
+                    currency: created.currency,
                 },
             });
 
@@ -92,14 +99,27 @@ export class ServicesService {
         try {
             const updated = await this.prisma.service.update({where: {id}, data: updateData});
 
-            await this.prisma.auditLog.create({
-                data: {
-                    companyId,
-                    actorUserId: userId,
-                    entityType: 'service',
-                    entityId: id,
-                    action: 'update',
-                    changes: {before: existing, after: updated}, // store diff/tuple in Json
+            await this.audit.record({
+                companyId,
+                actorUserId: userId,
+                entityType: 'service',
+                entityId: id,
+                action: 'SERVICE_UPDATED',
+                changes: {
+                    before: {
+                        name: existing.name,
+                        active: existing.active,
+                        basePriceCents: existing.basePriceCents,
+                        durationMins: existing.durationMins,
+                        currency: existing.currency,
+                    },
+                    after: {
+                        name: updated.name,
+                        active: updated.active,
+                        basePriceCents: updated.basePriceCents,
+                        durationMins: updated.durationMins,
+                        currency: updated.currency,
+                    },
                 },
             });
 

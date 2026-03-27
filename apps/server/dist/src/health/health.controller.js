@@ -12,19 +12,30 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.HealthController = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
+const notification_queue_service_1 = require("../notifications/queue/notification-queue.service");
 let HealthController = class HealthController {
     prisma;
-    constructor(prisma) {
+    queues;
+    constructor(prisma, queues) {
         this.prisma = prisma;
+        this.queues = queues;
     }
     async healthz() {
         try {
             await this.prisma.$queryRaw `SELECT 1`;
-            return { ok: true, db: 'up' };
+            const queues = await this.queues.getHealthSnapshot();
+            return { ok: queues.redis === 'up', db: 'up', queues };
         }
         catch (e) {
             throw new common_1.HttpException({ ok: false, db: 'down' }, common_1.HttpStatus.SERVICE_UNAVAILABLE);
         }
+    }
+    async queueHealth() {
+        const queues = await this.queues.getHealthSnapshot();
+        if (queues.redis !== 'up') {
+            throw new common_1.HttpException({ ok: false, queues }, common_1.HttpStatus.SERVICE_UNAVAILABLE);
+        }
+        return { ok: true, queues };
     }
 };
 exports.HealthController = HealthController;
@@ -34,8 +45,15 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], HealthController.prototype, "healthz", null);
+__decorate([
+    (0, common_1.Get)('queues'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], HealthController.prototype, "queueHealth", null);
 exports.HealthController = HealthController = __decorate([
     (0, common_1.Controller)('healthz'),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        notification_queue_service_1.NotificationQueueService])
 ], HealthController);
 //# sourceMappingURL=health.controller.js.map

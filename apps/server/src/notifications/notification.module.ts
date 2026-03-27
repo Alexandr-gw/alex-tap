@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { NotificationService } from './notification.service';
+import { NotificationQueueService } from './queue/notification-queue.service';
 import {
   EMAIL_PROVIDER,
   selectEmailProvider,
@@ -11,6 +12,7 @@ import { TwilioSmsProvider } from './providers/twilio.provider';
 @Module({
     providers: [
         NotificationService,
+        NotificationQueueService,
         SmtpEmailProvider,
         ResendEmailProvider,
         TwilioSmsProvider,
@@ -27,6 +29,11 @@ import { TwilioSmsProvider } from './providers/twilio.provider';
                 }),
         },
     ],
-    exports: [NotificationService],
+    exports: [
+        NotificationService,
+        NotificationQueueService,
+        TwilioSmsProvider,
+        EMAIL_PROVIDER,
+    ],
 })
 export class NotificationModule {}

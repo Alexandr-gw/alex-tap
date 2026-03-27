@@ -1,10 +1,12 @@
+import { ActivityService } from '@/activity/activity.service';
 import { PrismaService } from '@/prisma/prisma.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { ListTasksDto } from './dto/list-tasks.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 export declare class TasksService {
     private readonly prisma;
-    constructor(prisma: PrismaService);
+    private readonly activity;
+    constructor(prisma: PrismaService, activity: ActivityService);
     list(input: {
         companyId: string;
         roles: string[];
@@ -105,5 +107,6 @@ export declare class TasksService {
     private validateCustomerId;
     private validateAssigneeIds;
     private requireManager;
+    private resolveActorLabel;
     private resolveAccess;
 }

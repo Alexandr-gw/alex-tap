@@ -39,6 +39,12 @@ let PublicBookingController = class PublicBookingController {
     async checkout(dto) {
         return this.svc.createPublicCheckout(dto);
     }
+    async getBookingByAccessToken(token) {
+        return this.svc.getBookingByAccessToken(token);
+    }
+    async requestBookingChanges(token) {
+        return this.svc.requestBookingChanges(token);
+    }
     async getPublicCheckoutSessionSummary(sessionId) {
         return this.payments.getCheckoutSessionSummaryPublic({ sessionId });
     }
@@ -76,6 +82,20 @@ __decorate([
     __metadata("design:paramtypes", [public_checkout_dto_1.PublicCheckoutDto]),
     __metadata("design:returntype", Promise)
 ], PublicBookingController.prototype, "checkout", null);
+__decorate([
+    (0, common_1.Get)("bookings/access/:token"),
+    __param(0, (0, common_1.Param)("token")),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], PublicBookingController.prototype, "getBookingByAccessToken", null);
+__decorate([
+    (0, common_1.Post)("bookings/access/:token/request-changes"),
+    __param(0, (0, common_1.Param)("token")),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], PublicBookingController.prototype, "requestBookingChanges", null);
 __decorate([
     (0, common_1.Get)("payments/checkout-session/:sessionId"),
     __param(0, (0, common_1.Param)("sessionId")),

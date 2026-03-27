@@ -15,14 +15,17 @@ const prisma_service_1 = require("../prisma/prisma.service");
 const roles_util_1 = require("../common/utils/roles.util");
 const notification_service_1 = require("../notifications/notification.service");
 const activity_service_1 = require("../activity/activity.service");
+const audit_log_service_1 = require("../observability/audit-log.service");
 let ClientsService = class ClientsService {
     prisma;
     notifications;
     activity;
-    constructor(prisma, notifications, activity) {
+    audit;
+    constructor(prisma, notifications, activity, audit) {
         this.prisma = prisma;
         this.notifications = notifications;
         this.activity = activity;
+        this.audit = audit;
     }
     async list(input) {
         await this.requireManager(input.companyId, input.roles, input.userSub);
@@ -248,6 +251,19 @@ let ClientsService = class ClientsService {
                 notes: null,
             },
         });
+        await this.audit.record({
+            companyId: input.companyId,
+            actorUserId: actor.userId,
+            entityType: 'client',
+            entityId: client.id,
+            action: 'CLIENT_CREATED',
+            changes: {
+                name: client.name,
+                email: client.email,
+                phone: client.phone,
+                address: client.address,
+            },
+        });
         await this.activity.logClientCreated({
             companyId: input.companyId,
             clientId: client.id,
@@ -262,14 +278,21 @@ let ClientsService = class ClientsService {
         });
     }
     async update(input) {
-        await this.requireManager(input.companyId, input.roles, input.userSub);
+        const actor = await this.requireManager(input.companyId, input.roles, input.userSub);
         const existing = await this.prisma.clientProfile.findFirst({
             where: {
                 id: input.clientId,
                 companyId: input.companyId,
                 deletedAt: null,
             },
-            select: { id: true },
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                phone: true,
+                address: true,
+                internalNotes: true,
+            },
         });
         if (!existing) {
             throw new common_1.NotFoundException('Client not found');
@@ -312,6 +335,29 @@ let ClientsService = class ClientsService {
         await this.prisma.clientProfile.update({
             where: { id: input.clientId },
             data,
+        });
+        await this.audit.record({
+            companyId: input.companyId,
+            actorUserId: actor.userId,
+            entityType: 'client',
+            entityId: input.clientId,
+            action: 'CLIENT_UPDATED',
+            changes: {
+                before: {
+                    name: existing.name,
+                    email: existing.email,
+                    phone: existing.phone,
+                    address: existing.address,
+                    internalNotes: existing.internalNotes,
+                },
+                requestedChanges: {
+                    name: data.name ?? undefined,
+                    email: data.email ?? undefined,
+                    phone: data.phone ?? undefined,
+                    address: data.address ?? undefined,
+                    internalNotes: data.internalNotes ?? undefined,
+                },
+            },
         });
         return this.getOne({
             companyId: input.companyId,
@@ -375,6 +421,7 @@ exports.ClientsService = ClientsService = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
         notification_service_1.NotificationService,
-        activity_service_1.ActivityService])
+        activity_service_1.ActivityService,
+        audit_log_service_1.AuditLogService])
 ], ClientsService);
 //# sourceMappingURL=clients.service.js.map

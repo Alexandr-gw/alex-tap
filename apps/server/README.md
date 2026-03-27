@@ -1,98 +1,116 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Server
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+## Observability MVP
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+This backend now includes production-style observability aimed at demo and portfolio use:
 
-## Description
+- structured JSON logs instead of ad hoc console output
+- per-request `requestId` correlation
+- `traceId` propagation from API requests into async notification workers
+- centralized error logging with generated `errorId`
+- safe error references returned to API clients
+- persisted audit logs for key business actions
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Log types
 
-## Project setup
+### Request logs
 
-```bash
-$ npm install
+Every HTTP request emits one structured log entry after the response finishes.
+
+Typical fields:
+
+- `method`
+- `route`
+- `status`
+- `durationMs`
+- `requestId`
+- `traceId`
+- `userId`
+- `companyId`
+
+These logs answer: "What request happened, for whom, and how did it end?"
+
+### Error logs
+
+Unhandled API errors are captured by the global exception filter.
+
+Server-side error logs include:
+
+- `errorId`
+- `requestId`
+- `traceId`
+- safe route/method metadata
+- error name/message
+- stack trace
+
+API responses return only safe references:
+
+```json
+{
+  "statusCode": 500,
+  "message": "An unexpected error occurred. Please contact support with the error reference.",
+  "errorId": "3f0d7c9d-....",
+  "requestId": "8d8f7d0d-...."
+}
 ```
 
-## Compile and run the project
+These logs answer: "Why did this fail, and how do we correlate the user-visible failure with the server log?"
+
+### Audit logs
+
+Audit logs are persisted in the `AuditLog` table and capture important business mutations.
+
+Examples:
+
+- job updates and status changes
+- client create/update
+- payment success/refund
+- service create/update
+- company settings changes
+- worker create/update
+
+These logs answer: "What important business action changed the system?"
+
+## Async trace linking
+
+Notification queue jobs now carry trace metadata from the originating API request:
+
+- API request creates `requestId` + `traceId`
+- queue payload stores trace link metadata
+- worker starts a new worker-side `requestId`
+- worker reuses the original `traceId`
+
+That means API request logs, queue logs, worker start/completion logs, and worker failure logs can all be linked through the same trace.
+
+## Sensitive data handling
+
+Logs intentionally redact or mask sensitive values such as:
+
+- cookies
+- authorization headers
+- tokens and secrets
+- raw provider payloads
+- emails and phone numbers
+- addresses and free-form notes in audit payloads
+
+## Main files
+
+- `src/observability/observability.module.ts`
+- `src/observability/app-logger.service.ts`
+- `src/observability/request-context.service.ts`
+- `src/observability/request-context.middleware.ts`
+- `src/observability/request-context.interceptor.ts`
+- `src/observability/global-exception.filter.ts`
+- `src/observability/audit-log.service.ts`
+- `src/notifications/queue/notification-queue.service.ts`
+- `src/notifications/notification-worker.service.ts`
+
+## Running
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+npm run build
+npm run start:dev
+npm run start:worker
 ```
 
-## Run tests
-
-```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
-```
-
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+The API and notification worker will both emit structured JSON logs to stdout/stderr.

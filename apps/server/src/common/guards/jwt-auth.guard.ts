@@ -80,27 +80,54 @@ export class JwtAuthGuard implements CanActivate {
             const roles = Array.from(new Set(merged));
 
             // 4) Resolve companyId (prefer claim, else header/cookie)
-            const companyId =
+            let companyId =
                 claims.companyId ??
                 req.header('x-company-id') ??
                 (req as any).cookies?.['active_company_id'] ??
                 null;
 
             let membershipRole: string | null = null;
-            if (companyId && claims.sub) {
-                const membership = await this.prisma.membership.findFirst({
-                    where: {
-                        companyId,
-                        user: { sub: claims.sub },
-                    },
-                    select: { role: true },
-                });
+            let membershipUserId: string | null = null;
+            if (claims.sub) {
+                if (companyId) {
+                    const membership = await this.prisma.membership.findFirst({
+                        where: {
+                            companyId,
+                            user: { sub: claims.sub },
+                        },
+                        select: { role: true, userId: true },
+                    });
 
-                membershipRole = membership?.role?.toLowerCase() ?? null;
+                    membershipRole = membership?.role?.toLowerCase() ?? null;
+                    membershipUserId = membership?.userId ?? null;
+                }
+
+                if (!companyId || !membershipRole || !membershipUserId) {
+                    const memberships = await this.prisma.membership.findMany({
+                        where: {
+                            user: { sub: claims.sub },
+                        },
+                        select: {
+                            companyId: true,
+                            role: true,
+                            userId: true,
+                        },
+                        take: 2,
+                    });
+
+                    if (memberships.length === 1) {
+                        companyId = memberships[0].companyId;
+                        membershipRole = memberships[0].role.toLowerCase();
+                        membershipUserId = memberships[0].userId;
+                    } else if (companyId && !membershipRole) {
+                        companyId = null;
+                    }
+                }
             }
 
             // 5) Set a clean, uniform user object for the rest of the app
             (req as any).user = {
+                userId: membershipUserId,
                 sub: claims.sub,
                 email: claims.email ?? null,
                 username: claims.preferred_username ?? null,
