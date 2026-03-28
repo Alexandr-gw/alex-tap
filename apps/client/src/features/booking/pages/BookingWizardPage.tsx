@@ -61,7 +61,7 @@ export function BookingWizardPage() {
     }, [wizard.stepId, wizard, servicesQ, companyId, serviceId, selectedService]);
 
     return (
-        <div className="mx-auto max-w-3xl p-4 sm:p-6">
+        <div className="mx-auto max-w-3xl px-3 py-4 sm:p-6">
             <div className="mb-4">
                 <div className="text-sm text-slate-600">Booking</div>
                 <h1 className="text-xl font-semibold text-slate-900">
@@ -74,7 +74,7 @@ export function BookingWizardPage() {
                 )}
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                 {wizard.resumeChoiceRequired ? (
                     <div className="space-y-4">
                         <div>
@@ -94,17 +94,17 @@ export function BookingWizardPage() {
                             ) : null}
                         </div>
 
-                        <div className="flex flex-wrap gap-3">
+                        <div className="flex flex-col gap-3 sm:flex-row">
                             <button
                                 type="button"
-                                className="rounded-xl bg-slate-900 px-4 py-2 text-white"
+                                className="w-full rounded-xl bg-slate-900 px-4 py-2 text-white sm:w-auto"
                                 onClick={wizard.continueSavedDraft}
                             >
                                 Continue booking
                             </button>
                             <button
                                 type="button"
-                                className="rounded-xl border border-slate-200 px-4 py-2"
+                                className="w-full rounded-xl border border-slate-200 px-4 py-2 sm:w-auto"
                                 onClick={wizard.startFresh}
                             >
                                 Start new booking

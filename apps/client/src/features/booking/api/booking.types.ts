@@ -33,6 +33,7 @@ export type PublicSlotsResponse = {
 export type CreateCheckoutInput = {
     companyId: string;
     serviceId: string;
+    bookingIntentId: string;
     start: string;
     successUrl?: string;
     cancelUrl?: string;
@@ -94,4 +95,8 @@ export type PublicBookingDetailsDto = {
 export type RequestBookingChangesResponse = {
     ok: true;
     message: string;
+};
+
+export type RequestBookingChangesInput = {
+    message?: string;
 };

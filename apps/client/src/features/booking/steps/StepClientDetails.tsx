@@ -72,6 +72,7 @@ export function StepClientDetails({ wizard }: { wizard: any }) {
                     <label className="grid gap-1.5">
                         <span className="text-sm font-medium text-slate-700">Email</span>
                         <input
+                            type="email"
                             className={inputClass(errors.email)}
                             value={client.email ?? ""}
                             onChange={(event) => update({ email: event.target.value })}
@@ -82,6 +83,7 @@ export function StepClientDetails({ wizard }: { wizard: any }) {
                     <label className="grid gap-1.5">
                         <span className="text-sm font-medium text-slate-700">Phone</span>
                         <input
+                            type="tel"
                             className={inputClass(errors.phone)}
                             value={client.phone ?? ""}
                             onChange={(event) => update({ phone: event.target.value })}
@@ -137,11 +139,11 @@ export function StepClientDetails({ wizard }: { wizard: any }) {
                 ) : null}
             </div>
 
-            <div className="mt-6 flex justify-between">
-                <button className="rounded-xl border border-slate-200 px-4 py-2" onClick={wizard.back}>
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
+                <button className="w-full rounded-xl border border-slate-200 px-4 py-2 sm:w-auto" onClick={wizard.back}>
                     Back
                 </button>
-                <button className="rounded-xl bg-slate-900 px-4 py-2 text-white" onClick={onContinue}>
+                <button className="w-full rounded-xl bg-slate-900 px-4 py-2 text-white sm:w-auto" onClick={onContinue}>
                     Continue
                 </button>
             </div>

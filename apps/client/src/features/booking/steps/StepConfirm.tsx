@@ -38,6 +38,7 @@ export function StepConfirm({
         const res = await checkoutM.mutateAsync({
             companyId,
             serviceId,
+            bookingIntentId: wizard.draft.bookingIntentId,
             start: slot.start,
             successUrl: `${origin}/payment/success?companySlug=${encodeURIComponent(companySlug)}&session_id={CHECKOUT_SESSION_ID}`,
             cancelUrl: `${origin}/payment/cancel?companySlug=${encodeURIComponent(companySlug)}&session_id={CHECKOUT_SESSION_ID}`,
@@ -56,7 +57,7 @@ export function StepConfirm({
 
     return (
         <div>
-            <div className="space-y-2">
+            <div className="space-y-2 rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <div className="text-sm text-slate-600">Review</div>
 
                 <div className="text-slate-900 font-medium">
@@ -77,13 +78,13 @@ export function StepConfirm({
                 <div className="mt-3 text-sm text-red-600">Checkout failed. Please try again.</div>
             ) : null}
 
-            <div className="mt-6 flex justify-between">
-                <button className="rounded-xl border border-slate-200 px-4 py-2" onClick={wizard.back}>
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
+                <button className="w-full rounded-xl border border-slate-200 px-4 py-2 sm:w-auto" onClick={wizard.back}>
                     Back
                 </button>
 
                 <button
-                    className="rounded-xl bg-slate-900 px-4 py-2 text-white disabled:opacity-50"
+                    className="w-full rounded-xl bg-slate-900 px-4 py-2 text-white disabled:opacity-50 sm:w-auto"
                     disabled={checkoutM.isPending || !slot}
                     onClick={onPayAndBook}
                 >

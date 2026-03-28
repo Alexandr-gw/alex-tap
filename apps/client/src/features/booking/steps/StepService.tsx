@@ -53,7 +53,7 @@ export function StepService({ wizard, servicesQ }: any) {
                 {visibleServices.map((service: any) => (
                     <button
                         key={service.id}
-                        className="w-full rounded-2xl border border-slate-200 p-4 text-left transition hover:bg-slate-50"
+                        className="w-full rounded-2xl border border-slate-200 p-4 text-left transition hover:bg-slate-50 sm:p-5"
                         onClick={() => {
                             wizard.dispatch({ type: "SET_SERVICE", serviceId: service.id });
                             wizard.next();
@@ -77,7 +77,7 @@ export function StepService({ wizard, servicesQ }: any) {
                 <button
                     type="button"
                     onClick={() => setShowAll((current) => !current)}
-                    className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                    className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 sm:w-auto"
                 >
                     {showAll ? "Show fewer services" : `Show all ${filteredServices.length} services`}
                 </button>

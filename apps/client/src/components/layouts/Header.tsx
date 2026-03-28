@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Bell, ChevronDown } from "lucide-react";
+import { Bell, ChevronDown, Menu } from "lucide-react";
 import { LogoutButton } from "@/features/auth/components/LogoutButton";
 import { ActivityDrawer } from "@/features/activity/components/ActivityDrawer";
 import { useRecentActivity } from "@/features/activity/hooks/activity.queries";
@@ -22,7 +22,11 @@ import {
   getRoleLabel,
 } from "@/features/me/me.selector.ts";
 
-export function Header() {
+type Props = {
+  onOpenSidebar?: () => void;
+};
+
+export function Header({ onOpenSidebar }: Props) {
   const { data: me } = useMe();
   const [isActivityOpen, setIsActivityOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -107,6 +111,15 @@ export function Header() {
       <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/80 backdrop-blur">
         <div className="flex h-14 w-full items-center justify-between px-4">
           <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={onOpenSidebar}
+              className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50 md:hidden"
+              aria-label="Open navigation"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+
             <div className="grid h-9 w-9 place-items-center rounded-xl bg-indigo-600 text-sm font-semibold text-white shadow-sm">
               A
             </div>
@@ -121,7 +134,7 @@ export function Header() {
             </div>
           </div>
 
-          <div className="flex min-w-[280px] items-center justify-end gap-2">
+          <div className="flex min-w-0 items-center justify-end gap-2 sm:min-w-[280px]">
             {canManage ? (
               <button
                 type="button"
@@ -149,7 +162,7 @@ export function Header() {
                   setIsActivityOpen(false);
                   setIsProfileOpen((current) => !current);
                 }}
-                className="inline-flex h-11 min-w-[200px] items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 shadow-sm transition hover:bg-slate-50"
+                className="inline-flex h-11 min-w-0 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 shadow-sm transition hover:bg-slate-50 sm:min-w-[200px]"
                 aria-haspopup="menu"
                 aria-expanded={isProfileOpen}
               >
@@ -157,7 +170,7 @@ export function Header() {
                   {initials}
                 </span>
 
-                <div className="min-w-0 flex-1 text-left leading-tight">
+                <div className="hidden min-w-0 flex-1 text-left leading-tight sm:block">
                   <div className="truncate text-sm font-semibold text-slate-900">
                     {name}
                   </div>

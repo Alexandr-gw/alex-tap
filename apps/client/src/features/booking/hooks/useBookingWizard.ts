@@ -11,6 +11,10 @@ import type { BookingDraft, WizardStepId } from "../booking.types";
 
 const DRAFT_TTL_MS = 24 * 60 * 60 * 1000; // 24h
 
+function createBookingIntentId() {
+    return globalThis.crypto?.randomUUID?.() ?? `booking-${Date.now()}`;
+}
+
 function isDraftFresh(draft: BookingDraft) {
     const updatedAt = draft.updatedAt;
     if (!updatedAt) return true;
@@ -26,7 +30,10 @@ export function useBookingWizard(companySlug: string) {
     const savedDraftCanResume = Boolean(savedDraft) && savedDraftIsFresh && !savedDraftIsCompleted;
 
     const [resumeChoiceRequired, setResumeChoiceRequired] = useState(savedDraftCanResume);
-    const [draft, dispatch] = useReducer(bookingReducer, bookingInitialDraft);
+    const [draft, dispatch] = useReducer(bookingReducer, {
+        ...bookingInitialDraft,
+        bookingIntentId: createBookingIntentId(),
+    });
 
     useEffect(() => {
         if (savedDraft && (!savedDraftIsFresh || savedDraftIsCompleted)) {
@@ -64,7 +71,13 @@ export function useBookingWizard(companySlug: string) {
     function reset() {
         clearBookingDraft(key);
         setResumeChoiceRequired(false);
-        dispatch({ type: "RESET" });
+        dispatch({
+            type: "RESET",
+            draft: {
+                ...bookingInitialDraft,
+                bookingIntentId: createBookingIntentId(),
+            },
+        });
     }
 
     function continueSavedDraft() {
@@ -77,6 +90,7 @@ export function useBookingWizard(companySlug: string) {
             type: "RESET",
             draft: {
                 ...savedDraft,
+                bookingIntentId: savedDraft.bookingIntentId || createBookingIntentId(),
                 status: "active",
                 completedAt: null,
             },
@@ -86,7 +100,13 @@ export function useBookingWizard(companySlug: string) {
 
     function startFresh() {
         clearBookingDraft(key);
-        dispatch({ type: "RESET" });
+        dispatch({
+            type: "RESET",
+            draft: {
+                ...bookingInitialDraft,
+                bookingIntentId: createBookingIntentId(),
+            },
+        });
         setResumeChoiceRequired(false);
     }
 

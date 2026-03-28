@@ -23,6 +23,7 @@ export type BookingClientDraft = {
 export type BookingDraftStatus = "active" | "completed";
 
 export type BookingDraft = {
+    bookingIntentId: string;
     day: ISODate | null; // "YYYY-MM-DD"
     stepIndex: number;
     serviceId: string | null;

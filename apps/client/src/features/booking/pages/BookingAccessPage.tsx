@@ -43,6 +43,7 @@ export function BookingAccessPage() {
     const detailsQ = usePublicBookingDetails(accessToken ?? null);
     const requestChangesM = useRequestPublicBookingChanges();
     const [requestSubmitted, setRequestSubmitted] = useState(false);
+    const [changeMessage, setChangeMessage] = useState("");
 
     const booking = detailsQ.data?.booking ?? null;
 
@@ -171,14 +172,40 @@ export function BookingAccessPage() {
                                 <p className="mt-3 text-sm leading-6 text-emerald-900">
                                     Send a request and {booking.companyName} will review the booking and follow up with you.
                                 </p>
-                                <div className="mt-4 flex flex-wrap gap-3">
+                                <div className="mt-4">
+                                    <label
+                                        htmlFor="booking-change-message"
+                                        className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700"
+                                    >
+                                        What needs to change?
+                                    </label>
+                                    <textarea
+                                        id="booking-change-message"
+                                        value={changeMessage}
+                                        onChange={(event) => setChangeMessage(event.target.value)}
+                                        disabled={requestChangesM.isPending || requestSubmitted}
+                                        maxLength={500}
+                                        rows={4}
+                                        placeholder="Example: Please call me to move this appointment to the afternoon."
+                                        className="mt-2 w-full rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200 disabled:cursor-not-allowed disabled:opacity-70"
+                                    />
+                                    <div className="mt-2 text-xs text-emerald-800/80">
+                                        This note will be shared with the team so they know how to help.
+                                    </div>
+                                </div>
+                                <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                                     <button
                                         type="button"
                                         disabled={requestChangesM.isPending || requestSubmitted}
                                         onClick={async () => {
                                             if (!accessToken) return;
                                             try {
-                                                const result = await requestChangesM.mutateAsync(accessToken);
+                                                const result = await requestChangesM.mutateAsync({
+                                                    accessToken,
+                                                    input: {
+                                                        message: changeMessage.trim() || undefined,
+                                                    },
+                                                });
                                                 if (result.ok) {
                                                     setRequestSubmitted(true);
                                                 }
@@ -186,7 +213,7 @@ export function BookingAccessPage() {
                                                 // handled via mutation state
                                             }
                                         }}
-                                        className="inline-flex rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
+                                        className="inline-flex w-full items-center justify-center rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                                     >
                                         {requestChangesM.isPending
                                             ? "Sending request..."
@@ -197,7 +224,7 @@ export function BookingAccessPage() {
                                     {booking.requestChangesEmail ? (
                                         <a
                                             href={`mailto:${booking.requestChangesEmail}`}
-                                            className="inline-flex rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700"
+                                            className="inline-flex w-full items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 sm:w-auto"
                                         >
                                             Email the team
                                         </a>

@@ -34,6 +34,7 @@ export const BookingSlotSchema = z
     .nullable();
 
 export const BookingDraftSchema = z.object({
+    bookingIntentId: z.string().min(1).optional().default(""),
     stepIndex: z.number().int().min(0),
 
     day: z.string().nullable().optional().default(null),

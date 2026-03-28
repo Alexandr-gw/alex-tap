@@ -21,16 +21,16 @@ export function BookingCancelPage() {
                 </p>
             )}
 
-            <div className="mt-6 flex gap-3">
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                 <Link
                     to="/"
-                    className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white"
+                    className="inline-flex w-full items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white sm:w-auto"
                 >
                     Go home
                 </Link>
                 <Link
                     to={bookingPath}
-                    className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium"
+                    className="inline-flex w-full items-center justify-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium sm:w-auto"
                 >
                     Back to booking
                 </Link>

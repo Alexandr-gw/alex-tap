@@ -1,6 +1,7 @@
 import type { BookingDraft, BookingRange, BookingSlot, BookingClientDraft, ISODate } from "./booking.types";
 
 export const bookingInitialDraft: BookingDraft = {
+    bookingIntentId: "",
     day: null,
     stepIndex: 0,
     serviceId: null,

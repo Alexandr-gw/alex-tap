@@ -174,20 +174,20 @@ export function BookingSuccessPage() {
                         )}
                     </div>
 
-                    <div className="mt-6 flex flex-wrap gap-3">
+                    <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                         {data.status === "SUCCEEDED" ? (
                             <>
                                 {data.bookingAccessPath ? (
                                     <Link
                                         to={data.bookingAccessPath}
-                                        className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white"
+                                        className="inline-flex w-full items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white sm:w-auto"
                                     >
                                         View booking details
                                     </Link>
                                 ) : null}
                                 <Link
                                     to="/"
-                                    className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium"
+                                    className="inline-flex w-full items-center justify-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium sm:w-auto"
                                 >
                                     Go home
                                 </Link>
@@ -195,7 +195,7 @@ export function BookingSuccessPage() {
                                 {canOpenDashboard && (
                                     <Link
                                         to="/app"
-                                        className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium"
+                                        className="inline-flex w-full items-center justify-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium sm:w-auto"
                                     >
                                         Open dashboard
                                     </Link>
@@ -204,7 +204,7 @@ export function BookingSuccessPage() {
                         ) : (
                             <Link
                                 to={bookingPath}
-                                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium"
+                                className="inline-flex w-full items-center justify-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium sm:w-auto"
                             >
                                 Back
                             </Link>

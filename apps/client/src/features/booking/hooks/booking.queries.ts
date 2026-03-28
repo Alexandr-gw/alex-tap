@@ -13,6 +13,7 @@ import type {
     PublicBookingDetailsDto,
     PublicServicesListDto,
     PublicSlotsResponse,
+    RequestBookingChangesInput,
     RequestBookingChangesResponse,
 } from "@/features/booking/api/booking.types";
 import {
@@ -83,8 +84,12 @@ export function usePublicBookingDetails(accessToken: string | null) {
 }
 
 export function useRequestPublicBookingChanges() {
-    return useMutation<RequestBookingChangesResponse, Error, string>({
-        mutationFn: (accessToken) => requestPublicBookingChanges(accessToken),
+    return useMutation<
+        RequestBookingChangesResponse,
+        Error,
+        { accessToken: string; input: RequestBookingChangesInput }
+    >({
+        mutationFn: ({ accessToken, input }) => requestPublicBookingChanges(accessToken, input),
     });
 }
 

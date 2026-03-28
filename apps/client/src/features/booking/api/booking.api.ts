@@ -6,6 +6,7 @@ import type {
     CreateCheckoutResponse,
     PublicServicesListDto,
     PublicBookingDetailsDto,
+    RequestBookingChangesInput,
     RequestBookingChangesResponse,
 } from "./booking.types";
 
@@ -41,11 +42,15 @@ export function getPublicBookingDetails(accessToken: string) {
     );
 }
 
-export function requestPublicBookingChanges(accessToken: string) {
+export function requestPublicBookingChanges(
+    accessToken: string,
+    input: RequestBookingChangesInput,
+) {
     return api<RequestBookingChangesResponse>(
         `/api/v1/public/bookings/access/${accessToken}/request-changes`,
         {
             method: "POST",
+            body: input,
             companyId: null,
         },
     );

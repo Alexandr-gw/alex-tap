@@ -49,19 +49,19 @@ export function StepDateTimePicker({
     return (
         <div className="space-y-4">
             {/* Date picker */}
-            <div className="flex flex-wrap items-end justify-between gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
                 <label className="grid gap-1">
                     <span className="text-sm text-slate-700">Date</span>
                     <input
                         type="date"
-                        className="rounded-xl border border-slate-200 px-3 py-2"
+                        className="min-h-11 rounded-xl border border-slate-200 px-3 py-2"
                         value={day ?? ""}
                         min={todayKey}
                         onChange={(e) => wizard.dispatch({ type: "SET_DAY", day: e.target.value || null })}
                     />
                 </label>
 
-                <div className="text-xs text-slate-500 pb-2">Times shown in your local timezone</div>
+                <div className="pb-0 text-xs text-slate-500 sm:pb-2">Times shown in your local timezone</div>
             </div>
 
             {/* Times */}
@@ -105,12 +105,12 @@ export function StepDateTimePicker({
             </div>
 
             {/* Actions */}
-            <div className="mt-6 flex justify-between">
-                <button className="rounded-xl border border-slate-200 px-4 py-2" onClick={wizard.back}>
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
+                <button className="w-full rounded-xl border border-slate-200 px-4 py-2 sm:w-auto" onClick={wizard.back}>
                     Back
                 </button>
                 <button
-                    className="rounded-xl bg-slate-900 px-4 py-2 text-white disabled:opacity-50"
+                    className="w-full rounded-xl bg-slate-900 px-4 py-2 text-white disabled:opacity-50 sm:w-auto"
                     disabled={!wizard.draft.slot}
                     onClick={wizard.next}
                 >

@@ -33,7 +33,7 @@ export function ScheduleToolbar({
     }
 
     return (
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3">
+        <div className="flex flex-col gap-3 border-b border-slate-200 bg-white px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
             <div className="flex flex-wrap items-center gap-2">
                 <input
                     ref={dateInputRef}
@@ -74,11 +74,11 @@ export function ScheduleToolbar({
                 <button
                     type="button"
                     onClick={openDatePicker}
-                    className="inline-flex h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-900"
+                    className="inline-flex h-11 min-w-0 flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-900 sm:flex-none"
                     title="Open calendar"
                 >
                     <CalendarDays className="h-4 w-4 text-slate-500" />
-                    <span>{formatDateLabel(date)}</span>
+                    <span className="truncate">{formatDateLabel(date)}</span>
                     <ChevronDown className="h-4 w-4 text-slate-400" />
                 </button>
             </div>
@@ -86,7 +86,7 @@ export function ScheduleToolbar({
             <button
                 type="button"
                 onClick={onToggleUnassigned}
-                className="shrink-0 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700"
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 sm:w-auto sm:shrink-0"
             >
                 Unassigned ({unassignedCount})
             </button>

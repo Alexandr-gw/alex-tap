@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { useMe } from "@/features/me/hooks/useMe";
+import { BriefingCard } from "@/features/dashboard/components/BriefingCard";
+import { useDashboardBriefing } from "@/features/dashboard/hooks/dashboard.queries";
 import { useAlertsList } from "@/features/alerts/hooks/alerts.queries";
 import { useJobs } from "@/features/jobs/hooks/jobs.queries";
 import { useScheduleDay } from "@/features/schedule/hooks/useScheduleDay";
@@ -99,9 +101,9 @@ function MetricCard({
     helper: string;
 }) {
     return (
-        <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        <article className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
             <div className="text-sm font-medium text-slate-500">{label}</div>
-            <div className="mt-3 text-4xl font-semibold tracking-tight text-slate-950">
+            <div className="mt-3 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
                 {value}
             </div>
             <div className="mt-2 text-sm text-slate-500">{helper}</div>
@@ -117,7 +119,7 @@ function SectionCard({
     children: ReactNode;
 }) {
     return (
-        <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
             <h2 className="text-lg font-semibold text-slate-950">{title}</h2>
             <div className="mt-4">{children}</div>
         </section>
@@ -132,6 +134,7 @@ export function DashboardHomePage() {
     const todayKey = getTodayDate(timezone);
     const weekEndKey = addDaysToDateKey(todayKey, 6);
     const schedule = useScheduleDay(todayKey);
+    const briefingQuery = useDashboardBriefing(Boolean(me?.activeCompanyId));
     const alertsQuery = useAlertsList("OPEN", true);
     const weeklyJobsQuery = useJobs({
         from: `${todayKey}T00:00:00`,
@@ -197,36 +200,15 @@ export function DashboardHomePage() {
 
     return (
         <div className="space-y-6">
-            <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-                <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-                    <div className="max-w-3xl">
-                        <div className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
-                            Dashboard
-                        </div>
-                        <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">
-                            Today at a glance
-                        </h1>
-                        <p className="mt-3 text-sm leading-6 text-slate-600">
-                            Watch today’s job load, job value, worker activity, and the issues
-                            that need attention before they turn into missed work.
-                        </p>
-                    </div>
+            <BriefingCard
+                briefing={briefingQuery.data ?? null}
+                isLoading={briefingQuery.isLoading}
+                isError={briefingQuery.isError}
+                todayValue={formatMoney(todayValue, currency)}
+                weekValue={formatMoney(weekValue, currency)}
+            />
 
-                    <div className="rounded-3xl bg-slate-950 px-5 py-4 text-white shadow-lg">
-                        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
-                            Job value today
-                        </div>
-                        <div className="mt-2 text-3xl font-semibold">
-                            {formatMoney(todayValue, currency)}
-                        </div>
-                        <div className="mt-2 text-sm text-slate-300">
-                            Weekly pipeline {formatMoney(weekValue, currency)}
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <MetricCard
                     label="Jobs today"
                     value={todayJobs.length}
@@ -252,7 +234,7 @@ export function DashboardHomePage() {
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_380px]">
                 <div className="space-y-6">
                     <SectionCard title="Today's schedule preview">
-                        <div className="grid gap-4 md:grid-cols-3">
+                        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                                 <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
                                     Next job
@@ -307,7 +289,7 @@ export function DashboardHomePage() {
                                     <Link
                                         key={job.id}
                                         to={`/app/jobs/${job.id}`}
-                                        className="flex items-center justify-between rounded-2xl border border-slate-200 px-4 py-3 transition hover:bg-slate-50"
+                                        className="flex flex-col gap-2 rounded-2xl border border-slate-200 px-4 py-3 transition hover:bg-slate-50 sm:flex-row sm:items-center sm:justify-between"
                                     >
                                         <div className="min-w-0">
                                             <div className="truncate font-medium text-slate-950">
@@ -317,8 +299,11 @@ export function DashboardHomePage() {
                                                 {job.clientName ?? "No client"} • {formatDateTime(job.startAt)}
                                             </div>
                                         </div>
-                                        <div className="ml-4 text-right text-sm text-slate-500">
-                                            {job.workerName || (job.workerIds.length ? `${job.workerIds.length} workers` : "Unassigned")}
+                                        <div className="text-sm text-slate-500 sm:ml-4 sm:text-right">
+                                            {job.workerName ||
+                                                (job.workerIds.length
+                                                    ? `${job.workerIds.length} workers`
+                                                    : "Unassigned")}
                                         </div>
                                     </Link>
                                 ))
@@ -353,7 +338,7 @@ export function DashboardHomePage() {
                                         onClick={() => {
                                             void handleCopyBookingLink();
                                         }}
-                                        className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 transition hover:bg-slate-50"
+                                        className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 transition hover:bg-slate-50"
                                     >
                                         Copy link
                                     </button>
@@ -361,7 +346,7 @@ export function DashboardHomePage() {
                                         href={bookingUrl}
                                         target="_blank"
                                         rel="noreferrer"
-                                        className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 transition hover:bg-slate-50"
+                                        className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 transition hover:bg-slate-50"
                                     >
                                         Open page
                                     </a>
@@ -370,7 +355,7 @@ export function DashboardHomePage() {
                                         onClick={() => {
                                             void handleShareBookingLink();
                                         }}
-                                        className="inline-flex h-11 items-center justify-center rounded-xl bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-800"
+                                        className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-800"
                                     >
                                         Share
                                     </button>
@@ -386,7 +371,7 @@ export function DashboardHomePage() {
                                 </div>
                                 <Link
                                     to="/app/settings/company"
-                                    className="mt-4 inline-flex h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
+                                    className="mt-4 inline-flex h-11 w-full items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 transition hover:bg-slate-100 sm:w-auto"
                                 >
                                     Open company settings
                                 </Link>
@@ -464,7 +449,7 @@ function IssueBlock({
     return (
         <div>
             <div className="flex items-center justify-between gap-3">
-                <div className="text-sm font-semibold text-slate-950">{label}</div>
+                <div className="min-w-0 text-sm font-semibold text-slate-950">{label}</div>
                 <span className={["rounded-full px-2.5 py-1 text-xs font-semibold", toneClass].join(" ")}>
                     {items.length}
                 </span>
