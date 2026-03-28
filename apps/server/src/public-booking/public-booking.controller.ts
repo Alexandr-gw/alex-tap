@@ -2,6 +2,7 @@ import {Controller, Get, Post, Query, Param, BadRequestException, Body} from "@n
 import {PublicBookingService} from "./public-booking.service";
 import {PublicCheckoutDto} from "./dto/public-checkout.dto";
 import {PaymentsService} from "@/payments/payments.service";
+import {RequestBookingChangesDto} from "./dto/request-booking-changes.dto";
 
 @Controller("api/v1/public")
 export class PublicBookingController {
@@ -50,8 +51,11 @@ export class PublicBookingController {
     }
 
     @Post("bookings/access/:token/request-changes")
-    async requestBookingChanges(@Param("token") token: string) {
-        return this.svc.requestBookingChanges(token);
+    async requestBookingChanges(
+        @Param("token") token: string,
+        @Body() dto: RequestBookingChangesDto,
+    ) {
+        return this.svc.requestBookingChanges(token, dto);
     }
 
     @Get("payments/checkout-session/:sessionId")

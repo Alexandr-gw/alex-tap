@@ -118,6 +118,8 @@ export declare class AlertsService {
     createBookingReviewAlerts(args: {
         companyId: string;
         jobId: string;
+        reason?: "NEW_BOOKING" | "CHANGE_REQUEST";
+        customerMessage?: string | null;
     }): Promise<{
         ok: boolean;
         count: number;

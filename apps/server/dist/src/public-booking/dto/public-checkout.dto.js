@@ -46,6 +46,7 @@ __decorate([
 class PublicCheckoutDto {
     companyId;
     serviceId;
+    bookingIntentId;
     start;
     client;
     successUrl;
@@ -60,6 +61,10 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], PublicCheckoutDto.prototype, "serviceId", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], PublicCheckoutDto.prototype, "bookingIntentId", void 0);
 __decorate([
     (0, class_validator_1.IsISO8601)(),
     __metadata("design:type", String)

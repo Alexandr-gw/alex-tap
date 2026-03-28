@@ -21,6 +21,7 @@ import {ClientsModule} from '@/clients/clients.module';
 import {SettingsModule} from '@/settings/settings.module';
 import {ActivityModule} from '@/activity/activity.module';
 import {ObservabilityModule} from '@/observability/observability.module';
+import {DashboardModule} from '@/dashboard/dashboard.module';
 
 @Module({
     imports: [
@@ -44,6 +45,7 @@ import {ObservabilityModule} from '@/observability/observability.module';
         ClientsModule,
         SettingsModule,
         ActivityModule,
+        DashboardModule,
     ],
     controllers: [AppController],
     providers: [AppService],

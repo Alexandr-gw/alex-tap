@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+require("reflect-metadata");
 const core_1 = require("@nestjs/core");
 const notification_worker_module_1 = require("./notification-worker.module");
 const app_logger_service_1 = require("../observability/app-logger.service");

@@ -8,6 +8,7 @@ declare class PublicClientDto {
 export declare class PublicCheckoutDto {
     companyId: string;
     serviceId: string;
+    bookingIntentId: string;
     start: string;
     client: PublicClientDto;
     successUrl?: string;

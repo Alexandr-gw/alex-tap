@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { NotificationWorkerModule } from './notification-worker.module';
 import { AppLogger } from '@/observability/app-logger.service';

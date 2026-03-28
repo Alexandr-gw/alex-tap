@@ -20,6 +20,7 @@ class PublicClientDto {
 export class PublicCheckoutDto {
     @IsString() companyId!: string;
     @IsString() serviceId!: string;
+    @IsString() bookingIntentId!: string;
 
     @IsISO8601()
     start!: string;

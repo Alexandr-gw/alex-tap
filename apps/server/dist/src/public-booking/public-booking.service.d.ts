@@ -6,6 +6,7 @@ import { AlertsService } from '@/alerts/alerts.service';
 import { AuditLogService } from '@/observability/audit-log.service';
 import { type EmailProvider } from '@/notifications/providers/email.provider';
 import { PublicCheckoutDto } from './dto/public-checkout.dto';
+import { RequestBookingChangesDto } from './dto/request-booking-changes.dto';
 export declare class PublicBookingService {
     private readonly prisma;
     private readonly slots;
@@ -74,7 +75,7 @@ export declare class PublicBookingService {
             expiresAt: string | null;
         };
     }>;
-    requestBookingChanges(token: string): Promise<{
+    requestBookingChanges(token: string, dto?: RequestBookingChangesDto): Promise<{
         ok: boolean;
         message: string;
     }>;
@@ -87,6 +88,7 @@ export declare class PublicBookingService {
         expiresAt: Date | null;
         token: string;
     }>;
+    private buildPublicCheckoutIdempotencyKey;
     private findBookingAccessLink;
     private sendBookingChangeRequestEmail;
     private acquireCompanyDayBookingLock;

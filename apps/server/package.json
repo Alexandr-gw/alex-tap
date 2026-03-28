@@ -4,22 +4,24 @@
   "description": "",
   "author": "",
   "private": true,
-  "license": "UNLICENSED",
+  "license": "MIT",
   "scripts": {
     "build": "nest build",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
-    "start:worker": "tsx src/notifications/notification-worker.main.ts",
+    "start:worker": "ts-node -r tsconfig-paths/register src/notifications/notification-worker.main.ts",
     "start:worker:prod": "node dist/notifications/notification-worker.main.js",
-    "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:cov": "jest --coverage",
+    "lint": "eslint \"{src,apps,libs,test}/**/*.ts\"",
+    "lint:fix": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
+    "test": "node ./scripts/run-jest.cjs",
+    "test:watch": "node ./scripts/run-jest.cjs --watch",
+    "test:cov": "node ./scripts/run-jest.cjs --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "test:e2e": "node ./scripts/run-jest.cjs --config ./test/jest-e2e.json",
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
@@ -41,6 +43,7 @@
     "class-validator": "^0.14.2",
     "cookie-parser": "^1.4.7",
     "date-fns": "^4.1.0",
+    "helmet": "^8.1.0",
     "luxon": "^3.7.2",
     "nodemailer": "^8.0.3",
     "reflect-metadata": "^0.2.2",
@@ -89,6 +92,10 @@
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
+    },
+    "moduleNameMapper": {
+      "^@/(.*)$": "<rootDir>/$1",
+      "^uuid$": "<rootDir>/../test/mocks/uuid.ts"
     },
     "collectCoverageFrom": [
       "**/*.(t|j)s"

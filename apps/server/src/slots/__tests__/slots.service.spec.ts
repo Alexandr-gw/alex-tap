@@ -36,20 +36,19 @@ describe('SlotsService', () => {
         mockPrisma.service.findUnique.mockResolvedValue({
             id: 'svc1',
             active: true,
+            companyId: 'co1',
             durationMins: 60,
-            bufferBeforeMins: 0,
-            bufferAfterMins: 0,
         });
 
         mockPrisma.availabilityRule.findMany.mockResolvedValue([
-            { dayOfWeek: 1, startLocalTime: '09:00', endLocalTime: '17:00' }, // Monday
+            { dayOfWeek: 1, startTime: '09:00', endTime: '17:00' }, // Monday
         ]);
 
         mockPrisma.availabilityException.findMany.mockResolvedValue([]);
 
         mockPrisma.job.findMany.mockResolvedValue([
             // Busy 12:00-13:00 UTC (example)
-            { startsAt: d('2025-09-15T12:00:00Z'), endsAt: d('2025-09-15T13:00:00Z') },
+            { startAt: d('2025-09-15T12:00:00Z'), endAt: d('2025-09-15T13:00:00Z') },
         ]);
     });
 

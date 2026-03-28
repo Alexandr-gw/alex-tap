@@ -21,6 +21,7 @@ export declare class ScheduleService {
         id: string;
         clientId: string;
         workerId: string | null;
+        publicBookingIntentId: string | null;
         title: string | null;
         description: string | null;
         internalNotes: string | null;
@@ -116,6 +117,7 @@ export declare class ScheduleService {
         id: string;
         clientId: string;
         workerId: string | null;
+        publicBookingIntentId: string | null;
         title: string | null;
         description: string | null;
         internalNotes: string | null;
@@ -140,6 +142,7 @@ export declare class ScheduleService {
         id: string;
         clientId: string;
         workerId: string | null;
+        publicBookingIntentId: string | null;
         title: string | null;
         description: string | null;
         internalNotes: string | null;

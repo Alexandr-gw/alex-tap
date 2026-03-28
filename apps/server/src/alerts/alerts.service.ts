@@ -255,7 +255,12 @@ export class AlertsService {
         return { ok: true };
     }
 
-    async createBookingReviewAlerts(args: { companyId: string; jobId: string }) {
+    async createBookingReviewAlerts(args: {
+        companyId: string;
+        jobId: string;
+        reason?: "NEW_BOOKING" | "CHANGE_REQUEST";
+        customerMessage?: string | null;
+    }) {
         const [job, memberships] = await Promise.all([
             this.prisma.job.findFirst({
                 where: {
@@ -297,8 +302,22 @@ export class AlertsService {
 
         const serviceName = job.lineItems[0]?.description ?? "Service";
         const workerName = job.worker?.displayName ?? "Assigned worker";
-        const title = "Booking pending confirmation";
-        const message = `${job.client.name} booked ${serviceName} with ${workerName}.`;
+        const trimmedCustomerMessage = args.customerMessage?.trim() || null;
+        const isChangeRequest = args.reason === "CHANGE_REQUEST";
+        const title = isChangeRequest ? "Customer requested changes" : "Booking pending confirmation";
+        const message = isChangeRequest
+            ? trimmedCustomerMessage
+                ? `${job.client.name} requested updates to ${serviceName}. Reach out to confirm the change request: "${trimmedCustomerMessage}"`
+                : `${job.client.name} requested updates to ${serviceName}. Reach out to confirm the requested change.`
+            : `${job.client.name} booked ${serviceName} with ${workerName}.`;
+        const payload = {
+            startAt: job.startAt.toISOString(),
+            clientName: job.client.name,
+            workerName,
+            serviceName,
+            reason: isChangeRequest ? "CHANGE_REQUEST" : "NEW_BOOKING",
+            customerMessage: trimmedCustomerMessage,
+        };
 
         await Promise.all(
             memberships.map((membership) =>
@@ -318,23 +337,13 @@ export class AlertsService {
                         status: AlertStatus.OPEN,
                         title,
                         message,
-                        payload: {
-                            startAt: job.startAt.toISOString(),
-                            clientName: job.client.name,
-                            workerName,
-                            serviceName,
-                        },
+                        payload,
                     },
                     update: {
                         status: AlertStatus.OPEN,
                         title,
                         message,
-                        payload: {
-                            startAt: job.startAt.toISOString(),
-                            clientName: job.client.name,
-                            workerName,
-                            serviceName,
-                        },
+                        payload,
                         readAt: null,
                         resolvedAt: null,
                         resolvedByUserId: null,

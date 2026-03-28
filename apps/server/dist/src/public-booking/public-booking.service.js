@@ -17,6 +17,7 @@ const common_1 = require("@nestjs/common");
 const client_1 = require("@prisma/client");
 const date_fns_1 = require("date-fns");
 const luxon_1 = require("luxon");
+const crypto_1 = require("crypto");
 const prisma_service_1 = require("../prisma/prisma.service");
 const slots_service_1 = require("../slots/slots.service");
 const payments_service_1 = require("../payments/payments.service");
@@ -211,38 +212,123 @@ let PublicBookingService = class PublicBookingService {
             const subtotal = service.basePriceCents;
             const tax = 0;
             const total = subtotal + tax;
-            const job = await tx.job.create({
-                data: {
+            const existingJob = await tx.job.findFirst({
+                where: {
                     companyId: dto.companyId,
-                    clientId,
-                    workerId: null,
-                    title: service.name,
-                    startAt: start,
-                    endAt: end,
-                    status: client_1.JobStatus.PENDING_CONFIRMATION,
-                    location: dto.client.address ?? null,
+                    publicBookingIntentId: dto.bookingIntentId,
                     source: 'PUBLIC',
-                    subtotalCents: subtotal,
-                    taxCents: tax,
-                    totalCents: total,
-                    paidCents: 0,
-                    balanceCents: total,
-                    currency: service.currency ?? 'CAD',
+                },
+                select: {
+                    id: true,
+                    clientId: true,
+                    paidCents: true,
+                    status: true,
+                    payments: {
+                        select: { status: true },
+                    },
+                    lineItems: {
+                        select: { id: true },
+                        orderBy: { id: 'asc' },
+                    },
                 },
             });
-            await tx.jobLineItem.create({
-                data: {
-                    jobId: job.id,
-                    serviceId: service.id,
-                    description: service.name,
-                    quantity: 1,
-                    unitPriceCents: service.basePriceCents,
-                    taxRateBps: 0,
-                    totalCents: service.basePriceCents,
-                },
-            });
+            let jobId;
+            if (existingJob) {
+                const hasSuccessfulPayment = existingJob.paidCents > 0 ||
+                    existingJob.payments.some((payment) => payment.status === client_1.PaymentStatus.SUCCEEDED);
+                if (hasSuccessfulPayment) {
+                    throw new common_1.BadRequestException('This booking has already been submitted.');
+                }
+                await tx.job.update({
+                    where: { id: existingJob.id },
+                    data: {
+                        clientId,
+                        workerId: null,
+                        title: service.name,
+                        startAt: start,
+                        endAt: end,
+                        status: client_1.JobStatus.PENDING_CONFIRMATION,
+                        location: dto.client.address ?? null,
+                        subtotalCents: subtotal,
+                        taxCents: tax,
+                        totalCents: total,
+                        paidCents: 0,
+                        balanceCents: total,
+                        currency: service.currency ?? 'CAD',
+                    },
+                });
+                if (existingJob.lineItems[0]) {
+                    await tx.jobLineItem.update({
+                        where: { id: existingJob.lineItems[0].id },
+                        data: {
+                            serviceId: service.id,
+                            description: service.name,
+                            quantity: 1,
+                            unitPriceCents: service.basePriceCents,
+                            taxRateBps: 0,
+                            totalCents: service.basePriceCents,
+                        },
+                    });
+                }
+                else {
+                    await tx.jobLineItem.create({
+                        data: {
+                            jobId: existingJob.id,
+                            serviceId: service.id,
+                            description: service.name,
+                            quantity: 1,
+                            unitPriceCents: service.basePriceCents,
+                            taxRateBps: 0,
+                            totalCents: service.basePriceCents,
+                        },
+                    });
+                }
+                if (existingJob.lineItems.length > 1) {
+                    await tx.jobLineItem.deleteMany({
+                        where: {
+                            jobId: existingJob.id,
+                            id: { not: existingJob.lineItems[0].id },
+                        },
+                    });
+                }
+                jobId = existingJob.id;
+            }
+            else {
+                const job = await tx.job.create({
+                    data: {
+                        companyId: dto.companyId,
+                        clientId,
+                        workerId: null,
+                        publicBookingIntentId: dto.bookingIntentId,
+                        title: service.name,
+                        startAt: start,
+                        endAt: end,
+                        status: client_1.JobStatus.PENDING_CONFIRMATION,
+                        location: dto.client.address ?? null,
+                        source: 'PUBLIC',
+                        subtotalCents: subtotal,
+                        taxCents: tax,
+                        totalCents: total,
+                        paidCents: 0,
+                        balanceCents: total,
+                        currency: service.currency ?? 'CAD',
+                    },
+                });
+                await tx.jobLineItem.create({
+                    data: {
+                        jobId: job.id,
+                        serviceId: service.id,
+                        description: service.name,
+                        quantity: 1,
+                        unitPriceCents: service.basePriceCents,
+                        taxRateBps: 0,
+                        totalCents: service.basePriceCents,
+                    },
+                });
+                jobId = job.id;
+            }
             return {
-                jobId: job.id,
+                jobId,
                 clientId,
                 clientWasCreated,
             };
@@ -251,7 +337,7 @@ let PublicBookingService = class PublicBookingService {
             jobId: booking.jobId,
             successUrl: dto.successUrl ?? process.env.PUBLIC_BOOKING_SUCCESS_URL,
             cancelUrl: dto.cancelUrl ?? process.env.PUBLIC_BOOKING_CANCEL_URL,
-            idempotencyKey: `public:job:${booking.jobId}`,
+            idempotencyKey: this.buildPublicCheckoutIdempotencyKey(dto),
         });
         if (booking.clientWasCreated) {
             await this.activity.logClientCreated({
@@ -354,9 +440,10 @@ let PublicBookingService = class PublicBookingService {
             },
         };
     }
-    async requestBookingChanges(token) {
+    async requestBookingChanges(token, dto) {
         const booking = await this.findBookingAccessLink(token);
         const actorLabel = booking.job.client.name?.trim() || 'Customer';
+        const customerMessage = dto?.message?.trim() || null;
         await this.audit.record({
             companyId: booking.companyId,
             entityType: 'BOOKING_ACCESS',
@@ -368,11 +455,14 @@ let PublicBookingService = class PublicBookingService {
                 actorLabel,
                 requestedAt: new Date().toISOString(),
                 source: 'public_booking_link',
+                customerMessage,
             },
         });
         await this.alerts.createBookingReviewAlerts({
             companyId: booking.companyId,
             jobId: booking.job.id,
+            reason: 'CHANGE_REQUEST',
+            customerMessage,
         });
         const emailSent = await this.sendBookingChangeRequestEmail({
             companyName: booking.company.name,
@@ -383,12 +473,13 @@ let PublicBookingService = class PublicBookingService {
             scheduledAt: booking.job.startAt,
             timezone: booking.company.timezone ?? 'America/Edmonton',
             accessUrl: (0, public_booking_utils_1.buildBookingAccessUrl)(booking.token),
+            customerMessage,
         });
         return {
             ok: true,
             message: emailSent
-                ? 'Your request was sent to the team.'
-                : 'Your request was recorded and the team will follow up shortly.',
+                ? 'Your request was sent to the team. They will reach out to confirm the update.'
+                : 'Your request was recorded and the team will reach out shortly.',
         };
     }
     async ensureBookingAccessLink(companyId, jobId) {
@@ -412,6 +503,21 @@ let PublicBookingService = class PublicBookingService {
                 expiresAt: (0, public_booking_utils_1.getBookingAccessExpiry)(),
             },
         });
+    }
+    buildPublicCheckoutIdempotencyKey(dto) {
+        const fingerprint = (0, crypto_1.createHash)('sha256')
+            .update(JSON.stringify({
+            bookingIntentId: dto.bookingIntentId,
+            serviceId: dto.serviceId,
+            start: dto.start,
+            clientName: dto.client.name?.trim() || '',
+            clientEmail: dto.client.email?.trim()?.toLowerCase() || '',
+            clientPhone: dto.client.phone?.trim() || '',
+            clientAddress: dto.client.address?.trim() || '',
+        }))
+            .digest('hex')
+            .slice(0, 16);
+        return `public:intent:${dto.bookingIntentId}:${fingerprint}`;
     }
     async findBookingAccessLink(token) {
         const booking = await this.prisma.bookingAccessLink.findUnique({
@@ -478,6 +584,7 @@ let PublicBookingService = class PublicBookingService {
                     <p><strong>When:</strong> ${scheduledFor}</p>
                     <p><strong>Client email:</strong> ${input.clientEmail ?? 'Not provided'}</p>
                     <p><strong>Job ID:</strong> ${input.jobId}</p>
+                    <p><strong>Requested change:</strong> ${input.customerMessage ?? 'Customer asked the team to follow up.'}</p>
                     <p><a href="${input.accessUrl}">Open public booking page</a></p>
                     <p>Please follow up with the customer to confirm the requested update.</p>
                 </div>

@@ -275,6 +275,7 @@ model Job {
   companyId     String
   clientId      String
   workerId      String?
+  publicBookingIntentId String? @unique
   title         String?
   description   String?
   internalNotes String?

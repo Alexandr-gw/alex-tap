@@ -1,6 +1,7 @@
 import { PublicBookingService } from "./public-booking.service";
 import { PublicCheckoutDto } from "./dto/public-checkout.dto";
 import { PaymentsService } from "@/payments/payments.service";
+import { RequestBookingChangesDto } from "./dto/request-booking-changes.dto";
 export declare class PublicBookingController {
     private readonly svc;
     private readonly payments;
@@ -59,7 +60,7 @@ export declare class PublicBookingController {
             expiresAt: string | null;
         };
     }>;
-    requestBookingChanges(token: string): Promise<{
+    requestBookingChanges(token: string, dto: RequestBookingChangesDto): Promise<{
         ok: boolean;
         message: string;
     }>;
