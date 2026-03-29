@@ -1,11 +1,10 @@
 import { useCreateCheckout } from "../hooks/booking.queries";
 import type { PublicServiceListItemDto } from "../api/booking.types";
 import { setLastActiveBookingDraftKey } from "../draft.utils";
+import type { BookingWizardController } from "../hooks/useBookingWizard";
+import type { BookingClientDraft } from "../booking.types";
 
-function buildClientAddress(client: {
-    addressLine1?: string;
-    addressLine2?: string;
-}) {
+function buildClientAddress(client: BookingClientDraft) {
     return [client.addressLine1?.trim(), client.addressLine2?.trim()]
         .filter(Boolean)
         .join(", ");
@@ -18,7 +17,7 @@ export function StepConfirm({
                                 serviceId,
                                 selectedService,
                             }: {
-    wizard: any;
+    wizard: BookingWizardController;
     companyId: string;
     companySlug: string;
     serviceId: string;

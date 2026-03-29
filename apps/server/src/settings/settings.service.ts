@@ -141,7 +141,7 @@ export class SettingsService {
         userSub: string | null;
         query: ListSettingsWorkersDto;
     }) {
-        const actor = await this.requireManager(input.companyId, input.roles, input.userSub);
+        await this.requireManager(input.companyId, input.roles, input.userSub);
 
         const search = input.query.search?.trim();
         const page = input.query.page ?? 1;

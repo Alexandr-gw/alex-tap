@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { BookingClientSchema } from "../booking.schema";
+import type { BookingWizardController } from "../hooks/useBookingWizard";
 
 type FieldErrors = Partial<
     Record<"name" | "email" | "phone" | "addressLine1" | "addressLine2" | "notes", string>
@@ -14,7 +15,7 @@ function inputClass(error?: string) {
     ].join(" ");
 }
 
-export function StepClientDetails({ wizard }: { wizard: any }) {
+export function StepClientDetails({ wizard }: { wizard: BookingWizardController }) {
     const [errors, setErrors] = useState<FieldErrors>({});
 
     const client = wizard.draft.client;

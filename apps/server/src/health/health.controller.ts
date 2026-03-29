@@ -15,7 +15,7 @@ export class HealthController {
             await this.prisma.$queryRaw`SELECT 1`;
             const queues = await this.queues.getHealthSnapshot();
             return { ok: queues.redis === 'up', db: 'up', queues };
-        } catch (e) {
+        } catch {
             throw new HttpException({ ok: false, db: 'down' }, HttpStatus.SERVICE_UNAVAILABLE);
         }
     }

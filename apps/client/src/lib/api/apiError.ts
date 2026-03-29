@@ -20,34 +20,36 @@ export function isApiError(e: unknown): e is ApiError {
 export async function toApiError(res: Response): Promise<ApiError> {
     const status = res.status;
 
-    let body: any = null;
+    let body: unknown = null;
     try {
         body = await res.json();
     } catch {
         body = null;
     }
 
+    const bodyRecord = typeof body === "object" && body !== null ? (body as Record<string, unknown>) : null;
+
     // { ok:false, error:'validation_error', issues:[...] }
-    if (body && !body.ok && typeof body.error === "string") {
+    if (bodyRecord && bodyRecord.ok === false && typeof bodyRecord.error === "string") {
         return {
             status,
-            message: body.error,
-            code: body.error,
-            issues: Array.isArray(body.issues) ? body.issues : undefined,
+            message: bodyRecord.error,
+            code: bodyRecord.error,
+            issues: Array.isArray(bodyRecord.issues) ? (bodyRecord.issues as ZodIssue[]) : undefined,
             raw: body,
         };
     }
 
     const msg =
-        (typeof body?.message === "string" && body.message) ||
-        (Array.isArray(body?.message) && body.message.join(", ")) ||
+        (bodyRecord && typeof bodyRecord.message === "string" && bodyRecord.message) ||
+        (bodyRecord && Array.isArray(bodyRecord.message) && bodyRecord.message.join(", ")) ||
         res.statusText ||
         "Request failed";
 
     return {
         status,
         message: msg,
-        code: typeof body?.error === "string" ? body.error : undefined,
+        code: bodyRecord && typeof bodyRecord.error === "string" ? bodyRecord.error : undefined,
         raw: body ?? undefined,
     };
 }

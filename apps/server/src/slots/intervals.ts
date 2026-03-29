@@ -1,4 +1,4 @@
-import { DateTime, Duration, Interval } from 'luxon';
+import { DateTime } from 'luxon';
 
 export type OpenInterval = { start: Date; end: Date };
 

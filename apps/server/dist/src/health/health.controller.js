@@ -26,7 +26,7 @@ let HealthController = class HealthController {
             const queues = await this.queues.getHealthSnapshot();
             return { ok: queues.redis === 'up', db: 'up', queues };
         }
-        catch (e) {
+        catch {
             throw new common_1.HttpException({ ok: false, db: 'down' }, common_1.HttpStatus.SERVICE_UNAVAILABLE);
         }
     }

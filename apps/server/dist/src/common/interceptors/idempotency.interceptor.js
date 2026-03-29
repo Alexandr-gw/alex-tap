@@ -56,7 +56,7 @@ let IdempotencyInterceptor = class IdempotencyInterceptor {
                     });
                 }
             }
-            catch (e) {
+            catch {
             }
             return response;
         }));

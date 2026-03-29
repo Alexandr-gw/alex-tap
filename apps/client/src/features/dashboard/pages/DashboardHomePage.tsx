@@ -201,6 +201,7 @@ export function DashboardHomePage() {
                 });
                 return;
             } catch {
+                // Fall back to copying the link when sharing is canceled or unsupported.
             }
         }
 

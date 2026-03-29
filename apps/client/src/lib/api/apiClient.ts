@@ -74,7 +74,9 @@ export async function api<TResp, TBody = unknown>(
         try {
             await refreshAccessSession();
             res = await request();
-        } catch {}
+        } catch {
+            // Ignore refresh failures here; the original 401 will surface below.
+        }
     }
 
     if (!res.ok) throw await toApiError(res);

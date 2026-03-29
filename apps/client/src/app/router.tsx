@@ -31,9 +31,8 @@ import { SettingsHomePage } from '@/features/settings/pages/SettingsHomePage';
 import { CompanySettingsPage } from '@/features/settings/pages/CompanySettingsPage';
 import { WorkersSettingsPage } from '@/features/settings/pages/WorkersSettingsPage';
 
-function Placeholder({ title }: { title: string }) {
-    return <div className="p-6 text-lg font-semibold">{title}</div>;
-}
+const trackingPage = <div className="p-6 text-lg font-semibold">Tracking</div>;
+const usersPage = <div className="p-6 text-lg font-semibold">Users</div>;
 
 export const router = createBrowserRouter([
     { path: '/', element: <LandingPage /> },
@@ -57,7 +56,7 @@ export const router = createBrowserRouter([
                         children: [
                             { index: true, element: <DashboardHomePage /> },
                             { path: 'schedule', element: <SchedulePage /> },
-                            { path: 'tracking', element: <Placeholder title="Tracking" /> },
+                            { path: 'tracking', element: trackingPage },
                             { path: 'jobs/new', element: <CreateJobPage /> },
                             { path: 'jobs/:jobId', element: <JobDetailsPage /> },
                             {
@@ -71,7 +70,7 @@ export const router = createBrowserRouter([
                                     { path: 'jobs', element: <JobsPage /> },
                                     { path: 'new-bookings', element: <AlertsInboxPage /> },
                                     { path: 'services', element: <ServicesAdminPage /> },
-                                    { path: 'users', element: <Placeholder title="Users" /> },
+                                    { path: 'users', element: usersPage },
                                 ],
                             },
                         ],

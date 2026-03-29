@@ -46,7 +46,7 @@ export function JobsPage() {
     const status = (searchParams.get("status") as JobStatus | "ALL" | null) ?? "ALL";
     const jobsQuery = useJobs({ take: 120 });
 
-    const jobs = jobsQuery.data?.items ?? [];
+    const jobs = useMemo(() => jobsQuery.data?.items ?? [], [jobsQuery.data?.items]);
     const filteredJobs = useMemo(() => {
         return sortJobs(jobs).filter((job) => {
             const matchesStatus = status === "ALL" ? true : job.status === status;

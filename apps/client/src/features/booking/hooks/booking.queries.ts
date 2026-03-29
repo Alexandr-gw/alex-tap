@@ -24,8 +24,9 @@ import {
 
 type CheckoutSessionSummaryMode = "auto" | "public" | "private";
 
-function isAuthError(e: any) {
-    const status = e?.status ?? e?.response?.status;
+function isAuthError(error: unknown) {
+    const maybeError = error as { status?: number; response?: { status?: number } };
+    const status = maybeError?.status ?? maybeError?.response?.status;
     return status === 401 || status === 403;
 }
 

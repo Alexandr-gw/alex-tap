@@ -1,5 +1,5 @@
-import { NotFoundException, UnprocessableEntityException } from '@nestjs/common';
-import { JobStatus, Prisma } from '@prisma/client';
+import { UnprocessableEntityException } from '@nestjs/common';
+import { JobStatus } from '@prisma/client';
 import { PublicBookingService } from '../public-booking.service';
 
 describe('PublicBookingService', () => {

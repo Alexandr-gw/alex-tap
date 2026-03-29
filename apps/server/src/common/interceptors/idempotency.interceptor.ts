@@ -1,4 +1,4 @@
-import { CallHandler, ExecutionContext, Injectable, NestInterceptor, ConflictException } from '@nestjs/common';
+import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { PrismaService } from '@/prisma/prisma.service';
 import { v5 as uuidv5 } from 'uuid';
@@ -48,7 +48,7 @@ export class IdempotencyInterceptor implements NestInterceptor {
                             },
                         });
                     }
-                } catch (e) {
+                } catch {
                     // this.logger.warn('idempotency log failed', e);
                 }
                 return response;

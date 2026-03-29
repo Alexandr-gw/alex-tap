@@ -1,5 +1,6 @@
 import * as React from "react";
 import { usePublicSlotsDay } from "../hooks/booking.queries";
+import type { BookingWizardController } from "../hooks/useBookingWizard";
 
 type Slot = { start: string; end: string };
 
@@ -39,73 +40,72 @@ function formatTimeLabel(d: Date) {
 }
 
 export function StepSlotPicker({
-                                   wizard,
-                                   companyId,
-                                   serviceId,
-                               }: {
-    wizard: any;
+    wizard,
+    companyId,
+    serviceId,
+}: {
+    wizard: BookingWizardController;
     companyId: string;
     serviceId: string;
 }) {
     const [now, setNow] = React.useState(() => new Date());
+
     React.useEffect(() => {
         const t = setInterval(() => setNow(new Date()), 30_000);
         return () => clearInterval(t);
     }, []);
 
     const today0 = React.useMemo(() => startOfLocalDay(now), [now]);
-
     const day = wizard.draft.day ?? isoLocalDateKey(today0);
 
     React.useEffect(() => {
         if (!wizard.draft.day) {
             wizard.dispatch({ type: "SET_DAY", day });
         }
-    }, []);
+    }, [day, wizard]);
 
     const days = React.useMemo(() => {
         return Array.from({ length: 7 }, (_, i) => {
-            const d = new Date(today0);
-            d.setDate(d.getDate() + i);
-            return d;
+            const date = new Date(today0);
+            date.setDate(date.getDate() + i);
+            return date;
         });
     }, [today0]);
 
     const [selectedDayKey, setSelectedDayKey] = React.useState<string>(day);
 
     React.useEffect(() => {
-        if (day !== selectedDayKey) setSelectedDayKey(day);
-    }, [day]);
+        if (day !== selectedDayKey) {
+            setSelectedDayKey(day);
+        }
+    }, [day, selectedDayKey]);
 
     React.useEffect(() => {
-        const ok = days.some((d) => isoLocalDateKey(d) === selectedDayKey);
-        if (!ok) {
-            const k = isoLocalDateKey(today0);
-            setSelectedDayKey(k);
-            wizard.dispatch({ type: "SET_DAY", day: k });
+        const isVisible = days.some((date) => isoLocalDateKey(date) === selectedDayKey);
+        if (!isVisible) {
+            const todayKey = isoLocalDateKey(today0);
+            setSelectedDayKey(todayKey);
+            wizard.dispatch({ type: "SET_DAY", day: todayKey });
         }
-    }, [days, selectedDayKey, today0]);
+    }, [days, selectedDayKey, today0, wizard]);
 
     const slotsQ = usePublicSlotsDay(
         companyId && serviceId && selectedDayKey
             ? { companyId, serviceId, day: selectedDayKey }
-            : null
+            : null,
     );
 
-    const rawSlots: Slot[] = slotsQ.data?.slots ?? [];
-
     const selectedSlots = React.useMemo(() => {
-        return rawSlots
-            .filter((s) => new Date(s.start) > now)
+        return (slotsQ.data?.slots ?? [])
+            .filter((slot: Slot) => new Date(slot.start) > now)
             .sort((a, b) => +new Date(a.start) - +new Date(b.start));
-    }, [rawSlots, now]);
+    }, [slotsQ.data?.slots, now]);
 
     return (
         <div className="space-y-4">
-            {/* Day strip */}
             <div className="flex flex-wrap gap-2">
-                {days.map((d) => {
-                    const key = isoLocalDateKey(d);
+                {days.map((date) => {
+                    const key = isoLocalDateKey(date);
                     const isSelected = key === selectedDayKey;
 
                     return (
@@ -114,7 +114,7 @@ export function StepSlotPicker({
                             type="button"
                             onClick={() => {
                                 setSelectedDayKey(key);
-                                wizard.dispatch({ type: "SET_DAY", day: key }); // important
+                                wizard.dispatch({ type: "SET_DAY", day: key });
                             }}
                             className={[
                                 "rounded-xl border px-3 py-2 text-sm",
@@ -124,66 +124,58 @@ export function StepSlotPicker({
                             ].join(" ")}
                         >
                             <div className="font-medium">
-                                {sameLocalDay(d, now) ? "Today" : formatDayLabel(d)}
+                                {sameLocalDay(date, now) ? "Today" : formatDayLabel(date)}
                             </div>
-                            {/* MVP: no per-day slot counts (would require prefetch) */}
                             <div className="text-xs opacity-80">
-                                {isSelected && slotsQ.isLoading ? "Loading…" : "Select"}
+                                {isSelected && slotsQ.isLoading ? "Loading..." : "Select"}
                             </div>
                         </button>
                     );
                 })}
             </div>
 
-            {/* Times */}
             <div className="rounded-2xl border border-slate-200 bg-white p-4">
                 <div className="mb-3 flex items-center justify-between">
-                    <div className="text-sm font-semibold text-slate-900">
-                        Choose a time
-                    </div>
-                    <div className="text-xs text-slate-500">
-                        Times shown in your local timezone
-                    </div>
+                    <div className="text-sm font-semibold text-slate-900">Choose a time</div>
+                    <div className="text-xs text-slate-500">Times shown in your local timezone</div>
                 </div>
 
                 {slotsQ.isError ? (
                     <div className="text-red-600">Failed to load slots.</div>
                 ) : slotsQ.isLoading ? (
-                    <div>Loading slots…</div>
+                    <div>Loading slots...</div>
                 ) : selectedSlots.length === 0 ? (
                     <div className="text-sm text-slate-600">
                         No available times for this day. Try another day.
                     </div>
                 ) : (
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-                        {selectedSlots.map((s) => {
-                            const start = new Date(s.start);
-                            const end = new Date(s.end);
-                            const selected = wizard.draft.slot?.start === s.start;
+                        {selectedSlots.map((slot) => {
+                            const start = new Date(slot.start);
+                            const end = new Date(slot.end);
+                            const isSelected = wizard.draft.slot?.start === slot.start;
 
                             return (
                                 <button
-                                    key={s.start}
+                                    key={slot.start}
                                     type="button"
                                     className={[
                                         "rounded-xl border px-3 py-2 text-left",
-                                        selected
+                                        isSelected
                                             ? "border-slate-900 bg-slate-50"
                                             : "border-slate-200 bg-white hover:border-slate-400",
                                     ].join(" ")}
                                     onClick={() =>
                                         wizard.dispatch({
                                             type: "SET_SLOT",
-                                            slot: { start: s.start, end: s.end },
+                                            slot: { start: slot.start, end: slot.end },
                                         })
                                     }
                                 >
                                     <div className="text-sm font-medium text-slate-900">
                                         {formatTimeLabel(start)}
                                     </div>
-                                    <div className="text-xs text-slate-600">
-                                        Ends {formatTimeLabel(end)}
-                                    </div>
+                                    <div className="text-xs text-slate-600">Ends {formatTimeLabel(end)}</div>
                                 </button>
                             );
                         })}
@@ -191,7 +183,6 @@ export function StepSlotPicker({
                 )}
             </div>
 
-            {/* Actions */}
             <div className="mt-6 flex justify-between">
                 <button
                     className="rounded-xl border border-slate-200 px-4 py-2"

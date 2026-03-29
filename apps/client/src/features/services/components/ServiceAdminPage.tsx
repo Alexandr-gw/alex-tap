@@ -11,9 +11,11 @@ import type {
 } from "@/features/services/api/services.types";
 import {
     ServicesToolbar,
-    type ServicesToolbarValue,
-    toolbarActiveToBool,
 } from "@/features/services/components/ServicesToolbar";
+import {
+    toolbarActiveToBool,
+    type ServicesToolbarValue,
+} from "@/features/services/components/ServicesToolbar.shared";
 import { ServicesTable } from "@/features/services/components/ServicesTable";
 import { ServicesPagination } from "@/features/services/components/Pagination";
 import { ServiceFormDialog } from "@/features/services/components/ServiceFormDialog";
@@ -93,7 +95,7 @@ export default function ServicesAdminPage() {
     const [dialogOpen, setDialogOpen] = useState(false);
     const [editing, setEditing] = useState<ServiceDto | null>(null);
 
-    const items = q.data?.items ?? [];
+    const items = useMemo(() => q.data?.items ?? [], [q.data?.items]);
     const total = q.data?.total ?? 0;
 
     const activeCount = useMemo(

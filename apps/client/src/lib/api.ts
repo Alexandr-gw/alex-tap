@@ -40,7 +40,9 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
         try {
             await refreshAccessSession();
             res = await request();
-        } catch {}
+        } catch {
+            // Ignore refresh failures here; the original 401 will surface below.
+        }
     }
 
     if (!res.ok) {
@@ -48,7 +50,9 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
         try {
             const json = await res.json();
             message = json?.error ?? json?.message ?? message;
-        } catch {}
+        } catch {
+            // Fall back to the status text when the response body is not JSON.
+        }
         throw { status: res.status, message } satisfies ApiError;
     }
 

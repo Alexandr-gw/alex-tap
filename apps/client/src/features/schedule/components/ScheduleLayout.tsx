@@ -96,8 +96,11 @@ export function ScheduleLayout({
         [jobs],
     );
 
-    const jobsQueryKey = ["jobs", date] as const;
-    const tasksQueryKey = ["tasks", { from: `${date}T00:00:00`, to: `${date}T23:59:59` }] as const;
+    const jobsQueryKey = useMemo(() => ["jobs", date] as const, [date]);
+    const tasksQueryKey = useMemo(
+        () => ["tasks", { from: `${date}T00:00:00`, to: `${date}T23:59:59` }] as const,
+        [date],
+    );
     const unassignedJobs = useMemo(
         () => visibleJobs.filter((job) => job.workerIds.length === 0),
         [visibleJobs],

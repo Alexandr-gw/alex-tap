@@ -1,27 +1,15 @@
-// src/features/services/components/ServicesToolbar.tsx
 import { useEffect, useMemo, useState } from "react";
+import type { ServicesToolbarValue } from "./ServicesToolbar.shared";
 
 function useDebounced<T>(value: T, ms = 300) {
     const [v, setV] = useState(value);
+
     useEffect(() => {
-        const t = setTimeout(() => setV(value), ms);
-        return () => clearTimeout(t);
+        const timeout = setTimeout(() => setV(value), ms);
+        return () => clearTimeout(timeout);
     }, [value, ms]);
+
     return v;
-}
-
-export type ServicesToolbarActive = "all" | "active" | "inactive";
-
-export type ServicesToolbarValue = {
-    search: string;
-    active: ServicesToolbarActive;
-    sort: "name" | "-updatedAt" | "basePriceCents" | "durationMins";
-};
-
-export function toolbarActiveToBool(active: ServicesToolbarActive): boolean | undefined {
-    if (active === "active") return true;
-    if (active === "inactive") return false;
-    return undefined; // "all" => omit query param
 }
 
 export function ServicesToolbar(props: {
@@ -34,7 +22,9 @@ export function ServicesToolbar(props: {
     const debouncedSearch = useDebounced(searchDraft, 300);
 
     useEffect(() => {
-        if (debouncedSearch !== value.search) onChange({ ...value, search: debouncedSearch });
+        if (debouncedSearch !== value.search) {
+            onChange({ ...value, search: debouncedSearch });
+        }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [debouncedSearch]);
 
@@ -55,9 +45,9 @@ export function ServicesToolbar(props: {
                     <label className="text-xs text-slate-500">Search</label>
                     <input
                         value={searchDraft}
-                        onChange={(e) => setSearchDraft(e.target.value)}
-                        placeholder="Search by name…"
-                        className="h-10 w-full md:w-72 rounded-md border border-slate-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-slate-200"
+                        onChange={(event) => setSearchDraft(event.target.value)}
+                        placeholder="Search by name..."
+                        className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-slate-200 md:w-72"
                     />
                 </div>
 
@@ -65,8 +55,8 @@ export function ServicesToolbar(props: {
                     <label className="text-xs text-slate-500">Availability</label>
                     <select
                         value={value.active}
-                        onChange={(e) =>
-                            onChange({ ...value, active: e.target.value as ServicesToolbarValue["active"] })
+                        onChange={(event) =>
+                            onChange({ ...value, active: event.target.value as ServicesToolbarValue["active"] })
                         }
                         className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-slate-200"
                     >
@@ -80,24 +70,24 @@ export function ServicesToolbar(props: {
                     <label className="text-xs text-slate-500">Sort</label>
                     <select
                         value={value.sort}
-                        onChange={(e) =>
-                            onChange({ ...value, sort: e.target.value as ServicesToolbarValue["sort"] })
+                        onChange={(event) =>
+                            onChange({ ...value, sort: event.target.value as ServicesToolbarValue["sort"] })
                         }
                         className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-slate-200"
                     >
-                        <option value="name">Name (A→Z)</option>
+                        <option value="name">Name (A-Z)</option>
                         <option value="-updatedAt">Recently updated</option>
-                        <option value="basePriceCents">Price (low→high)</option>
-                        <option value="durationMins">Duration (short→long)</option>
+                        <option value="basePriceCents">Price (low-high)</option>
+                        <option value="durationMins">Duration (short-long)</option>
                     </select>
                 </div>
             </div>
 
             <div className="text-sm text-slate-500">
-        <span className="inline-flex items-center gap-2">
-          <span className="h-2 w-2 rounded-full bg-slate-400" />
-          Filter: {activeLabel}
-        </span>
+                <span className="inline-flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-slate-400" />
+                    Filter: {activeLabel}
+                </span>
             </div>
         </div>
     );

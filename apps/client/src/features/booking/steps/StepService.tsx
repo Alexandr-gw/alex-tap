@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import type { PublicServiceListItemDto, PublicServicesListDto } from "../api/booking.types";
+import type { BookingWizardController } from "../hooks/useBookingWizard";
 
 const INITIAL_VISIBLE_SERVICES = 6;
 
@@ -9,20 +11,30 @@ function formatMoney(amountCents: number, currency: string | null | undefined) {
     }).format(amountCents / 100);
 }
 
-export function StepService({ wizard, servicesQ }: any) {
+type StepServiceProps = {
+    wizard: BookingWizardController;
+    servicesQ: {
+        data?: PublicServicesListDto;
+        isLoading: boolean;
+        isError: boolean;
+    };
+};
+
+export function StepService({ wizard, servicesQ }: StepServiceProps) {
     const [search, setSearch] = useState("");
     const [showAll, setShowAll] = useState(false);
-    const services = servicesQ.data?.services ?? [];
     const normalizedSearch = search.trim().toLowerCase();
     const filteredServices = useMemo(() => {
+        const services = servicesQ.data?.services ?? [];
         if (!normalizedSearch) {
             return services;
         }
 
-        return services.filter((service: any) =>
+        return services.filter((service: PublicServiceListItemDto) =>
             service.name.toLowerCase().includes(normalizedSearch),
         );
-    }, [normalizedSearch, services]);
+    }, [normalizedSearch, servicesQ.data?.services]);
+
     const visibleServices =
         showAll || normalizedSearch
             ? filteredServices
@@ -50,7 +62,7 @@ export function StepService({ wizard, servicesQ }: any) {
             </div>
 
             <div className="space-y-2">
-                {visibleServices.map((service: any) => (
+                {visibleServices.map((service) => (
                     <button
                         key={service.id}
                         className="w-full rounded-2xl border border-slate-200 p-4 text-left transition hover:bg-slate-50 sm:p-5"
@@ -61,7 +73,7 @@ export function StepService({ wizard, servicesQ }: any) {
                     >
                         <div className="font-medium text-slate-900">{service.name}</div>
                         <div className="mt-1 text-sm text-slate-600">
-                                {service.durationMins} mins / {formatMoney(service.basePriceCents, service.currency)}
+                            {service.durationMins} mins / {formatMoney(service.basePriceCents, service.currency)}
                         </div>
                     </button>
                 ))}

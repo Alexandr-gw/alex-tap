@@ -252,7 +252,7 @@ export function AlertsInboxPage() {
         setWorkerId(detail.job.worker?.id ?? detail.workers[0]?.id ?? "");
         setStartValue(toDateTimeLocal(detail.job.startAt));
         if (!detail.readAt) markRead.mutate(detail.id);
-    }, [detailQuery.data]);
+    }, [detailQuery.data, markRead]);
 
     function handleError(error: unknown, fallback: string) {
         const anyError = error as { message?: string; response?: { data?: { message?: string } } };

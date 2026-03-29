@@ -1,6 +1,7 @@
 import * as React from "react";
 import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { usePublicSlotsDay } from "../hooks/booking.queries";
+import type { BookingWizardController } from "../hooks/useBookingWizard";
 
 type Slot = { start: string; end: string };
 
@@ -87,7 +88,7 @@ export function StepDateTimePicker({
     companyId,
     serviceId,
 }: {
-    wizard: any;
+    wizard: BookingWizardController;
     companyId: string;
     serviceId: string;
 }) {
@@ -142,9 +143,10 @@ export function StepDateTimePicker({
     const calendarDays = React.useMemo(() => buildCalendarDays(calendarMonth), [calendarMonth]);
 
     const slotsQ = usePublicSlotsDay(selectedDay ? { companyId, serviceId, day: selectedDay } : null);
-    const rawSlots: Slot[] = slotsQ.data?.slots ?? [];
-
-    const slots = React.useMemo(() => rawSlots.filter((s) => new Date(s.start) > now), [rawSlots, now]);
+    const slots = React.useMemo(
+        () => (slotsQ.data?.slots ?? []).filter((slot: Slot) => new Date(slot.start) > now),
+        [slotsQ.data?.slots, now],
+    );
 
     return (
         <div className="space-y-4">

@@ -131,3 +131,5 @@ export function useBookingWizard(companySlug: string) {
         startFresh,
     };
 }
+
+export type BookingWizardController = ReturnType<typeof useBookingWizard>;

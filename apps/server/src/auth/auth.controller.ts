@@ -163,12 +163,12 @@ export class AuthController {
             res.clearCookie('post_login_redirect', cookieOpts);
 
             return res.redirect(this.buildAppRedirect(postLoginRedirect));
-        } catch (err) {
+        } catch (error) {
             res.clearCookie('oidc_state', cookieOpts);
             res.clearCookie('oidc_nonce', cookieOpts);
             res.clearCookie('pkce_verifier', cookieOpts);
             res.clearCookie('post_login_redirect', cookieOpts);
-            this.logger.errorEvent('auth.callback.failed', {}, err);
+            this.logger.errorEvent('auth.callback.failed', {}, error);
             return res.redirect(this.buildAppRedirect('/401'));
         }
     }
@@ -206,7 +206,7 @@ export class AuthController {
             }
 
             return res.json({ ok: true });
-        } catch (err) {
+        } catch {
             res.clearCookie(accessName, cookieOpts);
             res.clearCookie(refreshName, cookieOpts);
             return res.status(401).json({ error: 'refresh_failed' });
@@ -233,7 +233,9 @@ export class AuthController {
                 clientId,
                 refreshToken,
             });
-        } catch {}
+        } catch {
+            // Best-effort front-channel logout.
+        }
 
         res.clearCookie(accessName, cookieOpts);
         res.clearCookie(refreshName, cookieOpts);

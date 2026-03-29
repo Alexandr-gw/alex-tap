@@ -11,11 +11,14 @@ type State = { hasError: boolean; message?: string };
 export class AppErrorBoundary extends React.Component<Props, State> {
     state: State = { hasError: false };
 
-    static getDerivedStateFromError(err: any) {
-        return { hasError: true, message: err?.message ?? "Something went wrong." };
+    static getDerivedStateFromError(err: unknown) {
+        return {
+            hasError: true,
+            message: err instanceof Error ? err.message : "Something went wrong.",
+        };
     }
 
-    componentDidCatch(err: any) {
+    componentDidCatch(err: Error) {
         // later you can add Sentry here
         console.error("UI crashed:", err);
     }

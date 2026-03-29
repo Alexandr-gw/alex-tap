@@ -8,7 +8,7 @@ import type {
     ServiceUpdateInput,
 } from "./services.types";
 
-function qs(params: Record<string, any>) {
+function qs(params: Record<string, string | number | boolean | null | undefined>) {
     const sp = new URLSearchParams();
     Object.entries(params).forEach(([k, v]) => {
         if (v === undefined || v === null || v === "") return;

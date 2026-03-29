@@ -17,6 +17,8 @@ export function BriefingCard({
     todayValue,
     weekValue,
 }: Props) {
+    const [expanded, setExpanded] = useState(false);
+
     if (isLoading) {
         return (
             <section className="overflow-hidden rounded-3xl border border-cyan-100 bg-white shadow-sm">
@@ -61,7 +63,6 @@ export function BriefingCard({
     const calmState =
         briefing.briefing.alerts.length === 0 &&
         briefing.briefing.insights.length === 0;
-    const [expanded, setExpanded] = useState(false);
     const previewLines = [
         ...briefing.briefing.alerts.slice(0, 1),
         ...briefing.briefing.insights.slice(0, 1),

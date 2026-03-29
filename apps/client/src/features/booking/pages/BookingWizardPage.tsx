@@ -179,9 +179,8 @@ function BookingLoadError({ onRetry }: { onRetry: () => void }) {
 
 export function BookingWizardPage() {
     const { companySlug } = useParams();
-    if (!companySlug) return <div className="p-6">Missing company.</div>;
-
-    const wizard = useBookingWizard(companySlug);
+    const resolvedCompanySlug = companySlug ?? "";
+    const wizard = useBookingWizard(resolvedCompanySlug);
     const servicesQ = usePublicServices(companySlug);
 
     const companyId = servicesQ.data?.companyId;
@@ -219,7 +218,7 @@ export function BookingWizardPage() {
                     <StepConfirm
                         wizard={wizard}
                         companyId={companyId}
-                        companySlug={companySlug}
+                        companySlug={resolvedCompanySlug}
                         serviceId={serviceId}
                         selectedService={selectedService}
                     />
@@ -227,7 +226,11 @@ export function BookingWizardPage() {
             default:
                 return null;
         }
-    }, [wizard.stepId, wizard, servicesQ, companyId, serviceId, selectedService, companySlug]);
+    }, [wizard, servicesQ, companyId, serviceId, selectedService, resolvedCompanySlug]);
+
+    if (!companySlug) {
+        return <div className="p-6">Missing company.</div>;
+    }
 
     if (isNotFound) {
         return <BookingNotFoundPage companySlug={companySlug} />;

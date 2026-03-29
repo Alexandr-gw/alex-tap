@@ -115,7 +115,7 @@ let SettingsService = class SettingsService {
         });
     }
     async listWorkers(input) {
-        const actor = await this.requireManager(input.companyId, input.roles, input.userSub);
+        await this.requireManager(input.companyId, input.roles, input.userSub);
         const search = input.query.search?.trim();
         const page = input.query.page ?? 1;
         const limit = input.query.limit ?? 20;

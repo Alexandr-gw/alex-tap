@@ -1,4 +1,4 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException } from '@nestjs/common';
 import { JobStatus, Role } from '@prisma/client';
 import { ScheduleService } from '../schedule.service';
 

@@ -23,6 +23,15 @@ type StoredDraft = {
     draft: BookingDraft;
 };
 
+function isStoredDraftCandidate(value: unknown): value is StoredDraft {
+    if (typeof value !== "object" || value === null) {
+        return false;
+    }
+
+    const candidate = value as Partial<StoredDraft>;
+    return typeof candidate.savedAt === "number" && "draft" in candidate;
+}
+
 function readStoredDraft(key: string): StoredDraft | null {
     try {
         const raw = localStorage.getItem(key);
@@ -30,8 +39,8 @@ function readStoredDraft(key: string): StoredDraft | null {
 
         const json = JSON.parse(raw) as StoredDraft | BookingDraft;
 
-        if ((json as any).draft && typeof (json as any).savedAt === "number") {
-            return json as StoredDraft;
+        if (isStoredDraftCandidate(json)) {
+            return json;
         }
 
         const parsed = BookingDraftSchema.safeParse(json);
