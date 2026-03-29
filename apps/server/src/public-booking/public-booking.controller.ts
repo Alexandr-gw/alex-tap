@@ -1,0 +1,65 @@
+import {Controller, Get, Post, Query, Param, BadRequestException, Body} from "@nestjs/common";
+import {PublicBookingService} from "./public-booking.service";
+import {PublicCheckoutDto} from "./dto/public-checkout.dto";
+import {PaymentsService} from "@/payments/payments.service";
+import {RequestBookingChangesDto} from "./dto/request-booking-changes.dto";
+
+@Controller("api/v1/public")
+export class PublicBookingController {
+    constructor(private readonly svc: PublicBookingService,
+                private readonly payments: PaymentsService,) {
+    }
+
+    // GET /public/companies/:companySlug/services/:serviceSlug
+    @Get("companies/:companySlug/services/:serviceSlug")
+    async getService(
+        @Param("companySlug") companySlug: string,
+        @Param("serviceSlug") serviceSlug: string,
+    ) {
+        return this.svc.getPublicService(companySlug, serviceSlug);
+    }
+
+    // GET /public/slots?companyId&serviceId&from&to
+    @Get("slots")
+    async getSlots(
+        @Query("companyId") companyId?: string,
+        @Query("serviceId") serviceId?: string,
+        @Query("from") from?: string,
+        @Query("to") to?: string,
+    ) {
+        if (!companyId || !serviceId || !from || !to) {
+            throw new BadRequestException("Missing query params: companyId, serviceId, from, to");
+        }
+        return this.svc.getPublicSlots({companyId, serviceId, from, to});
+    }
+
+    // GET /public/companies/:companySlug/services
+    @Get("companies/:companySlug/services")
+    async listServices(@Param("companySlug") companySlug: string) {
+        return this.svc.listPublicServices(companySlug);
+    }
+
+    // POST /public/bookings/checkout
+    @Post("bookings/checkout")
+    async checkout(@Body() dto: PublicCheckoutDto) {
+        return this.svc.createPublicCheckout(dto);
+    }
+
+    @Get("bookings/access/:token")
+    async getBookingByAccessToken(@Param("token") token: string) {
+        return this.svc.getBookingByAccessToken(token);
+    }
+
+    @Post("bookings/access/:token/request-changes")
+    async requestBookingChanges(
+        @Param("token") token: string,
+        @Body() dto: RequestBookingChangesDto,
+    ) {
+        return this.svc.requestBookingChanges(token, dto);
+    }
+
+    @Get("payments/checkout-session/:sessionId")
+    async getPublicCheckoutSessionSummary(@Param("sessionId") sessionId: string) {
+        return this.payments.getCheckoutSessionSummaryPublic({ sessionId });
+    }
+}
