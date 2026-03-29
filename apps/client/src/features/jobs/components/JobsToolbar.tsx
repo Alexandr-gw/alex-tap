@@ -50,12 +50,12 @@ export function JobsToolbar({
     }, [draft, onSearchChange]);
 
     return (
-        <div className="flex flex-col gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-col gap-3 rounded-3xl border border-emerald-100/80 bg-[linear-gradient(135deg,#ffffff_0%,#f6fcf8_52%,#f7fbff_100%)] p-4 shadow-sm lg:flex-row lg:items-center lg:justify-between">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 <button
                     type="button"
                     onClick={onCreateClick}
-                    className="inline-flex h-11 items-center justify-center rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white transition hover:bg-emerald-700"
+                    className="inline-flex h-11 items-center justify-center rounded-xl border border-emerald-300 bg-[linear-gradient(135deg,#41be7f_0%,#5ea9f0_100%)] px-4 text-sm font-semibold text-white transition hover:border-emerald-400"
                 >
                     New Job
                 </button>
@@ -63,7 +63,7 @@ export function JobsToolbar({
                 <select
                     value={statusValue}
                     onChange={(event) => onStatusChange(event.target.value as JobStatus | "ALL")}
-                    className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-slate-500"
+                    className="h-11 rounded-xl border border-sky-100 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-sky-300"
                 >
                     {STATUS_OPTIONS.map((status) => (
                         <option key={status} value={status}>
@@ -79,7 +79,7 @@ export function JobsToolbar({
                     value={draft}
                     onChange={(event) => setDraft(event.target.value)}
                     placeholder="Search by client, service, worker, or address"
-                    className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm text-slate-900 outline-none transition focus:border-slate-500"
+                    className="h-11 w-full rounded-xl border border-sky-100 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-sky-300"
                 />
             </div>
         </div>

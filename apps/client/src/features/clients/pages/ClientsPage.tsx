@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { ClientsPagination } from "../components/ClientsPagination";
 import { ClientsTable } from "../components/ClientsTable";
@@ -82,6 +82,20 @@ export function ClientsPage() {
 
     return (
         <div className="space-y-6">
+            <section className="rounded-[2rem] border border-emerald-100/80 bg-[linear-gradient(135deg,#ffffff_0%,#effcf5_44%,#eef7ff_100%)] p-6 shadow-sm">
+                <div className="max-w-2xl">
+                    <div className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700">
+                        Clients
+                    </div>
+                    <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">
+                        Keep client details, notes, and booking history easy to reach.
+                    </h1>
+                    <p className="mt-3 text-sm leading-6 text-slate-600">
+                        Search your client base quickly, open detailed records, and add new customers without leaving the workspace flow.
+                    </p>
+                </div>
+            </section>
+
             <ClientsToolbar
                 value={search}
                 onSearchChange={(value) => updateParams({ search: value })}

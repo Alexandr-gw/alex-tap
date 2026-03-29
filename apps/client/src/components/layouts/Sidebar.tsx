@@ -1,4 +1,4 @@
-﻿import { NavLink } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import { useMe } from "@/features/me/hooks/useMe";
 import { canManageCompany } from "@/features/me/me.selector.ts";
 
@@ -26,7 +26,7 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
 
     return (
         <div className="p-3">
-            <div className="space-y-1">
+            <div className="space-y-1.5">
                 {finalLinks.map((link) => (
                     <NavLink
                         key={link.to}
@@ -35,10 +35,10 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
                         end={link.to === "."}
                         className={({ isActive }) =>
                             [
-                                "flex items-center justify-between rounded-xl px-3 py-2 text-sm font-medium transition",
+                                "flex items-center justify-between rounded-2xl border px-3 py-2.5 text-sm font-medium transition cursor-pointer",
                                 isActive
-                                    ? "bg-indigo-50 text-indigo-800"
-                                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+                                    ? "border-emerald-200 bg-[linear-gradient(135deg,#ecfbf3_0%,#eef7ff_100%)] text-slate-900 shadow-sm"
+                                    : "border-transparent text-slate-600 hover:border-sky-100 hover:bg-[linear-gradient(135deg,#f2fcf6_0%,#f5faff_100%)] hover:text-slate-900",
                             ].join(" ")
                         }
                     >
@@ -53,8 +53,8 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
 export function Sidebar({ mobileOpen = false, onCloseMobile }: Props) {
     return (
         <>
-            <aside className="hidden w-64 shrink-0 border-r border-slate-200 bg-white md:block xl:w-72">
-                <div className="flex h-14 items-center border-b border-slate-200 px-4">
+            <aside className="hidden w-64 shrink-0 border-r border-emerald-100/80 bg-[linear-gradient(180deg,#f6fcf8_0%,#f9fbff_58%,#ffffff_100%)] md:block xl:w-72">
+                <div className="flex h-14 items-center border-b border-emerald-100/80 px-4">
                     <div className="text-sm font-semibold text-slate-900">Navigation</div>
                 </div>
 
@@ -70,13 +70,13 @@ export function Sidebar({ mobileOpen = false, onCloseMobile }: Props) {
                         className="absolute inset-0 bg-slate-950/40"
                     />
 
-                    <aside className="absolute inset-y-0 left-0 flex w-[88vw] max-w-sm flex-col border-r border-slate-200 bg-white shadow-2xl">
-                        <div className="flex h-14 items-center justify-between border-b border-slate-200 px-4">
+                    <aside className="absolute inset-y-0 left-0 flex w-[88vw] max-w-sm flex-col border-r border-emerald-100/80 bg-[linear-gradient(180deg,#f6fcf8_0%,#f9fbff_58%,#ffffff_100%)] shadow-2xl">
+                        <div className="flex h-14 items-center justify-between border-b border-emerald-100/80 px-4">
                             <div className="text-sm font-semibold text-slate-900">Navigation</div>
                             <button
                                 type="button"
                                 onClick={onCloseMobile}
-                                className="rounded-xl border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700"
+                                className="rounded-xl border border-sky-100 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:border-sky-200 hover:bg-sky-50"
                             >
                                 Close
                             </button>

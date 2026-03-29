@@ -193,18 +193,21 @@ export function TaskFormModal({
     const isDeleting = deleteMutation.isPending;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-            <div className="w-full max-w-2xl rounded-2xl bg-white shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-[2px]">
+            <div className="w-full max-w-2xl overflow-hidden rounded-[2rem] border border-emerald-100 bg-[linear-gradient(180deg,#ffffff_0%,#f9fcff_100%)] shadow-[0_28px_80px_rgba(15,23,42,0.22)]">
                 <form onSubmit={handleSubmit} className="flex flex-col">
-                    <div className="border-b border-slate-200 px-6 py-4">
-                        <h2 className="text-lg font-semibold text-slate-900">
+                    <div className="border-b border-emerald-100 bg-[linear-gradient(135deg,#eefbf4_0%,#eef7ff_100%)] px-6 py-5">
+                        <div className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700">
+                            Tasks
+                        </div>
+                        <h2 className="mt-2 text-xl font-semibold text-slate-900">
                             {mode === "create" ? "Create task" : "Edit task"}
                         </h2>
                     </div>
 
                     <div className="space-y-5 px-6 py-5">
                         {errors.form ? (
-                            <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                            <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
                                 {errors.form}
                             </div>
                         ) : null}
@@ -216,7 +219,7 @@ export function TaskFormModal({
                             <input
                                 value={values.subject}
                                 onChange={(e) => setField("subject", e.target.value)}
-                                className="w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:border-slate-500"
+                                className="w-full rounded-xl border border-sky-100 bg-white px-3 py-2 outline-none focus:border-emerald-300"
                                 placeholder="Call customer, inspect site, send quote..."
                             />
                             {errors.subject ? (
@@ -232,7 +235,7 @@ export function TaskFormModal({
                                 value={values.description ?? ""}
                                 onChange={(e) => setField("description", e.target.value)}
                                 rows={4}
-                                className="w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:border-slate-500"
+                                className="w-full rounded-2xl border border-sky-100 bg-white px-3 py-2 outline-none focus:border-emerald-300"
                                 placeholder="Optional notes"
                             />
                             {errors.description ? (
@@ -249,7 +252,7 @@ export function TaskFormModal({
                                     type="date"
                                     value={values.date}
                                     onChange={(e) => setField("date", e.target.value)}
-                                    className="w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:border-slate-500"
+                                    className="w-full rounded-xl border border-sky-100 bg-white px-3 py-2 outline-none focus:border-emerald-300"
                                 />
                                 {errors.date ? (
                                     <p className="mt-1 text-sm text-red-600">{errors.date}</p>
@@ -264,7 +267,7 @@ export function TaskFormModal({
                                     type="time"
                                     value={values.startTime}
                                     onChange={(e) => setField("startTime", e.target.value)}
-                                    className="w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:border-slate-500"
+                                    className="w-full rounded-xl border border-sky-100 bg-white px-3 py-2 outline-none focus:border-emerald-300"
                                 />
                                 {errors.startTime ? (
                                     <p className="mt-1 text-sm text-red-600">{errors.startTime}</p>
@@ -279,7 +282,7 @@ export function TaskFormModal({
                                     type="time"
                                     value={values.endTime}
                                     onChange={(e) => setField("endTime", e.target.value)}
-                                    className="w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:border-slate-500"
+                                    className="w-full rounded-xl border border-sky-100 bg-white px-3 py-2 outline-none focus:border-emerald-300"
                                 />
                                 {errors.endTime ? (
                                     <p className="mt-1 text-sm text-red-600">{errors.endTime}</p>
@@ -296,7 +299,7 @@ export function TaskFormModal({
                                 onChange={(e) =>
                                     setField("customerId", e.target.value ? e.target.value : null)
                                 }
-                                className="w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:border-slate-500"
+                                className="w-full rounded-xl border border-sky-100 bg-white px-3 py-2 outline-none focus:border-emerald-300"
                             >
                                 <option value="">No customer</option>
                                 {customers.map((customer) => (
@@ -307,7 +310,7 @@ export function TaskFormModal({
                             </select>
 
                             {selectedCustomer?.address ? (
-                                <div className="mt-2 rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                                <div className="mt-2 rounded-xl border border-sky-100 bg-[linear-gradient(180deg,#f8fcff_0%,#f4fbf8_100%)] px-3 py-2 text-sm text-slate-600">
                                     <span className="font-medium text-slate-700">Address: </span>
                                     {selectedCustomer.address}
                                 </div>
@@ -326,7 +329,7 @@ export function TaskFormModal({
                                     return (
                                         <label
                                             key={worker.id}
-                                            className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 px-3 py-2"
+                                            className="flex cursor-pointer items-center gap-3 rounded-xl border border-sky-100 bg-white px-3 py-2 hover:border-emerald-200 hover:bg-sky-50"
                                         >
                                             <input
                                                 type="checkbox"
@@ -346,7 +349,7 @@ export function TaskFormModal({
                             </p>
                         </div>
 
-                        <div className="rounded-xl border border-slate-200 px-3 py-3">
+                        <div className="rounded-2xl border border-sky-100 bg-[linear-gradient(180deg,#f8fcff_0%,#f4fbf8_100%)] px-3 py-3">
                             <label className="flex items-center gap-3">
                                 <input
                                     type="checkbox"
@@ -360,14 +363,14 @@ export function TaskFormModal({
                         </div>
                     </div>
 
-                    <div className="flex items-center justify-between border-t border-slate-200 px-6 py-4">
+                    <div className="flex items-center justify-between border-t border-emerald-100 px-6 py-4">
                         <div>
                             {mode === "edit" ? (
                                 <button
                                     type="button"
                                     onClick={handleDelete}
                                     disabled={isDeleting}
-                                    className="rounded-xl border border-red-300 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+                                    className="rounded-xl border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
                                 >
                                     Delete
                                 </button>
@@ -378,7 +381,7 @@ export function TaskFormModal({
                             <button
                                 type="button"
                                 onClick={onClose}
-                                className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                                className="rounded-xl border border-sky-100 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:border-emerald-200 hover:bg-sky-50"
                             >
                                 Cancel
                             </button>
@@ -386,7 +389,7 @@ export function TaskFormModal({
                             <button
                                 type="submit"
                                 disabled={isSaving}
-                                className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+                                className="rounded-xl border border-emerald-300 bg-[linear-gradient(135deg,#41be7f_0%,#5ea9f0_100%)] px-4 py-2 text-sm font-medium text-white hover:border-emerald-400 disabled:opacity-50"
                             >
                                 {mode === "create" ? "Save task" : "Update task"}
                             </button>

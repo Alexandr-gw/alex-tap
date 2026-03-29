@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { ClientsPagination } from "@/features/clients/components/ClientsPagination";
 import { WorkerFormDialog } from "../components/WorkerFormDialog";
@@ -96,7 +96,19 @@ export function WorkersSettingsPage() {
     return (
         <>
             <div className="space-y-6">
-                <h1 className="text-2xl font-semibold text-slate-900">Workers</h1>
+                <section className="rounded-[2rem] border border-emerald-100/80 bg-[linear-gradient(135deg,#ffffff_0%,#effcf5_44%,#eef7ff_100%)] p-6 shadow-sm">
+                    <div className="max-w-2xl">
+                        <div className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700">
+                            Workers
+                        </div>
+                        <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">
+                            Manage the roster that powers scheduling, booking, and task assignment.
+                        </h1>
+                        <p className="mt-3 text-sm leading-6 text-slate-600">
+                            Keep staff profiles, contact details, and availability-linked worker records organized in one place.
+                        </p>
+                    </div>
+                </section>
 
                 <WorkersToolbar
                     value={search}

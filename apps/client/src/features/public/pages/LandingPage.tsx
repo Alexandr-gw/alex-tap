@@ -1,230 +1,223 @@
-import { NavLink } from "react-router-dom";
-import { startLogin } from "@/features/auth/api/auth.api.ts";
+import {
+    CalendarDays,
+    CreditCard,
+    Bell,
+    Github,
+    ShieldCheck,
+    Database,
+    Workflow,
+    Layers3,
+} from "lucide-react";
+import { Link } from "react-router-dom";
+import { startLogin } from "@/features/auth/api/auth.api";
+import landingSchedulePreview from "../images/landing-schedule-preview.png";
 
-const features = [
-    { title: "Schedule Jobs", desc: "Plan routes and assign work in minutes.", icon: "📅" },
-    { title: "Send Invoices", desc: "Invoice fast with clean templates.", icon: "🧾" },
-    { title: "Get Paid Fast", desc: "Accept card payments and track status.", icon: "💳" },
-    { title: "Track Your Team", desc: "See who’s where and what’s next.", icon: "📍" },
+const featureCards = [
+    {
+        icon: CalendarDays,
+        title: "Scheduling",
+        desc: "Real-time slots, worker assignment, and a clean calendar workflow for day-to-day operations.",
+    },
+    {
+        icon: CreditCard,
+        title: "Payments",
+        desc: "Stripe checkout connected to the booking flow with clear payment status and follow-through.",
+    },
+    {
+        icon: Bell,
+        title: "Notifications",
+        desc: "Confirmation emails and reminders that support the workflow instead of adding noise.",
+    },
 ];
 
-const industries = ["Plumbers", "Electricians", "Cleaning services", "HVAC", "Landscaping"];
-
-const steps = [
-    { title: "Create your account", desc: "Set up your company in a minute." },
-    { title: "Add your jobs", desc: "Schedule work, assign staff, and track progress." },
-    { title: "Get paid", desc: "Invoice customers and collect payments faster." },
+const stackItems = [
+    { icon: Layers3, label: "NestJS" },
+    { icon: Database, label: "Prisma" },
+    { icon: ShieldCheck, label: "Keycloak" },
+    { icon: CreditCard, label: "Stripe" },
+    { icon: Workflow, label: "Redis" },
 ];
 
 export function LandingPage() {
     return (
-        <div className="min-h-dvh bg-slate-50 text-slate-900">
-            {/* Top bar (public) */}
-            <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/80 backdrop-blur">
-                <div className="mx-auto flex h-14 max-w-screen-2xl items-center justify-between px-4">
+        <div className="min-h-dvh bg-[linear-gradient(180deg,#f6fbf9_0%,#f8fbff_38%,#ffffff_100%)] text-slate-900">
+            <header className="sticky top-0 z-50 border-b border-emerald-100/80 bg-white/85 backdrop-blur">
+                <div className="mx-auto flex h-16 max-w-screen-xl items-center justify-between px-4 sm:px-6">
                     <div className="flex items-center gap-3">
-                        <div className="grid h-9 w-9 place-items-center rounded-xl bg-indigo-600 text-sm font-semibold text-white shadow-sm">
+                        <div className="grid h-10 w-10 place-items-center rounded-2xl bg-[linear-gradient(135deg,#91d6b6_0%,#8cc7ff_100%)] text-sm font-semibold text-slate-950 shadow-[0_10px_24px_rgba(140,199,255,0.22)]">
                             A
                         </div>
-                        <div className="text-sm font-semibold">Alex-tap</div>
+                        <div>
+                            <div className="text-sm font-semibold text-slate-950">Alex Tap Home Services</div>
+                            <div className="text-xs text-slate-500">Service operations platform</div>
+                        </div>
                     </div>
 
                     <div className="flex items-center gap-2">
+                        <Link
+                            to="/architecture"
+                            className="rounded-xl px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+                        >
+                            Architecture
+                        </Link>
                         <button
                             type="button"
                             onClick={() => void startLogin("/app")}
-                            className="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+                            className="rounded-xl px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
                         >
-                            Log In
+                            Open App
                         </button>
 
-                        <NavLink
-                            to="/dashboard"
-                            className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700"
+                        <a
+                            href="https://github.com/Alexandr-gw/alex-tap"
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50"
                         >
-                            Get Started Free
-                        </NavLink>
+                            <Github className="h-4 w-4" />
+                            GitHub
+                        </a>
                     </div>
                 </div>
             </header>
 
-            {/* 1) HERO */}
-            <section className="mx-auto max-w-screen-2xl px-4 py-12 sm:py-16">
-                <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
-                    {/* Left */}
-                    <div>
-                        <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 shadow-sm">
-                            <span className="h-2 w-2 rounded-full bg-indigo-600" />
-                            Built for field service teams
-                        </p>
+            <main>
+                <section className="mx-auto max-w-screen-xl px-4 py-16 sm:px-6 sm:py-20">
+                    <div className="grid items-center gap-12 lg:grid-cols-[minmax(0,0.9fr)_minmax(320px,1.1fr)]">
+                        <div>
+                            <p className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700 shadow-sm">
+                                <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                                Built for small service teams
+                            </p>
 
-                        <h1 className="text-4xl font-semibold tracking-tight text-slate-900 sm:text-5xl">
-                            Run your service business from one app
-                        </h1>
+                            <h1 className="mt-6 max-w-3xl text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl lg:text-6xl">
+                                Service scheduling, payments, and team workflow in one place.
+                            </h1>
 
-                        <p className="mt-4 max-w-xl text-base text-slate-600 sm:text-lg">
-                            Scheduling, invoicing, payments, and job tracking for field service teams.
-                        </p>
+                            <p className="mt-5 max-w-2xl text-base leading-7 text-slate-600 sm:text-lg">
+                                Alex Tap is a field-service platform focused on the core customer and team flow: booking, assignment,
+                                payment, reminders, and a clear job lifecycle from request to completion.
+                            </p>
 
-                        <div className="mt-7 flex flex-wrap items-center gap-3">
-                            <NavLink
-                                to="/dashboard"
-                                className="rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700"
-                            >
-                                Get Started Free
-                            </NavLink>
+                            <div className="mt-8 flex flex-wrap items-center gap-3">
+                                <Link
+                                    to="/architecture"
+                                    className="rounded-2xl border border-emerald-200 bg-white px-5 py-3 text-sm font-semibold text-emerald-800 shadow-sm transition hover:bg-emerald-50"
+                                >
+                                    View architecture
+                                </Link>
 
-                            <button
-                                type="button"
-                                onClick={() => void startLogin("/app")}
-                                className="rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-100"
-                            >
-                                Log In
-                            </button>
+                                <button
+                                    type="button"
+                                    onClick={() => void startLogin("/app")}
+                            className="rounded-2xl border border-emerald-500 bg-emerald-500 px-5 py-3 text-sm font-semibold text-white shadow-[0_12px_32px_rgba(16,185,129,0.22)] transition hover:border-emerald-600 hover:bg-emerald-600"
+                                >
+                                    Open App
+                                </button>
+
+                                <a
+                                    href="https://github.com/Alexandr-gw/alex-tap"
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50"
+                                >
+                                    <Github className="h-4 w-4" />
+                                    GitHub
+                                </a>
+                            </div>
                         </div>
 
-                        <div className="mt-7 flex flex-wrap gap-2 text-xs text-slate-600">
-                            {["Scheduling", "Invoices", "Payments", "Live tracking"].map((t) => (
-                                <span
-                                    key={t}
-                                    className="rounded-full border border-slate-200 bg-white px-3 py-1 shadow-sm"
+                        <div className="relative">
+                            <div className="absolute inset-0 rounded-[2rem] bg-[radial-gradient(circle_at_top_left,_rgba(145,214,182,0.22),_transparent_50%),radial-gradient(circle_at_bottom_right,_rgba(140,199,255,0.26),_transparent_58%)] blur-2xl" />
+
+                            <div className="relative overflow-hidden rounded-[2rem] border border-white/80 bg-white/92 p-4 shadow-[0_24px_80px_rgba(15,23,42,0.08)]">
+                                <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-3">
+                                    <div className="mb-3 flex items-center justify-between">
+                                        <div>
+                                            <div className="text-sm font-semibold text-slate-900">Scheduling board</div>
+                                            <div className="text-xs text-slate-500">Live schedule preview</div>
+                                        </div>
+                                        <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                                            Staff workflow
+                                        </span>
+                                    </div>
+
+                                    <div className="overflow-hidden rounded-[1.25rem] border border-slate-200 bg-white">
+                                        <img
+                                            src={landingSchedulePreview}
+                                            alt="Alex Tap scheduling board preview"
+                                            className="h-auto w-full object-cover"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section className="mx-auto max-w-screen-xl px-4 py-4 sm:px-6">
+                    <div className="rounded-[1.75rem] border border-slate-200 bg-white/90 p-5 shadow-[0_12px_36px_rgba(15,23,42,0.05)]">
+                        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                            <div>
+                                <div className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
+                                    Built with
+                                </div>
+                                <p className="mt-1 text-sm text-slate-600">
+                                    A compact stack for auth, scheduling, payments, and async workflows.
+                                </p>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2">
+                                {stackItems.map(({ icon: Icon, label }) => (
+                                    <span
+                                        key={label}
+                                        className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700"
+                                    >
+                    <Icon className="h-4 w-4" />
+                                        {label}
+                  </span>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section className="mx-auto max-w-screen-xl px-4 py-10 sm:px-6 sm:py-14">
+                    <div>
+                        <h2 className="text-2xl font-semibold tracking-tight text-slate-950">What it does well</h2>
+                        <div className="mt-6 grid gap-4 md:grid-cols-3">
+                            {featureCards.map(({ icon: Icon, title, desc }) => (
+                                <div
+                                    key={title}
+                                    className="rounded-[1.75rem] border border-white/80 bg-white/90 p-6 shadow-[0_12px_36px_rgba(15,23,42,0.05)]"
                                 >
-                  {t}
-                </span>
+                                    <div className="inline-flex rounded-2xl bg-slate-100 p-3 text-slate-700">
+                                        <Icon className="h-5 w-5" />
+                                    </div>
+                                    <div className="mt-4 text-lg font-semibold text-slate-950">{title}</div>
+                                    <p className="mt-2 text-sm leading-6 text-slate-600">{desc}</p>
+                                </div>
                             ))}
                         </div>
                     </div>
+                </section>
 
-                    {/* Right (screenshot placeholder) */}
-                    <div className="relative">
-                        {/* soft glow */}
-                        <div className="pointer-events-none absolute -inset-6 rounded-3xl bg-gradient-to-br from-indigo-200/40 via-transparent to-slate-200/30 blur-2xl" />
-
-                        <div className="relative rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                            <div className="aspect-[16/10] rounded-xl border border-slate-200 bg-slate-100" />
-
-                            <div className="mt-4 grid grid-cols-3 gap-3">
-                                <div className="h-16 rounded-xl border border-slate-200 bg-slate-100" />
-                                <div className="h-16 rounded-xl border border-slate-200 bg-slate-100" />
-                                <div className="h-16 rounded-xl border border-slate-200 bg-slate-100" />
-                            </div>
-
-                            <p className="mt-3 text-xs text-slate-500">
-                                Screenshot / demo preview placeholder.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            {/* 2) What the App Does */}
-            <section className="mx-auto max-w-screen-2xl px-4 py-10">
-                <h2 className="text-lg font-semibold text-slate-900">What it does</h2>
-                <p className="mt-1 text-sm text-slate-600">Everything you need to run jobs end-to-end.</p>
-
-                <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    {features.map((f) => (
-                        <div
-                            key={f.title}
-                            className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
-                        >
-                            <div className="text-2xl">{f.icon}</div>
-                            <div className="mt-2 text-sm font-semibold text-slate-900">{f.title}</div>
-                            <div className="mt-1 text-sm text-slate-600">{f.desc}</div>
-                        </div>
-                    ))}
-                </div>
-            </section>
-
-            {/* 3) Who It’s For */}
-            <section className="mx-auto max-w-screen-2xl px-4 py-10">
-                <h2 className="text-lg font-semibold text-slate-900">Who it’s for</h2>
-                <p className="mt-1 text-sm text-slate-600">Built for small and growing service businesses.</p>
-
-                <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-                    {industries.map((i) => (
-                        <div
-                            key={i}
-                            className="rounded-2xl border border-slate-200 bg-white p-4 text-sm font-semibold text-slate-800 shadow-sm"
-                        >
-                            {i}
-                        </div>
-                    ))}
-                </div>
-            </section>
-
-            {/* 4) How It Works */}
-            <section className="mx-auto max-w-screen-2xl px-4 py-10">
-                <h2 className="text-lg font-semibold text-slate-900">How it works</h2>
-
-                <div className="mt-6 grid gap-4 lg:grid-cols-3">
-                    {steps.map((s, idx) => (
-                        <div
-                            key={s.title}
-                            className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
-                        >
-                            <div className="text-xs font-medium text-slate-500">Step {idx + 1}</div>
-                            <div className="mt-1 text-sm font-semibold text-slate-900">{s.title}</div>
-                            <div className="mt-1 text-sm text-slate-600">{s.desc}</div>
-                        </div>
-                    ))}
-                </div>
-            </section>
-
-            {/* 5) Social Proof (placeholders) */}
-            <section className="mx-auto max-w-screen-2xl px-4 py-10">
-                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                    <div className="flex flex-wrap items-center justify-between gap-4">
-                        <div>
-                            <div className="text-sm font-semibold text-slate-900">
-                                ⭐⭐⭐⭐⭐ “Saved me 10 hours a week”
-                            </div>
-                            <div className="mt-1 text-sm text-slate-600">
-                                Social proof placeholders (swap with real testimonials later).
-                            </div>
-                        </div>
-                        <div className="text-sm font-medium text-slate-600">Used by 500+ service pros</div>
-                    </div>
-                </div>
-            </section>
-
-            {/* 6) CTA Again */}
-            <section className="mx-auto max-w-screen-2xl px-4 py-12">
-                <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-                    <div className="text-xl font-semibold text-slate-900">Ready to run jobs faster?</div>
-                    <div className="mt-2 text-sm text-slate-600">
-                        Start your free trial — no setup headaches.
-                    </div>
-
-                    <div className="mt-6 flex flex-wrap items-center gap-3">
-                        <NavLink
-                            to="/dashboard"
-                            className="rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700"
-                        >
-                            Start Free Trial
-                        </NavLink>
-
-                        <div className="text-sm text-slate-600">
-                            Already have an account?{" "}
-                            <button
-                                type="button"
-                                onClick={() => void startLogin("/app")}
-                                className="font-medium text-indigo-700 underline underline-offset-4"
+                <section className="mx-auto max-w-screen-xl px-4 pb-16 pt-2 sm:px-6 sm:pb-20">
+                    <div className="flex flex-col gap-4 border-t border-slate-200 pt-6 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+                        <div>Built as a focused service operations platform for small field teams.</div>
+                        <div className="flex flex-wrap items-center gap-4">
+                            <a
+                                href="https://github.com/Alexandr-gw/alex-tap"
+                                target="_blank"
+                                rel="noreferrer"
+                                className="font-medium text-slate-700 transition hover:text-slate-950"
                             >
-                                Log In
-                            </button>
+                                GitHub
+                            </a>
                         </div>
                     </div>
-                </div>
-            </section>
-
-            {/* Public footer */}
-            <footer className="border-t border-slate-200 bg-white">
-                <div className="mx-auto flex h-12 max-w-screen-2xl items-center justify-between px-4 text-xs text-slate-500">
-                    <span>© {new Date().getFullYear()} Alex-tap</span>
-                    <span>Privacy • Terms</span>
-                </div>
-            </footer>
+                </section>
+            </main>
         </div>
     );
 }

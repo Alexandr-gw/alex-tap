@@ -1,1 +1,44 @@
 @import "tailwindcss";
+
+:root {
+    --brand-green-50: #effcf5;
+    --brand-green-100: #d8f5e5;
+    --brand-green-200: #b8ebd0;
+    --brand-green-500: #3dbb7a;
+    --brand-green-600: #2f9f67;
+    --brand-blue-50: #eef7ff;
+    --brand-blue-100: #d8ebff;
+    --brand-blue-200: #b7d8ff;
+    --brand-blue-500: #5aa6ef;
+    --brand-blue-600: #3d8ddc;
+    --brand-ink: #0f172a;
+}
+
+html,
+body,
+#root {
+    min-height: 100%;
+}
+
+body {
+    background:
+        radial-gradient(circle at top left, rgba(61, 187, 122, 0.12), transparent 32%),
+        radial-gradient(circle at top right, rgba(90, 166, 239, 0.14), transparent 34%),
+        linear-gradient(180deg, #f3fbf7 0%, #f7fbff 38%, #ffffff 100%);
+    color: var(--brand-ink);
+}
+
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+    transition:
+        background-color 160ms ease,
+        border-color 160ms ease,
+        color 160ms ease,
+        box-shadow 160ms ease,
+        transform 160ms ease;
+}
+
+button:disabled {
+    cursor: not-allowed;
+}

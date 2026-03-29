@@ -1,6 +1,7 @@
 ﻿import { createBrowserRouter } from 'react-router-dom';
 
 import { LandingPage } from '@/features/public/pages/LandingPage';
+import { ArchitecturePage } from '@/features/public/pages/ArchitecturePage';
 import LoginPage from '@/features/auth/pages/LoginPage';
 import UnauthorizedPage from '@/features/auth/pages/UnauthorizedPage';
 import SelectCompanyPage from '@/features/auth/pages/SelectCompanyPage';
@@ -36,6 +37,7 @@ function Placeholder({ title }: { title: string }) {
 
 export const router = createBrowserRouter([
     { path: '/', element: <LandingPage /> },
+    { path: '/architecture', element: <ArchitecturePage /> },
     { path: '/book/:companySlug', element: <BookingWizardPage /> },
     { path: '/booking/:accessToken', element: <BookingAccessPage /> },
     { path: '/payment/success', element: <BookingSuccessPage /> },

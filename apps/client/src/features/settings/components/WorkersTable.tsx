@@ -19,7 +19,7 @@ export function WorkersTable({
 }: Props) {
     if (isLoading) {
         return (
-            <div className="rounded-2xl border bg-white p-4 shadow-sm">
+            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
                 <p className="text-sm text-slate-500">Loading workers...</p>
             </div>
         );
@@ -27,7 +27,7 @@ export function WorkersTable({
 
     if (items.length === 0) {
         return (
-            <div className="rounded-2xl border bg-white p-8 text-center shadow-sm">
+            <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-10 text-center shadow-sm">
                 <h2 className="text-base font-semibold text-slate-900">No workers found</h2>
                 <p className="mt-2 text-sm text-slate-500">
                     Try another search or add a new worker.
@@ -37,12 +37,12 @@ export function WorkersTable({
     }
 
     return (
-        <div className="overflow-hidden rounded-2xl border bg-white shadow-sm">
+        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
             <div className="overflow-x-auto">
                 <table className="min-w-full border-collapse">
-                    <thead className="bg-slate-50">
-                        <tr className="text-left text-sm text-slate-600">
-                            <th className="px-4 py-3 font-medium">
+                    <thead className="bg-slate-50 text-left text-sm text-slate-600">
+                        <tr>
+                            <th className="px-5 py-3 font-medium">
                                 <button
                                     type="button"
                                     onClick={onToggleNameSort}
@@ -52,11 +52,11 @@ export function WorkersTable({
                                     <SortArrows direction={sortDirection} />
                                 </button>
                             </th>
-                            <th className="px-4 py-3 font-medium">Phone</th>
-                            <th className="px-4 py-3 font-medium">Linked account</th>
-                            <th className="px-4 py-3 font-medium">Role</th>
-                            <th className="px-4 py-3 font-medium">Status</th>
-                            <th className="px-4 py-3 font-medium"></th>
+                            <th className="px-5 py-3 font-medium">Phone</th>
+                            <th className="px-5 py-3 font-medium">Linked account</th>
+                            <th className="px-5 py-3 font-medium">Role</th>
+                            <th className="px-5 py-3 font-medium">Status</th>
+                            <th className="px-5 py-3 font-medium"></th>
                         </tr>
                     </thead>
 
@@ -64,20 +64,34 @@ export function WorkersTable({
                         {items.map((worker) => (
                             <tr
                                 key={worker.id}
-                                className="border-t text-sm transition hover:bg-slate-50/80"
+                                className="border-t border-slate-200 text-sm transition hover:bg-slate-50/80"
                             >
-                                <td className="px-4 py-3 font-medium text-slate-900">{worker.name}</td>
-                                <td className="px-4 py-3 text-slate-700">{worker.phone || "N/A"}</td>
-                                <td className="px-4 py-3 text-slate-700">{worker.linkedUserEmail || "Not linked"}</td>
-                                <td className="px-4 py-3 text-slate-700">{worker.role || "N/A"}</td>
-                                <td className="px-4 py-3 text-slate-700">
-                                    {worker.active ? "Active" : "Inactive"}
+                                <td className="px-5 py-4 align-top">
+                                    <div className="font-semibold text-slate-900">{worker.name}</div>
+                                    <div className="mt-1 text-xs text-slate-500">
+                                        {worker.colorTag || "No color tag"}
+                                    </div>
                                 </td>
-                                <td className="px-4 py-3 text-right">
+                                <td className="px-5 py-4 align-top text-slate-700">{worker.phone || "N/A"}</td>
+                                <td className="px-5 py-4 align-top text-slate-700">{worker.linkedUserEmail || "Not linked"}</td>
+                                <td className="px-5 py-4 align-top text-slate-700">{worker.role || "N/A"}</td>
+                                <td className="px-5 py-4 align-top text-slate-700">
+                                    <span
+                                        className={[
+                                            "inline-flex rounded-full px-2.5 py-1 text-xs font-semibold",
+                                            worker.active
+                                                ? "bg-emerald-50 text-emerald-700"
+                                                : "bg-slate-100 text-slate-700",
+                                        ].join(" ")}
+                                    >
+                                        {worker.active ? "Active" : "Inactive"}
+                                    </span>
+                                </td>
+                                <td className="px-5 py-4 text-right align-top">
                                     <button
                                         type="button"
                                         onClick={() => onEdit(worker)}
-                                        className="rounded-lg border px-3 py-1.5 text-sm font-medium hover:bg-slate-50"
+                                        className="rounded-xl border border-sky-100 px-3 py-1.5 text-sm font-medium text-slate-700 hover:border-emerald-200 hover:bg-sky-50"
                                     >
                                         Edit
                                     </button>

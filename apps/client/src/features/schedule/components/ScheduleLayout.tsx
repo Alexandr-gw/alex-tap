@@ -656,7 +656,7 @@ function MobileUnassignedPanel({
                                     {job.serviceName ?? "Job"}
                                 </div>
                                 <div className="mt-1 text-xs text-slate-600">
-                                    {job.clientName ?? "No client"} • {formatTimeLabel(job.startAt, timezone)}
+                                                        {job.clientName ?? "No client"} / {formatTimeLabel(job.startAt, timezone)}
                                 </div>
                             </button>
                         ))}
@@ -677,7 +677,7 @@ function MobileUnassignedPanel({
                             >
                                 <div className="text-sm font-medium text-slate-900">{task.subject}</div>
                                 <div className="mt-1 text-xs text-slate-600">
-                                    {task.customerName ?? "No customer"} • {formatTimeLabel(task.startAt, timezone)}
+                                                        {task.customerName ?? "No customer"} / {formatTimeLabel(task.startAt, timezone)}
                                 </div>
                             </button>
                         ))}

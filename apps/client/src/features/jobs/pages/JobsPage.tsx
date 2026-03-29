@@ -6,6 +6,16 @@ import { JobsToolbar } from "../components/JobsToolbar";
 import { useJobs } from "../hooks/jobs.queries";
 import type { JobListItemDto, JobStatus } from "../api/jobs.types";
 
+function cleanDisplayText(value: string | null | undefined) {
+    if (!value) return "";
+    return value
+        .replace(/\uFFFD/g, " - ")
+        .replace(/â€™|’/g, "'")
+        .replace(/\s+-\s+-\s+/g, " - ")
+        .replace(/\s{2,}/g, " ")
+        .trim();
+}
+
 function matchesSearch(job: JobListItemDto, search: string) {
     if (!search.trim()) return true;
 
@@ -45,6 +55,11 @@ export function JobsPage() {
     }, [jobs, search, status]);
 
     const spotlightJob = filteredJobs[0] ?? null;
+    const spotlightSubtitle = spotlightJob
+        ? [cleanDisplayText(spotlightJob.clientName) || "No client", cleanDisplayText(spotlightJob.location)]
+              .filter(Boolean)
+              .join(" / ")
+        : "";
 
     function updateParams(next: Partial<{ search: string; status: JobStatus | "ALL" }>) {
         const updated = new URLSearchParams(searchParams);
@@ -64,10 +79,10 @@ export function JobsPage() {
 
     return (
         <div className="space-y-6">
-            <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+            <section className="rounded-[2rem] border border-emerald-100/80 bg-[linear-gradient(135deg,#ffffff_0%,#effcf5_44%,#eef7ff_100%)] p-6 shadow-sm">
                 <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
                     <div className="max-w-2xl">
-                        <div className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
+                        <div className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700">
                             Jobs
                         </div>
                         <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">
@@ -82,18 +97,18 @@ export function JobsPage() {
                     {spotlightJob ? (
                         <Link
                             to={`/app/jobs/${spotlightJob.id}`}
-                            className="block rounded-3xl border border-slate-200 bg-slate-50 p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md xl:max-w-sm"
+                            className="block rounded-3xl border border-sky-100 bg-white/95 p-5 shadow-sm transition hover:border-emerald-200 hover:bg-[linear-gradient(135deg,#f7fcf9_0%,#f6fbff_100%)] xl:max-w-sm"
                         >
-                            <div className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
+                            <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">
                                 Job spotlight
                             </div>
                             <div className="mt-3 text-xl font-semibold text-slate-950">
-                                {spotlightJob.serviceName ?? "Job"}
+                                {cleanDisplayText(spotlightJob.serviceName) || "Job"}
                             </div>
                             <div className="mt-2 text-sm text-slate-600">
-                                {spotlightJob.clientName || "No client"}{spotlightJob.location ? ` • ${spotlightJob.location}` : ""}
+                                {spotlightSubtitle}
                             </div>
-                            <div className="mt-4 inline-flex rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white">
+                            <div className="mt-4 inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
                                 Open job
                             </div>
                         </Link>

@@ -14,7 +14,7 @@ export function DashboardLayout() {
     }, [location.pathname]);
 
     return (
-        <div className="flex min-h-dvh flex-col bg-slate-50 text-slate-900">
+        <div className="flex min-h-dvh flex-col bg-[linear-gradient(180deg,#f3fbf7_0%,#f7fbff_36%,#ffffff_100%)] text-slate-900">
             <Header onOpenSidebar={() => setMobileSidebarOpen(true)} />
 
             <div className="flex min-h-0 w-full flex-1">

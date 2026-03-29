@@ -62,7 +62,7 @@ export function JobsOverviewCards({ items }: Props) {
             {cards.map((card) => (
                 <article
                     key={card.label}
-                    className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
+                    className="rounded-3xl border border-emerald-100/80 bg-[linear-gradient(180deg,#ffffff_0%,#f7fbff_100%)] p-5 shadow-sm"
                 >
                     <div className="text-sm font-medium text-slate-500">{card.label}</div>
                     <div className="mt-4 flex items-end justify-between gap-3">

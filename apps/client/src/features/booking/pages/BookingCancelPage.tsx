@@ -12,7 +12,7 @@ export function BookingCancelPage() {
             <h1 className="text-2xl font-semibold">Payment canceled</h1>
 
             <p className="mt-3 text-slate-600">
-                No worries — you can try again whenever you’re ready.
+                    No worries, you can try again whenever you're ready.
             </p>
 
             {sessionId && (

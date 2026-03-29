@@ -37,6 +37,16 @@ function formatDateTime(value: string) {
     }).format(date);
 }
 
+function cleanDisplayText(value: string | null | undefined) {
+    if (!value) return "";
+    return value
+        .replace(/\uFFFD/g, " - ")
+        .replace(/â€™|’/g, "'")
+        .replace(/\s+-\s+-\s+/g, " - ")
+        .replace(/\s{2,}/g, " ")
+        .trim();
+}
+
 function sumJobValue(items: Array<{ totalCents: number }>) {
     return items.reduce((sum, item) => {
         const amount = Number(item.totalCents);
@@ -101,7 +111,7 @@ function MetricCard({
     helper: string;
 }) {
     return (
-        <article className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <article className="rounded-3xl border border-emerald-100/80 bg-[linear-gradient(180deg,#ffffff_0%,#f7fbff_100%)] p-4 shadow-sm sm:p-5">
             <div className="text-sm font-medium text-slate-500">{label}</div>
             <div className="mt-3 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
                 {value}
@@ -119,7 +129,7 @@ function SectionCard({
     children: ReactNode;
 }) {
     return (
-        <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <section className="rounded-3xl border border-emerald-100/80 bg-white/95 p-4 shadow-sm sm:p-5">
             <h2 className="text-lg font-semibold text-slate-950">{title}</h2>
             <div className="mt-4">{children}</div>
         </section>
@@ -191,7 +201,6 @@ export function DashboardHomePage() {
                 });
                 return;
             } catch {
-                // Let the fallback below handle canceled/unsupported share outcomes quietly.
             }
         }
 
@@ -212,7 +221,7 @@ export function DashboardHomePage() {
                 <MetricCard
                     label="Jobs today"
                     value={todayJobs.length}
-                    helper={`${completedToday} completed • ${pendingToday} pending`}
+                    helper={`${completedToday} completed / ${pendingToday} pending`}
                 />
                 <MetricCard
                     label="Unassigned jobs"
@@ -235,17 +244,17 @@ export function DashboardHomePage() {
                 <div className="space-y-6">
                     <SectionCard title="Today's schedule preview">
                         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                                <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                            <div className="rounded-2xl border border-sky-100 bg-[linear-gradient(180deg,#f8fcff_0%,#f1f9ff_100%)] p-4">
+                                <div className="text-xs font-medium uppercase tracking-wide text-sky-700">
                                     Next job
                                 </div>
                                 {nextJob ? (
                                     <>
                                         <div className="mt-2 text-sm font-semibold text-slate-950">
-                                            {nextJob.serviceName ?? "Job"}
+                                            {cleanDisplayText(nextJob.serviceName) || "Job"}
                                         </div>
                                         <div className="mt-1 text-sm text-slate-600">
-                                            {nextJob.clientName ?? "No client"}
+                                            {cleanDisplayText(nextJob.clientName) || "No client"}
                                         </div>
                                         <div className="mt-2 text-xs text-slate-500">
                                             {formatDateTime(nextJob.startAt)}
@@ -258,8 +267,8 @@ export function DashboardHomePage() {
                                 )}
                             </div>
 
-                            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                                <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                            <div className="rounded-2xl border border-emerald-100 bg-[linear-gradient(180deg,#f7fcf9_0%,#eefbf4_100%)] p-4">
+                                <div className="text-xs font-medium uppercase tracking-wide text-emerald-700">
                                     Late jobs
                                 </div>
                                 <div className="mt-2 text-2xl font-semibold text-slate-950">
@@ -270,8 +279,8 @@ export function DashboardHomePage() {
                                 </div>
                             </div>
 
-                            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                                <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                            <div className="rounded-2xl border border-sky-100 bg-[linear-gradient(180deg,#f8fcff_0%,#eef7ff_100%)] p-4">
+                                <div className="text-xs font-medium uppercase tracking-wide text-sky-700">
                                     Idle gaps
                                 </div>
                                 <div className="mt-2 text-2xl font-semibold text-slate-950">
@@ -289,18 +298,18 @@ export function DashboardHomePage() {
                                     <Link
                                         key={job.id}
                                         to={`/app/jobs/${job.id}`}
-                                        className="flex flex-col gap-2 rounded-2xl border border-slate-200 px-4 py-3 transition hover:bg-slate-50 sm:flex-row sm:items-center sm:justify-between"
+                                        className="flex flex-col gap-2 rounded-2xl border border-sky-100 bg-white px-4 py-3 transition hover:border-emerald-200 hover:bg-[linear-gradient(135deg,#f7fcf9_0%,#f7fbff_100%)] sm:flex-row sm:items-center sm:justify-between"
                                     >
                                         <div className="min-w-0">
                                             <div className="truncate font-medium text-slate-950">
-                                                {job.serviceName ?? "Job"}
+                                                {cleanDisplayText(job.serviceName) || "Job"}
                                             </div>
                                             <div className="mt-1 truncate text-sm text-slate-500">
-                                                {job.clientName ?? "No client"} • {formatDateTime(job.startAt)}
+                                                {cleanDisplayText(job.clientName) || "No client"} / {formatDateTime(job.startAt)}
                                             </div>
                                         </div>
                                         <div className="text-sm text-slate-500 sm:ml-4 sm:text-right">
-                                            {job.workerName ||
+                                            {cleanDisplayText(job.workerName) ||
                                                 (job.workerIds.length
                                                     ? `${job.workerIds.length} workers`
                                                     : "Unassigned")}
@@ -308,7 +317,7 @@ export function DashboardHomePage() {
                                     </Link>
                                 ))
                             ) : (
-                                <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-sm text-slate-500">
+                                <div className="rounded-2xl border border-dashed border-sky-200 bg-[linear-gradient(180deg,#f8fcff_0%,#f4fbf8_100%)] p-8 text-center text-sm text-slate-500">
                                     No jobs scheduled today.
                                 </div>
                             )}
@@ -320,7 +329,7 @@ export function DashboardHomePage() {
                     <SectionCard title="Booking page">
                         {bookingUrl ? (
                             <div className="space-y-4">
-                                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                                <div className="rounded-2xl border border-emerald-200 bg-[linear-gradient(135deg,#eefbf4_0%,#eef7ff_100%)] p-4">
                                     <div className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
                                         Your booking page is live
                                     </div>
@@ -338,7 +347,7 @@ export function DashboardHomePage() {
                                         onClick={() => {
                                             void handleCopyBookingLink();
                                         }}
-                                        className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 transition hover:bg-slate-50"
+                                        className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-sky-100 bg-white px-4 text-sm font-semibold text-slate-900 transition hover:border-sky-200 hover:bg-sky-50"
                                     >
                                         Copy link
                                     </button>
@@ -346,7 +355,7 @@ export function DashboardHomePage() {
                                         href={bookingUrl}
                                         target="_blank"
                                         rel="noreferrer"
-                                        className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 transition hover:bg-slate-50"
+                                        className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-sky-100 bg-white px-4 text-sm font-semibold text-slate-900 transition hover:border-sky-200 hover:bg-sky-50"
                                     >
                                         Open page
                                     </a>
@@ -355,14 +364,14 @@ export function DashboardHomePage() {
                                         onClick={() => {
                                             void handleShareBookingLink();
                                         }}
-                                        className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-800"
+                                        className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-emerald-300 bg-[linear-gradient(135deg,#41be7f_0%,#5ea9f0_100%)] px-4 text-sm font-semibold text-white transition hover:border-emerald-400"
                                     >
                                         Share
                                     </button>
                                 </div>
                             </div>
                         ) : (
-                            <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5">
+                            <div className="rounded-2xl border border-dashed border-sky-200 bg-[linear-gradient(180deg,#f8fcff_0%,#f4fbf8_100%)] p-5">
                                 <div className="text-sm font-semibold text-slate-950">
                                     Booking page is not configured yet
                                 </div>
@@ -371,7 +380,7 @@ export function DashboardHomePage() {
                                 </div>
                                 <Link
                                     to="/app/settings/company"
-                                    className="mt-4 inline-flex h-11 w-full items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 transition hover:bg-slate-100 sm:w-auto"
+                                    className="mt-4 inline-flex h-11 w-full items-center justify-center rounded-xl border border-sky-100 bg-white px-4 text-sm font-semibold text-slate-900 transition hover:border-sky-200 hover:bg-sky-50 sm:w-auto"
                                 >
                                     Open company settings
                                 </Link>
@@ -386,8 +395,8 @@ export function DashboardHomePage() {
                                 tone="rose"
                                 items={missedJobs.map((job) => ({
                                     id: job.id,
-                                    title: job.serviceName ?? "Job",
-                                    subtitle: `${job.clientName ?? "No client"} • ${formatDateTime(job.endAt)}`,
+                                    title: cleanDisplayText(job.serviceName) || "Job",
+                                    subtitle: `${cleanDisplayText(job.clientName) || "No client"} / ${formatDateTime(job.endAt)}`,
                                     href: `/app/jobs/${job.id}`,
                                 }))}
                                 empty="No missed jobs right now."
@@ -398,8 +407,8 @@ export function DashboardHomePage() {
                                 tone="amber"
                                 items={unassignedBookings.map((alert) => ({
                                     id: alert.id,
-                                    title: alert.job.serviceName ?? "Booking",
-                                    subtitle: `${alert.job.clientName} • ${formatDateTime(alert.job.startAt)}`,
+                                    title: cleanDisplayText(alert.job.serviceName) || "Booking",
+                                    subtitle: `${cleanDisplayText(alert.job.clientName)} / ${formatDateTime(alert.job.startAt)}`,
                                     href: `/app/new-bookings?alertId=${alert.id}`,
                                 }))}
                                 empty="No unassigned bookings waiting."
@@ -410,8 +419,8 @@ export function DashboardHomePage() {
                                 tone="sky"
                                 items={unassignedJobs.map((job) => ({
                                     id: job.id,
-                                    title: job.serviceName ?? "Job",
-                                    subtitle: `${job.clientName ?? "No client"} • ${formatDateTime(job.startAt)}`,
+                                    title: cleanDisplayText(job.serviceName) || "Job",
+                                    subtitle: `${cleanDisplayText(job.clientName) || "No client"} / ${formatDateTime(job.startAt)}`,
                                     href: `/app/jobs/${job.id}`,
                                 }))}
                                 empty="All today jobs are assigned."
@@ -461,14 +470,14 @@ function IssueBlock({
                         <Link
                             key={item.id}
                             to={item.href}
-                            className="block rounded-2xl border border-slate-200 px-4 py-3 transition hover:bg-slate-50"
+                            className="block rounded-2xl border border-sky-100 px-4 py-3 transition hover:border-emerald-200 hover:bg-[linear-gradient(135deg,#f7fcf9_0%,#f7fbff_100%)]"
                         >
                             <div className="font-medium text-slate-950">{item.title}</div>
                             <div className="mt-1 text-sm text-slate-500">{item.subtitle}</div>
                         </Link>
                     ))
                 ) : (
-                    <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm text-slate-500">
+                    <div className="rounded-2xl border border-dashed border-sky-200 bg-[linear-gradient(180deg,#f8fcff_0%,#f4fbf8_100%)] px-4 py-5 text-sm text-slate-500">
                         {empty}
                     </div>
                 )}

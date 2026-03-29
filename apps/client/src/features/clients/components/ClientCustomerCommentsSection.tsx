@@ -17,7 +17,7 @@ export function ClientCustomerCommentsSection({ comments, updatedAt }: Props) {
 
             {comments?.trim() ? (
                 <div className="rounded-xl border p-4">
-                    <div className="text-xs text-slate-500">Latest comment • {formatDateTime(updatedAt)}</div>
+                <div className="text-xs text-slate-500">Latest comment / {formatDateTime(updatedAt)}</div>
                     <p className="mt-2 whitespace-pre-wrap text-sm text-slate-900">{comments}</p>
                 </div>
             ) : (

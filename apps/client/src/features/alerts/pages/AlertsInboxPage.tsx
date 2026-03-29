@@ -45,22 +45,27 @@ function AlertRow({
         <div
             className={[
                 "rounded-2xl border p-4 transition",
-                selected ? "border-slate-900 bg-slate-900 text-white shadow-lg" : "border-slate-200 bg-white hover:border-slate-300",
+                selected
+                    ? "border-emerald-300 bg-[linear-gradient(135deg,#ecfbf3_0%,#eef7ff_100%)] text-slate-900 shadow-sm"
+                    : "border-sky-100 bg-white hover:border-emerald-200 hover:bg-[linear-gradient(135deg,#f7fcf9_0%,#f7fbff_100%)]",
             ].join(" ")}
         >
             <div className="flex items-start justify-between gap-3">
                 <div>
                     <div className="text-sm font-semibold">{alert.title}</div>
-                    <div className={["mt-1 text-sm", selected ? "text-slate-300" : "text-slate-600"].join(" ")}>
+                    <div className={["mt-1 text-sm", selected ? "text-slate-600" : "text-slate-600"].join(" ")}>
                         {alert.message}
                     </div>
                 </div>
                 {!alert.readAt ? (
-                    <span className={["h-2.5 w-2.5 rounded-full", selected ? "bg-sky-400" : "bg-sky-500"].join(" ")} />
+                    <span className={[
+                        "h-2.5 w-2.5 rounded-full",
+                        selected ? "bg-emerald-500" : "bg-sky-500",
+                    ].join(" ")} />
                 ) : null}
             </div>
 
-            <div className={["mt-4 grid gap-2 text-xs", selected ? "text-slate-300" : "text-slate-500"].join(" ")}>
+            <div className={["mt-4 grid gap-2 text-xs", selected ? "text-slate-500" : "text-slate-500"].join(" ")}>
                 <div>{alert.job.clientName}</div>
                 <div>{alert.job.serviceName}</div>
                 <div>{formatDateTime(alert.job.startAt)}</div>
@@ -72,7 +77,7 @@ function AlertRow({
 
 function DetailSkeleton() {
     return (
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="rounded-3xl border border-emerald-100 bg-white p-6 shadow-sm">
             <div className="space-y-3">
                 <div className="h-6 w-48 animate-pulse rounded bg-slate-200" />
                 <div className="h-4 w-80 animate-pulse rounded bg-slate-100" />
@@ -104,10 +109,10 @@ function Details({
     const latestPayment = detail.job.payments[0] ?? null;
 
     return (
-        <div className="space-y-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="space-y-6 rounded-3xl border border-emerald-100/80 bg-[linear-gradient(180deg,#ffffff_0%,#f9fcff_100%)] p-6 shadow-sm">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div>
-                    <div className="text-sm font-medium uppercase tracking-[0.2em] text-slate-500">Booking review</div>
+                    <div className="text-sm font-medium uppercase tracking-[0.2em] text-emerald-700">Booking review</div>
                     <h1 className="mt-2 text-2xl font-semibold text-slate-900">{detail.job.client.name}</h1>
                     <p className="mt-2 text-sm text-slate-600">{detail.message}</p>
                 </div>
@@ -118,20 +123,20 @@ function Details({
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Service</div>
+                <div className="rounded-2xl border border-sky-100 bg-[linear-gradient(180deg,#f8fcff_0%,#f1f9ff_100%)] p-4">
+                    <div className="text-xs font-medium uppercase tracking-wide text-sky-700">Service</div>
                     <div className="mt-2 text-sm font-semibold text-slate-900">{detail.job.lineItems[0]?.description ?? "Service"}</div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Scheduled</div>
+                <div className="rounded-2xl border border-emerald-100 bg-[linear-gradient(180deg,#f7fcf9_0%,#eefbf4_100%)] p-4">
+                    <div className="text-xs font-medium uppercase tracking-wide text-emerald-700">Scheduled</div>
                     <div className="mt-2 text-sm font-semibold text-slate-900">{formatDateTime(detail.job.startAt)}</div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Amount</div>
+                <div className="rounded-2xl border border-sky-100 bg-[linear-gradient(180deg,#f8fcff_0%,#eef7ff_100%)] p-4">
+                    <div className="text-xs font-medium uppercase tracking-wide text-sky-700">Amount</div>
                     <div className="mt-2 text-sm font-semibold text-slate-900">{formatMoney(detail.job.totalCents, detail.job.currency)}</div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Receipt</div>
+                <div className="rounded-2xl border border-emerald-100 bg-[linear-gradient(180deg,#f7fcf9_0%,#eefbf4_100%)] p-4">
+                    <div className="text-xs font-medium uppercase tracking-wide text-emerald-700">Receipt</div>
                     <div className="mt-2 text-sm font-semibold text-slate-900">
                         {latestPayment?.receiptUrl ? (
                             <a className="text-sky-700 underline" href={latestPayment.receiptUrl} target="_blank" rel="noreferrer">
@@ -145,7 +150,7 @@ function Details({
             </div>
 
             <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-                <div className="space-y-4 rounded-2xl border border-slate-200 p-4">
+                <div className="space-y-4 rounded-2xl border border-sky-100 bg-white/90 p-4">
                     <div>
                         <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Customer</div>
                         <div className="mt-2 text-sm text-slate-700">{detail.job.client.name}</div>
@@ -162,13 +167,13 @@ function Details({
                     </div>
                 </div>
 
-                <div className="space-y-4 rounded-2xl border border-slate-200 p-4">
+                <div className="space-y-4 rounded-2xl border border-emerald-100 bg-white/90 p-4">
                     <div>
                         <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Assigned worker</label>
                         <select
                             value={workerId}
                             onChange={(event) => onWorkerIdChange(event.target.value)}
-                            className="mt-2 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900"
+                            className="mt-2 h-11 w-full rounded-xl border border-sky-100 bg-white px-3 text-sm text-slate-900 focus:border-emerald-300 focus:outline-none"
                         >
                             {detail.workers.map((worker) => (
                                 <option key={worker.id} value={worker.id}>
@@ -184,7 +189,7 @@ function Details({
                             type="datetime-local"
                             value={startValue}
                             onChange={(event) => onStartValueChange(event.target.value)}
-                            className="mt-2 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900"
+                            className="mt-2 h-11 w-full rounded-xl border border-sky-100 bg-white px-3 text-sm text-slate-900 focus:border-emerald-300 focus:outline-none"
                         />
                         <div className="mt-2 text-xs text-slate-500">Changing time will be validated against the selected worker&apos;s schedule.</div>
                     </div>
@@ -193,14 +198,14 @@ function Details({
                         <button
                             onClick={onSave}
                             disabled={isSaving}
-                            className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-900 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="inline-flex h-11 items-center justify-center rounded-xl border border-sky-100 bg-white px-4 text-sm font-medium text-slate-900 hover:border-sky-200 hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                             Save changes
                         </button>
                         <button
                             onClick={onConfirm}
                             disabled={isSaving}
-                            className="inline-flex h-11 items-center justify-center rounded-xl bg-slate-900 px-4 text-sm font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="inline-flex h-11 items-center justify-center rounded-xl border border-emerald-300 bg-[linear-gradient(135deg,#41be7f_0%,#5ea9f0_100%)] px-4 text-sm font-medium text-white hover:border-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                             Confirm booking
                         </button>
@@ -286,20 +291,20 @@ export function AlertsInboxPage() {
 
     return (
         <div className="mx-auto grid w-full max-w-7xl gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
-            <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <section className="rounded-3xl border border-emerald-100/80 bg-[linear-gradient(180deg,#ffffff_0%,#f9fcff_100%)] p-5 shadow-sm">
                 <div className="flex items-center justify-between gap-3">
                     <div>
-                        <div className="text-xs font-medium uppercase tracking-[0.2em] text-slate-500">Alerts</div>
+                        <div className="text-xs font-medium uppercase tracking-[0.2em] text-emerald-700">Alerts</div>
                         <h2 className="mt-2 text-xl font-semibold text-slate-900">Pending confirmations</h2>
                     </div>
-                    <div className="rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white">
+                    <div className="rounded-full border border-emerald-300 bg-[linear-gradient(135deg,#41be7f_0%,#5ea9f0_100%)] px-3 py-1 text-xs font-semibold text-white">
                         {alertsQuery.data?.items.length ?? 0}
                     </div>
                 </div>
 
                 <div className="mt-5 space-y-3">
                     {alertsQuery.isLoading ? (
-                        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">Loading alerts...</div>
+                        <div className="rounded-2xl border border-sky-100 bg-[linear-gradient(180deg,#f8fcff_0%,#f4fbf8_100%)] p-4 text-sm text-slate-500">Loading alerts...</div>
                     ) : alertsQuery.isError ? (
                         <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">Unable to load alerts.</div>
                     ) : alertsQuery.data?.items.length ? (
@@ -313,7 +318,7 @@ export function AlertsInboxPage() {
                             </Link>
                         ))
                     ) : (
-                        <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-sm text-slate-500">
+                        <div className="rounded-2xl border border-dashed border-sky-200 bg-[linear-gradient(180deg,#f8fcff_0%,#f4fbf8_100%)] p-8 text-center text-sm text-slate-500">
                             No pending booking alerts right now.
                         </div>
                     )}
@@ -322,7 +327,7 @@ export function AlertsInboxPage() {
 
             <section>
                 {!selectedAlertId ? (
-                    <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-10 text-center text-sm text-slate-500 shadow-sm">
+                    <div className="rounded-3xl border border-dashed border-sky-200 bg-white p-10 text-center text-sm text-slate-500 shadow-sm">
                         Select an alert to review the booking.
                     </div>
                 ) : detailQuery.isLoading ? (
@@ -347,4 +352,3 @@ export function AlertsInboxPage() {
         </div>
     );
 }
-

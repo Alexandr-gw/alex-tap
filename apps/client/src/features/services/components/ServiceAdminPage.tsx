@@ -1,6 +1,5 @@
-// src/features/services/ServicesAdminPage.tsx
-import {useMemo, useState} from "react";
-import {toast} from "sonner";
+import { useMemo, useState } from "react";
+import { toast } from "sonner";
 import {
     useCreateService,
     useServices,
@@ -15,40 +14,39 @@ import {
     type ServicesToolbarValue,
     toolbarActiveToBool,
 } from "@/features/services/components/ServicesToolbar";
-import {ServicesTable} from "@/features/services/components/ServicesTable";
-import {ServicesPagination} from "@/features/services/components/Pagination";
-import {ServiceFormDialog} from "@/features/services/components/ServiceFormDialog";
-import {useMe} from "@/features/me/hooks/useMe";
-import {canManageCompany} from "@/features/me/me.selector";
+import { ServicesTable } from "@/features/services/components/ServicesTable";
+import { ServicesPagination } from "@/features/services/components/Pagination";
+import { ServiceFormDialog } from "@/features/services/components/ServiceFormDialog";
+import { useMe } from "@/features/me/hooks/useMe";
+import { canManageCompany } from "@/features/me/me.selector";
 
-function getErrorMessage(e: unknown) {
-    if (e instanceof Error) return e.message;
-    if (typeof e === "string") return e;
+function getErrorMessage(error: unknown) {
+    if (error instanceof Error) return error.message;
+    if (typeof error === "string") return error;
 
-    const anyE = e as any;
-    return anyE?.response?.data?.message ?? anyE?.message ?? "Something went wrong.";
+    const anyError = error as { response?: { data?: { message?: string } }; message?: string };
+    return anyError?.response?.data?.message ?? anyError?.message ?? "Something went wrong.";
 }
 
 function Card({
-                  children,
-                  className = "",
-              }: {
+    children,
+    className = "",
+}: {
     children: React.ReactNode;
     className?: string;
 }) {
     return (
-        <div
-            className={[
-                "rounded-2xl border border-slate-200 bg-white shadow-sm",
-                className,
-            ].join(" ")}
-        >
+        <div className={["rounded-2xl border border-slate-200 bg-white shadow-sm", className].join(" ")}>
             {children}
         </div>
     );
 }
 
-function Stat({label, value, hint,}: {
+function Stat({
+    label,
+    value,
+    hint,
+}: {
     label: string;
     value: number | string;
     hint?: string;
@@ -65,7 +63,7 @@ function Stat({label, value, hint,}: {
 }
 
 export default function ServicesAdminPage() {
-    const {data: me} = useMe();
+    const { data: me } = useMe();
     const canManage = useMemo(() => canManageCompany(me ?? null), [me]);
 
     const [page, setPage] = useState(1);
@@ -85,7 +83,7 @@ export default function ServicesAdminPage() {
             active: toolbarActiveToBool(toolbar.active),
             sort: toolbar.sort,
         }),
-        [page, pageSize, toolbar]
+        [page, pageSize, toolbar],
     );
 
     const q = useServices(params);
@@ -99,12 +97,12 @@ export default function ServicesAdminPage() {
     const total = q.data?.total ?? 0;
 
     const activeCount = useMemo(
-        () => items.reduce((acc, s) => acc + (s.active ? 1 : 0), 0),
-        [items]
+        () => items.reduce((acc, service) => acc + (service.active ? 1 : 0), 0),
+        [items],
     );
     const inactiveCount = useMemo(
-        () => items.reduce((acc, s) => acc + (!s.active ? 1 : 0), 0),
-        [items]
+        () => items.reduce((acc, service) => acc + (!service.active ? 1 : 0), 0),
+        [items],
     );
 
     const isSaving = createMut.isPending || updateMut.isPending;
@@ -114,8 +112,8 @@ export default function ServicesAdminPage() {
         setDialogOpen(true);
     }
 
-    function openEdit(svc: ServiceDto) {
-        setEditing(svc);
+    function openEdit(service: ServiceDto) {
+        setEditing(service);
         setDialogOpen(true);
     }
 
@@ -125,67 +123,66 @@ export default function ServicesAdminPage() {
     }
 
     function submit(payload: ServiceCreateInput) {
-        const toastId = toast.loading(editing ? "Saving changes…" : "Creating service…");
+        const toastId = toast.loading(editing ? "Saving changes..." : "Creating service...");
 
         if (editing) {
             updateMut.mutate(
-                {id: editing.id, patch: payload},
+                { id: editing.id, patch: payload },
                 {
                     onSuccess: () => {
-                        toast.success("Service updated", {id: toastId});
+                        toast.success("Service updated", { id: toastId });
                         closeDialog();
                     },
-                    onError: (e) => {
-                        toast.error("Update failed", {id: toastId, description: getErrorMessage(e)});
+                    onError: (error) => {
+                        toast.error("Update failed", { id: toastId, description: getErrorMessage(error) });
                     },
-                }
+                },
             );
             return;
         }
 
         createMut.mutate(payload, {
             onSuccess: () => {
-                toast.success("Service created", {id: toastId});
+                toast.success("Service created", { id: toastId });
                 closeDialog();
             },
-            onError: (e) => {
-                toast.error("Create failed", {id: toastId, description: getErrorMessage(e)});
+            onError: (error) => {
+                toast.error("Create failed", { id: toastId, description: getErrorMessage(error) });
             },
         });
     }
 
-    function toggleActive(svc: ServiceDto) {
+    function toggleActive(service: ServiceDto) {
         if (!canManage) return;
 
-        const nextActive = !svc.active;
-        const toastId = toast.loading(nextActive ? "Activating…" : "Disabling…");
+        const nextActive = !service.active;
+        const toastId = toast.loading(nextActive ? "Activating..." : "Disabling...");
 
         updateMut.mutate(
-            {id: svc.id, patch: {active: nextActive}},
+            { id: service.id, patch: { active: nextActive } },
             {
                 onSuccess: () => {
                     toast.success(nextActive ? "Service activated" : "Marked as not available", {
                         id: toastId,
                     });
                 },
-                onError: (e) => {
-                    toast.error("Update failed", {id: toastId, description: getErrorMessage(e)});
+                onError: (error) => {
+                    toast.error("Update failed", { id: toastId, description: getErrorMessage(error) });
                 },
-            }
+            },
         );
     }
 
     function retry() {
-        const toastId = toast.loading("Retrying…");
+        const toastId = toast.loading("Retrying...");
         q.refetch()
-            .then(() => toast.success("Reloaded", {id: toastId}))
-            .catch((e) => toast.error("Retry failed", {id: toastId, description: getErrorMessage(e)}));
+            .then(() => toast.success("Reloaded", { id: toastId }))
+            .catch((error) => toast.error("Retry failed", { id: toastId, description: getErrorMessage(error) }));
     }
 
     return (
         <div className="min-h-[calc(100vh-64px)] bg-slate-50">
             <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
-                {/* Header */}
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                         <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
@@ -198,6 +195,7 @@ export default function ServicesAdminPage() {
 
                     <div className="flex flex-col items-start gap-2 sm:items-end">
                         <button
+                            type="button"
                             onClick={openCreate}
                             disabled={!canManage}
                             className={[
@@ -209,22 +207,20 @@ export default function ServicesAdminPage() {
                         >
                             + New service
                         </button>
-                        {!canManage && (
+                        {!canManage ? (
                             <div className="text-xs text-slate-500">
                                 You need admin/manager access to create or edit services.
                             </div>
-                        )}
+                        ) : null}
                     </div>
                 </div>
 
-                {/* Stats */}
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                    <Stat label="Total results" value={total}/>
-                    <Stat label="Active (this page)" value={activeCount} hint="counts current page only"/>
-                    <Stat label="Inactive (this page)" value={inactiveCount} hint="counts current page only"/>
+                    <Stat label="Total results" value={total} />
+                    <Stat label="Active (this page)" value={activeCount} hint="counts current page only" />
+                    <Stat label="Inactive (this page)" value={inactiveCount} hint="counts current page only" />
                 </div>
 
-                {/* Toolbar */}
                 <Card className="p-4">
                     <ServicesToolbar
                         value={toolbar}
@@ -235,21 +231,20 @@ export default function ServicesAdminPage() {
                     />
                 </Card>
 
-                {/* Content */}
                 {q.isLoading ? (
                     <Card className="p-6">
                         <div className="flex items-center justify-between">
-                            <div className="text-sm text-slate-600">Loading services…</div>
-                            <div
-                                className="h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-slate-700"/>
+                            <div className="text-sm text-slate-600">Loading services...</div>
+                            <div className="h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-slate-700" />
                         </div>
                     </Card>
                 ) : q.isError ? (
                     <Card className="border-rose-200 bg-rose-50 p-6">
-                        <div className="text-sm font-medium text-rose-900">Couldn’t load services</div>
+                        <div className="text-sm font-medium text-rose-900">Couldn't load services</div>
                         <div className="mt-1 text-sm text-rose-800">{getErrorMessage(q.error)}</div>
                         <div className="mt-4">
                             <button
+                                type="button"
                                 onClick={retry}
                                 className="inline-flex h-9 items-center rounded-md border border-rose-200 bg-white px-3 text-sm font-medium text-slate-900 hover:bg-rose-50"
                             >
@@ -265,35 +260,21 @@ export default function ServicesAdminPage() {
                                 ? "Try a different search."
                                 : "Create your first service to start booking jobs."}
                         </div>
-                        {canManage && (
+                        {canManage ? (
                             <div className="mt-5">
                                 <button
+                                    type="button"
                                     onClick={openCreate}
                                     className="inline-flex h-10 items-center rounded-md bg-slate-900 px-4 text-sm font-medium text-white hover:bg-slate-800"
                                 >
                                     + New service
                                 </button>
                             </div>
-                        )}
+                        ) : null}
                     </Card>
                 ) : (
                     <>
                         <Card className="overflow-hidden">
-                            <div className="border-b border-slate-200 bg-slate-50 p-4">
-                                <div className="flex items-center justify-between">
-                                    <div className="text-sm font-medium text-slate-900">Services list</div>
-                                    <div className="flex items-center gap-3">
-                                        {isSaving ? (
-                                            <div className="flex items-center gap-2 text-xs text-slate-600">
-                                                <div
-                                                    className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-700"/>
-                                                Saving…
-                                            </div>
-                                        ) : null}
-                                    </div>
-                                </div>
-                            </div>
-
                             <ServicesTable
                                 items={items}
                                 canManage={canManage}

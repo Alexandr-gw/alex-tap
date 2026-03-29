@@ -16,6 +16,7 @@ import type {
     RequestBookingChangesInput,
     RequestBookingChangesResponse,
 } from "@/features/booking/api/booking.types";
+import { isApiError } from "@/lib/api/apiError";
 import {
     getPrivateCheckoutSessionSummary,
     getPublicCheckoutSessionSummary,
@@ -43,6 +44,12 @@ export function usePublicServices(companySlug: string | null | undefined) {
         queryFn: () => {
             if (!companySlug) throw new Error("Missing companySlug");
             return listPublicServices(companySlug);
+        },
+        retry: (count, error) => {
+            if (isApiError(error) && error.status === 404) {
+                return false;
+            }
+            return count < 2;
         },
     });
 }

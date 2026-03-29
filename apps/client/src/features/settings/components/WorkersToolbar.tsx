@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 type Props = {
     value: string;
@@ -22,11 +22,11 @@ export function WorkersToolbar({ value, onSearchChange, onCreateClick }: Props) 
     }, [draft, onSearchChange]);
 
     return (
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 rounded-3xl border border-emerald-100/80 bg-[linear-gradient(135deg,#ffffff_0%,#f6fcf8_52%,#f7fbff_100%)] p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
             <button
                 type="button"
                 onClick={onCreateClick}
-                className="inline-flex h-11 items-center justify-center rounded-xl bg-slate-900 px-4 text-sm font-medium text-white hover:bg-slate-800"
+                className="inline-flex h-11 items-center justify-center rounded-xl border border-emerald-300 bg-[linear-gradient(135deg,#41be7f_0%,#5ea9f0_100%)] px-4 text-sm font-medium text-white transition hover:border-emerald-400"
             >
                 Add worker
             </button>
@@ -36,7 +36,7 @@ export function WorkersToolbar({ value, onSearchChange, onCreateClick }: Props) 
                     value={draft}
                     onChange={(e) => setDraft(e.target.value)}
                     placeholder="Search by name, phone, or linked email"
-                    className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-slate-500"
+                    className="h-11 w-full rounded-xl border border-sky-100 bg-white px-3 text-sm outline-none transition focus:border-sky-300"
                 />
             </div>
         </div>

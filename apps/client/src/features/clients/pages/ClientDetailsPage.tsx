@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { ClientCustomerCommentsSection } from "../components/ClientCustomerCommentsSection";
 import { ClientInfoCard } from "../components/ClientInfoCard";
@@ -19,7 +19,7 @@ export function ClientDetailsPage() {
 
     if (clientQuery.isLoading) {
         return (
-            <div className="rounded-2xl border bg-white p-6 shadow-sm">
+            <div className="rounded-2xl border border-emerald-100 bg-white p-6 shadow-sm">
                 <p className="text-sm text-slate-500">Loading client...</p>
             </div>
         );

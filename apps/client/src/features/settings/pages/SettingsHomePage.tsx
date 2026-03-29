@@ -1,4 +1,4 @@
-﻿import { CompanySettingsForm } from "../components/CompanySettingsForm";
+import { CompanySettingsForm } from "../components/CompanySettingsForm";
 import { SettingsNavCard } from "../components/SettingsNavCard";
 import { useCompanySettings, useUpdateCompanySettings } from "../hooks/settings.queries";
 
@@ -8,7 +8,19 @@ export function SettingsHomePage() {
 
     return (
         <div className="space-y-6">
-            <h1 className="text-2xl font-semibold text-slate-900">Settings</h1>
+            <section className="rounded-[2rem] border border-emerald-100/80 bg-[linear-gradient(135deg,#ffffff_0%,#effcf5_44%,#eef7ff_100%)] p-6 shadow-sm">
+                <div className="max-w-2xl">
+                    <div className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700">
+                        Settings
+                    </div>
+                    <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">
+                        Manage company details, booking setup, and worker configuration.
+                    </h1>
+                    <p className="mt-3 text-sm leading-6 text-slate-600">
+                        This is the control room for public booking setup and internal operating defaults.
+                    </p>
+                </div>
+            </section>
 
             <div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
                 <div>
@@ -22,7 +34,7 @@ export function SettingsHomePage() {
 
                 <div>
                     {companyQuery.isLoading ? (
-                        <div className="rounded-2xl border bg-white p-6 shadow-sm">
+                        <div className="rounded-2xl border border-emerald-100 bg-white p-6 shadow-sm">
                             <p className="text-sm text-slate-500">Loading company settings...</p>
                         </div>
                     ) : companyQuery.isError || !companyQuery.data ? (

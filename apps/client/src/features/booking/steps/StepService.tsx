@@ -61,7 +61,7 @@ export function StepService({ wizard, servicesQ }: any) {
                     >
                         <div className="font-medium text-slate-900">{service.name}</div>
                         <div className="mt-1 text-sm text-slate-600">
-                            {service.durationMins} mins • {formatMoney(service.basePriceCents, service.currency)}
+                                {service.durationMins} mins / {formatMoney(service.basePriceCents, service.currency)}
                         </div>
                     </button>
                 ))}

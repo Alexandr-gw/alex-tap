@@ -12,10 +12,13 @@ export function ClientInfoCard({ client, onEdit }: Props) {
     const lastCommunication = client.lastCommunication;
 
     return (
-        <section className="rounded-2xl border bg-white p-6 shadow-sm">
+        <section className="rounded-[2rem] border border-emerald-100/80 bg-[linear-gradient(135deg,#ffffff_0%,#effcf5_44%,#eef7ff_100%)] p-6 shadow-sm">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
                 <div>
-                    <h1 className="text-3xl font-semibold text-slate-900">{client.name}</h1>
+                    <div className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700">
+                        Client profile
+                    </div>
+                    <h1 className="mt-3 text-3xl font-semibold text-slate-900">{client.name}</h1>
                     <p className="mt-2 text-sm text-slate-500">
                         Customer since {formatDate(client.createdAt)}
                     </p>
@@ -24,7 +27,7 @@ export function ClientInfoCard({ client, onEdit }: Props) {
                 <button
                     type="button"
                     onClick={onEdit}
-                    className="rounded-xl border px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                    className="rounded-xl border border-sky-100 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:border-sky-200 hover:bg-sky-50"
                 >
                     Edit client
                 </button>
@@ -93,4 +96,3 @@ function DetailRow({ label, value }: { label: string; value: ReactNode }) {
         </div>
     );
 }
-

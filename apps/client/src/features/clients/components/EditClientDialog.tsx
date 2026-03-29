@@ -73,24 +73,27 @@ export function EditClientDialog({
     const actionLabel = mode === "create" ? "Create client" : "Save changes";
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4">
-            <div className="w-full max-w-2xl rounded-2xl bg-white shadow-xl">
-                <div className="flex items-center justify-between border-b px-5 py-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-[2px]">
+            <div className="w-full max-w-2xl overflow-hidden rounded-[2rem] border border-emerald-100 bg-[linear-gradient(180deg,#ffffff_0%,#f9fcff_100%)] shadow-[0_28px_80px_rgba(15,23,42,0.22)]">
+                <div className="flex items-center justify-between border-b border-emerald-100 bg-[linear-gradient(135deg,#eefbf4_0%,#eef7ff_100%)] px-6 py-5">
                     <div>
-                        <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
-                        <p className="text-sm text-slate-500">{subtitle}</p>
+                        <div className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700">
+                            Clients
+                        </div>
+                        <h2 className="mt-2 text-xl font-semibold text-slate-900">{title}</h2>
+                        <p className="mt-1 text-sm text-slate-500">{subtitle}</p>
                     </div>
 
                     <button
                         type="button"
                         onClick={onClose}
-                        className="rounded-lg px-3 py-2 text-sm text-slate-500 hover:bg-slate-100"
+                        className="rounded-xl border border-sky-100 bg-white px-3 py-2 text-sm font-medium text-slate-600 hover:border-emerald-200 hover:bg-sky-50"
                     >
                         Close
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-4 p-5">
+                <form onSubmit={handleSubmit} className="space-y-5 p-6">
                     <div className="grid gap-4 sm:grid-cols-2">
                         <Field
                             label="Name"
@@ -121,22 +124,22 @@ export function EditClientDialog({
                             value={form.internalNotes}
                             onChange={(e) => setForm((prev) => ({ ...prev, internalNotes: e.target.value }))}
                             rows={5}
-                            className="mt-2 w-full rounded-xl border border-slate-300 p-3 text-sm outline-none focus:border-slate-500"
+                            className="mt-2 w-full rounded-2xl border border-sky-100 bg-white p-3 text-sm outline-none focus:border-emerald-300"
                         />
                     </div>
 
-                    <div className="flex justify-end gap-3 border-t pt-4">
+                    <div className="flex justify-end gap-3 border-t border-emerald-100 pt-5">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="rounded-xl border px-4 py-2 text-sm font-medium"
+                            className="rounded-xl border border-sky-100 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:border-emerald-200 hover:bg-sky-50"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={isSaving || !form.name.trim()}
-                            className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+                            className="rounded-xl border border-emerald-300 bg-[linear-gradient(135deg,#41be7f_0%,#5ea9f0_100%)] px-4 py-2 text-sm font-medium text-white hover:border-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                             {isSaving ? "Saving..." : actionLabel}
                         </button>
@@ -164,7 +167,7 @@ function Field({ label, value, onChange, required = false }: FieldProps) {
             <input
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
-                className="mt-2 h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-slate-500"
+                className="mt-2 h-11 w-full rounded-xl border border-sky-100 bg-white px-3 text-sm outline-none focus:border-emerald-300"
             />
         </div>
     );

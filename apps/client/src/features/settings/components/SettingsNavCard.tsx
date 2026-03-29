@@ -13,10 +13,10 @@ export function SettingsNavCard({ title, description, to, compact = false }: Pro
             to={to}
             className={({ isActive }) =>
                 [
-                    "block rounded-2xl border shadow-sm transition-colors hover:shadow-md",
+                    "block rounded-2xl border shadow-sm transition-colors",
                     isActive
-                        ? "border-emerald-200 bg-emerald-50/80 ring-1 ring-emerald-100"
-                        : "bg-white hover:border-slate-300",
+                        ? "border-emerald-200 bg-[linear-gradient(135deg,#eefbf4_0%,#eef7ff_100%)] ring-1 ring-emerald-100"
+                        : "border-sky-100 bg-white hover:border-emerald-200 hover:bg-[linear-gradient(135deg,#f7fcf9_0%,#f7fbff_100%)]",
                     compact ? "p-4" : "p-5",
                 ].join(" ")
             }
@@ -28,7 +28,7 @@ export function SettingsNavCard({ title, description, to, compact = false }: Pro
                             {title}
                         </h2>
                         {isActive ? (
-                            <span className="rounded-full bg-emerald-600 px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-white">
+                            <span className="rounded-full bg-[linear-gradient(135deg,#41be7f_0%,#5ea9f0_100%)] px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-white">
                                 Active
                             </span>
                         ) : null}

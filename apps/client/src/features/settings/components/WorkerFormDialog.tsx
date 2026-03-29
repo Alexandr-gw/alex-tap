@@ -70,14 +70,17 @@ export function WorkerFormDialog({ open, mode, worker, isSaving = false, onClose
     }
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4">
-            <div className="w-full max-w-xl rounded-2xl bg-white shadow-xl">
-                <div className="flex items-center justify-between border-b px-5 py-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-[2px]">
+            <div className="w-full max-w-xl overflow-hidden rounded-[2rem] border border-emerald-100 bg-[linear-gradient(180deg,#ffffff_0%,#f9fcff_100%)] shadow-[0_28px_80px_rgba(15,23,42,0.22)]">
+                <div className="flex items-center justify-between border-b border-emerald-100 bg-[linear-gradient(135deg,#eefbf4_0%,#eef7ff_100%)] px-6 py-5">
                     <div>
-                        <h2 className="text-lg font-semibold text-slate-900">
+                        <div className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700">
+                            Workers
+                        </div>
+                        <h2 className="mt-2 text-xl font-semibold text-slate-900">
                             {mode === "create" ? "Add worker" : "Edit worker"}
                         </h2>
-                        <p className="text-sm text-slate-500">
+                        <p className="mt-1 text-sm text-slate-500">
                             {mode === "create"
                                 ? "Create an internal worker profile for scheduling and jobs."
                                 : "Update worker profile details and linked account access."}
@@ -87,13 +90,13 @@ export function WorkerFormDialog({ open, mode, worker, isSaving = false, onClose
                     <button
                         type="button"
                         onClick={onClose}
-                        className="rounded-lg px-3 py-2 text-sm text-slate-500 hover:bg-slate-100"
+                        className="rounded-xl border border-sky-100 bg-white px-3 py-2 text-sm font-medium text-slate-600 hover:border-emerald-200 hover:bg-sky-50"
                     >
                         Close
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-4 p-5">
+                <form onSubmit={handleSubmit} className="space-y-5 p-6">
                     <Field
                         label="Name"
                         value={form.name}
@@ -115,7 +118,7 @@ export function WorkerFormDialog({ open, mode, worker, isSaving = false, onClose
                     />
 
                     {mode === "edit" ? (
-                        <div className="space-y-3 rounded-xl border bg-slate-50 p-4">
+                        <div className="space-y-3 rounded-2xl border border-sky-100 bg-[linear-gradient(180deg,#f8fcff_0%,#f4fbf8_100%)] p-4">
                             <div>
                                 <div className="text-sm font-medium text-slate-700">Access role</div>
                             </div>
@@ -136,7 +139,7 @@ export function WorkerFormDialog({ open, mode, worker, isSaving = false, onClose
                                                     role: e.target.value as "MANAGER" | "WORKER",
                                                 }))
                                             }
-                                            className="mt-2 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-slate-500"
+                                            className="mt-2 h-11 w-full rounded-xl border border-sky-100 bg-white px-3 text-sm outline-none focus:border-emerald-300"
                                         >
                                             <option value="WORKER">Worker</option>
                                             <option value="MANAGER">Manager</option>
@@ -144,18 +147,18 @@ export function WorkerFormDialog({ open, mode, worker, isSaving = false, onClose
                                     </label>
                                 )
                             ) : (
-                                <div className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-600">
+                                <div className="rounded-xl border border-sky-100 bg-white px-3 py-3 text-sm text-slate-600">
                                     This worker does not have a linked login account yet, so there is no app role to change.
                                 </div>
                             )}
                         </div>
                     ) : (
-                        <div className="rounded-xl border bg-slate-50 p-4 text-sm text-slate-600">
+                        <div className="rounded-2xl border border-sky-100 bg-[linear-gradient(180deg,#f8fcff_0%,#f4fbf8_100%)] p-4 text-sm text-slate-600">
                             Linked login accounts and roles can be managed after the worker is connected to a user account.
                         </div>
                     )}
 
-                    <div className="space-y-3 rounded-xl border bg-slate-50 p-4">
+                    <div className="space-y-3 rounded-2xl border border-sky-100 bg-[linear-gradient(180deg,#f8fcff_0%,#f4fbf8_100%)] p-4">
                         <label className="flex items-center justify-between gap-4">
                             <span className="text-sm font-medium text-slate-700">Active</span>
                             <input
@@ -172,18 +175,18 @@ export function WorkerFormDialog({ open, mode, worker, isSaving = false, onClose
                         </div>
                     ) : null}
 
-                    <div className="flex justify-end gap-3 border-t pt-4">
+                    <div className="flex justify-end gap-3 border-t border-emerald-100 pt-5">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="rounded-xl border px-4 py-2 text-sm font-medium"
+                            className="rounded-xl border border-sky-100 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:border-emerald-200 hover:bg-sky-50"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={isSaving || !form.name.trim()}
-                            className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+                            className="rounded-xl border border-emerald-300 bg-[linear-gradient(135deg,#41be7f_0%,#5ea9f0_100%)] px-4 py-2 text-sm font-medium text-white hover:border-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                             {isSaving ? "Saving..." : mode === "create" ? "Create worker" : "Save changes"}
                         </button>
@@ -213,7 +216,7 @@ function Field({ label, value, onChange, required = false, placeholder }: FieldP
                 value={value}
                 placeholder={placeholder}
                 onChange={(e) => onChange(e.target.value)}
-                className="mt-2 h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-slate-500"
+                className="mt-2 h-11 w-full rounded-xl border border-sky-100 bg-white px-3 text-sm outline-none focus:border-emerald-300"
             />
         </div>
     );

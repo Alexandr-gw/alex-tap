@@ -102,7 +102,7 @@ export function BriefingCard({
                         </div>
 
                         <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
-                            Watch today’s job load, worker activity, and the issues that need attention before they turn into missed work.
+                            Watch today's job load, worker activity, and the issues that need attention before they turn into missed work.
                         </p>
                         <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-700">
                             {briefing.briefing.summary}

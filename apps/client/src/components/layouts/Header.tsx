@@ -108,19 +108,19 @@ export function Header({ onOpenSidebar }: Props) {
 
   return (
     <>
-      <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/80 backdrop-blur">
+      <header className="sticky top-0 z-50 border-b border-emerald-100/80 bg-white/82 backdrop-blur supports-[backdrop-filter]:bg-white/74">
         <div className="flex h-14 w-full items-center justify-between px-4">
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={onOpenSidebar}
-              className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50 md:hidden"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-sky-100 bg-white text-slate-700 shadow-sm hover:bg-sky-50 md:hidden"
               aria-label="Open navigation"
             >
               <Menu className="h-5 w-5" />
             </button>
 
-            <div className="grid h-9 w-9 place-items-center rounded-xl bg-indigo-600 text-sm font-semibold text-white shadow-sm">
+            <div className="grid h-9 w-9 place-items-center rounded-xl bg-[linear-gradient(135deg,#4fc487_0%,#68aef1_100%)] text-sm font-semibold text-white shadow-[0_10px_24px_rgba(104,174,241,0.22)]">
               A
             </div>
 
@@ -143,12 +143,12 @@ export function Header({ onOpenSidebar }: Props) {
                   handleNotificationsSeen();
                   setIsActivityOpen(true);
                 }}
-                className="relative inline-flex h-11 w-11 flex-none items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50"
+                className="relative inline-flex h-11 w-11 flex-none items-center justify-center rounded-2xl border border-sky-100 bg-white text-slate-700 shadow-sm hover:bg-sky-50"
                 aria-label="Open notifications and activity"
               >
                 <Bell className="h-4 w-4" />
                 {unreadCount > 0 ? (
-                  <span className="absolute right-1 top-1 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-slate-900 px-1 text-[10px] font-semibold text-white">
+                  <span className="absolute right-1 top-1 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full border border-rose-200 bg-[linear-gradient(135deg,#ef4444_0%,#fb7185_100%)] px-1 text-[10px] font-semibold text-white shadow-sm">
                     {unreadCount > 9 ? "9+" : unreadCount}
                   </span>
                 ) : null}
@@ -162,11 +162,11 @@ export function Header({ onOpenSidebar }: Props) {
                   setIsActivityOpen(false);
                   setIsProfileOpen((current) => !current);
                 }}
-                className="inline-flex h-11 min-w-0 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 shadow-sm transition hover:bg-slate-50 sm:min-w-[200px]"
+                className="inline-flex h-11 min-w-0 items-center gap-2 rounded-2xl border border-sky-100 bg-white px-3 shadow-sm hover:bg-sky-50 sm:min-w-[200px]"
                 aria-haspopup="menu"
                 aria-expanded={isProfileOpen}
               >
-                <span className="grid h-7 w-7 place-items-center rounded-lg bg-indigo-600 text-xs font-semibold text-white">
+                <span className="grid h-7 w-7 place-items-center rounded-lg bg-[linear-gradient(135deg,#4fc487_0%,#68aef1_100%)] text-xs font-semibold text-white">
                   {initials}
                 </span>
 
@@ -188,8 +188,8 @@ export function Header({ onOpenSidebar }: Props) {
               </button>
 
               {isProfileOpen ? (
-                <div className="absolute right-0 top-14 z-20 w-72 rounded-3xl border border-slate-200 bg-white p-3 shadow-2xl">
-                  <div className="rounded-2xl bg-slate-50 px-4 py-3">
+                <div className="absolute right-0 top-14 z-20 w-72 rounded-3xl border border-emerald-100 bg-white p-3 shadow-2xl">
+                  <div className="rounded-2xl bg-[linear-gradient(135deg,#eefbf4_0%,#f2f8ff_100%)] px-4 py-3">
                     <div className="text-sm font-semibold text-slate-900">
                       {name}
                     </div>
@@ -197,10 +197,10 @@ export function Header({ onOpenSidebar }: Props) {
                       {me?.email ?? "No email on file"}
                     </div>
                     <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                      <span className="rounded-full bg-white px-2.5 py-1 text-slate-700">
+                      <span className="rounded-full border border-white bg-white/90 px-2.5 py-1 text-slate-700">
                         {roleLabel}
                       </span>
-                      <span className="rounded-full bg-white px-2.5 py-1 text-slate-700">
+                      <span className="rounded-full border border-white bg-white/90 px-2.5 py-1 text-slate-700">
                         {company ?? "No company"}
                       </span>
                     </div>
