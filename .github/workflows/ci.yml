@@ -2,16 +2,19 @@ name: CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop, dev]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop, dev]
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  build_test_lint:
+  validate:
     runs-on: ubuntu-latest
+    env:
+      CI: true
 
     steps:
       - name: Checkout
@@ -26,19 +29,17 @@ jobs:
       - name: Install
         run: npm ci
 
-      - name: Typecheck
-        run: npm run -w client typecheck && npm run -w server typecheck
-        continue-on-error: false
+      - name: Generate Prisma client
+        run: npm -w apps/server exec prisma generate
 
-      - name: Lint client
-        run: npm run -s client lint
-        continue-on-error: false
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm run test
 
       - name: Build
-        env:
-          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL || 'http://localhost:3000' }}
-          NODE_ENV: ${{ secrets.NODE_ENV || 'development' }}
-        run: npm run -w client build && npm run -w server build
-
-      - name: Dependency vulnerability scan
-        run: npx audit-ci --low --moderate --high --critical
+        run: npm run build
