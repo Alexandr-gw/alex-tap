@@ -39,6 +39,8 @@ export declare class PaymentsService {
     markPaymentFailed(paymentIntent: Stripe.PaymentIntent, event: Stripe.Event): Promise<void>;
     markChargeRefunded(charge: Stripe.Charge, event: Stripe.Event): Promise<void>;
     private reconcileCheckoutSessionIfPaid;
+    private ensurePaymentRecordForCheckoutSession;
+    private buildCheckoutSummaryFromSession;
     private getCustomerMessage;
     private getEffectivePaymentStatus;
     private safeRetrieveCheckoutSession;

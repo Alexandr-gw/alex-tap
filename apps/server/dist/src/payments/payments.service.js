@@ -150,7 +150,11 @@ let PaymentsService = class PaymentsService {
         };
     }
     async getCheckoutSessionSummaryPublic(args) {
-        await this.reconcileCheckoutSessionIfPaid(args.sessionId);
+        const stripeSession = await this.safeRetrieveCheckoutSession(args.sessionId);
+        if (stripeSession) {
+            await this.ensurePaymentRecordForCheckoutSession(stripeSession);
+        }
+        await this.reconcileCheckoutSessionIfPaid(args.sessionId, stripeSession);
         const payment = await this.prisma.payment.findFirst({
             where: {
                 stripeSessionId: args.sessionId,
@@ -183,9 +187,11 @@ let PaymentsService = class PaymentsService {
             },
         });
         if (!payment || !payment.job || payment.job.source !== 'PUBLIC') {
+            if (stripeSession) {
+                return this.buildCheckoutSummaryFromSession(stripeSession, true);
+            }
             throw new common_1.NotFoundException('Payment not found');
         }
-        const stripeSession = await this.safeRetrieveCheckoutSession(args.sessionId);
         const effectiveStatus = this.getEffectivePaymentStatus(payment.status, stripeSession);
         const bookingAccessPath = await this.getBookingAccessPath(payment.job.id, payment.job.companyId, payment.job.source);
         return {
@@ -203,7 +209,11 @@ let PaymentsService = class PaymentsService {
         };
     }
     async getCheckoutSessionSummaryPrivate(args) {
-        await this.reconcileCheckoutSessionIfPaid(args.sessionId);
+        const stripeSession = await this.safeRetrieveCheckoutSession(args.sessionId);
+        if (stripeSession) {
+            await this.ensurePaymentRecordForCheckoutSession(stripeSession);
+        }
+        await this.reconcileCheckoutSessionIfPaid(args.sessionId, stripeSession);
         const payment = await this.prisma.payment.findFirst({
             where: {
                 companyId: args.companyId,
@@ -238,9 +248,11 @@ let PaymentsService = class PaymentsService {
             },
         });
         if (!payment || !payment.job) {
+            if (stripeSession) {
+                return this.buildCheckoutSummaryFromSession(stripeSession, false, args.companyId);
+            }
             throw new common_1.NotFoundException('Payment not found');
         }
-        const stripeSession = await this.safeRetrieveCheckoutSession(args.sessionId);
         const effectiveStatus = this.getEffectivePaymentStatus(payment.status, stripeSession);
         return {
             ok: true,
@@ -437,7 +449,7 @@ let PaymentsService = class PaymentsService {
             });
         });
     }
-    async reconcileCheckoutSessionIfPaid(sessionId) {
+    async reconcileCheckoutSessionIfPaid(sessionId, sessionOverride) {
         const payment = await this.prisma.payment.findFirst({
             where: { stripeSessionId: sessionId },
             select: { id: true, status: true },
@@ -445,11 +457,129 @@ let PaymentsService = class PaymentsService {
         if (!payment || payment.status === client_1.PaymentStatus.SUCCEEDED) {
             return;
         }
-        const session = await this.safeRetrieveCheckoutSession(sessionId);
+        const session = sessionOverride ?? (await this.safeRetrieveCheckoutSession(sessionId));
         if (!session || session.payment_status !== 'paid') {
             return;
         }
         await this.markCheckoutSessionCompleted(session, null);
+    }
+    async ensurePaymentRecordForCheckoutSession(session) {
+        const existing = await this.prisma.payment.findFirst({
+            where: { stripeSessionId: session.id },
+            select: { id: true },
+        });
+        if (existing) {
+            return existing.id;
+        }
+        const jobId = typeof session.client_reference_id === 'string'
+            ? session.client_reference_id
+            : null;
+        const companyId = session.metadata?.companyId ?? null;
+        if (!jobId || !companyId) {
+            return null;
+        }
+        const job = await this.prisma.job.findFirst({
+            where: { id: jobId, companyId },
+            select: {
+                id: true,
+                companyId: true,
+                balanceCents: true,
+                totalCents: true,
+                currency: true,
+            },
+        });
+        if (!job) {
+            return null;
+        }
+        const amountCents = session.amount_total ??
+            (job.balanceCents > 0 ? job.balanceCents : job.totalCents);
+        const sessionStatus = session.payment_status === 'paid'
+            ? client_1.PaymentStatus.PENDING
+            : session.status === 'expired'
+                ? client_1.PaymentStatus.FAILED
+                : client_1.PaymentStatus.REQUIRES_ACTION;
+        try {
+            const created = await this.prisma.payment.create({
+                data: {
+                    companyId: job.companyId,
+                    jobId: job.id,
+                    provider: client_1.PaymentProvider.STRIPE,
+                    amountCents,
+                    currency: (session.currency ?? job.currency ?? 'CAD').toUpperCase(),
+                    status: sessionStatus,
+                    stripeSessionId: session.id,
+                    stripePaymentIntentId: typeof session.payment_intent === 'string'
+                        ? session.payment_intent
+                        : session.payment_intent?.id,
+                    stripeCustomerId: typeof session.customer === 'string'
+                        ? session.customer
+                        : session.customer?.id,
+                    metadata: {
+                        recoveredFromSession: true,
+                    },
+                },
+                select: { id: true },
+            });
+            return created.id;
+        }
+        catch {
+            return null;
+        }
+    }
+    async buildCheckoutSummaryFromSession(session, requirePublic, companyScope) {
+        const jobId = typeof session.client_reference_id === 'string'
+            ? session.client_reference_id
+            : null;
+        const companyId = session.metadata?.companyId ?? companyScope ?? null;
+        if (!jobId || !companyId) {
+            throw new common_1.NotFoundException('Payment not found');
+        }
+        const job = await this.prisma.job.findFirst({
+            where: {
+                id: jobId,
+                companyId,
+                ...(requirePublic ? { source: 'PUBLIC' } : {}),
+            },
+            select: {
+                id: true,
+                companyId: true,
+                source: true,
+                startAt: true,
+                currency: true,
+                client: {
+                    select: { name: true },
+                },
+                lineItems: {
+                    select: { description: true },
+                    take: 1,
+                    orderBy: { id: 'asc' },
+                },
+            },
+        });
+        if (!job) {
+            throw new common_1.NotFoundException('Payment not found');
+        }
+        const status = this.getEffectivePaymentStatus(session.payment_status === 'paid'
+            ? client_1.PaymentStatus.SUCCEEDED
+            : session.status === 'expired'
+                ? client_1.PaymentStatus.FAILED
+                : client_1.PaymentStatus.REQUIRES_ACTION, session);
+        const receiptUrl = await this.getReceiptUrl(typeof session.payment_intent === 'string'
+            ? session.payment_intent
+            : session.payment_intent?.id ?? null);
+        return {
+            ok: true,
+            status,
+            amountCents: session.amount_total ?? 0,
+            currency: (session.currency ?? job.currency ?? 'CAD').toUpperCase(),
+            jobId: job.id,
+            serviceName: job.lineItems?.[0]?.description ?? 'Service',
+            clientName: job.client?.name ?? null,
+            scheduledAt: job.startAt?.toISOString() ?? null,
+            receiptUrl,
+            customerMessage: this.getCustomerMessage(status),
+            bookingAccessPath: await this.getBookingAccessPath(job.id, job.companyId, job.source),
+        };
     }
     getCustomerMessage(status) {
         if (status === client_1.PaymentStatus.SUCCEEDED) {

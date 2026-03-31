@@ -46,6 +46,7 @@ export declare class AlertsService {
         userSub: string;
         alertId: string;
     }): Promise<{
+        constAssignedWorkerIds: undefined;
         id: string;
         type: "BOOKING_REVIEW";
         status: import("@prisma/client").$Enums.AlertStatus;
@@ -83,6 +84,7 @@ export declare class AlertsService {
                 phone: string | null;
                 colorTag: string | null;
             } | null;
+            workerIds: string[];
             lineItems: {
                 id: string;
                 description: string;

@@ -66,6 +66,7 @@ export type AlertDetail = {
             colorTag: string | null;
             phone: string | null;
         } | null;
+        workerIds: string[];
         lineItems: Array<{
             id: string;
             description: string;
@@ -99,6 +100,7 @@ export type UnreadCountResponse = {
 
 export type ReviewJobInput = {
     workerId?: string;
+    workerIds?: string[];
     start?: string;
     confirm?: boolean;
     alertId?: string;

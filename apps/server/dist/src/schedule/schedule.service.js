@@ -209,6 +209,27 @@ let ScheduleService = class ScheduleService {
                     companyId: input.companyId,
                 },
                 include: {
+                    worker: {
+                        select: {
+                            id: true,
+                            displayName: true,
+                            colorTag: true,
+                            phone: true,
+                        },
+                    },
+                    assignments: {
+                        include: {
+                            worker: {
+                                select: {
+                                    id: true,
+                                    displayName: true,
+                                    colorTag: true,
+                                    phone: true,
+                                },
+                            },
+                        },
+                        orderBy: { createdAt: 'asc' },
+                    },
                     lineItems: {
                         include: {
                             service: {
@@ -227,10 +248,10 @@ let ScheduleService = class ScheduleService {
             const currentDurationMins = Math.round((job.endAt.getTime() - job.startAt.getTime()) / 60000);
             const serviceLine = job.lineItems.find((item) => item.serviceId && item.service?.durationMins);
             const defaultDurationMins = serviceLine?.service?.durationMins ?? currentDurationMins;
-            const workerIdProvided = typeof input.dto.workerId !== 'undefined';
-            const targetWorkerId = workerIdProvided
-                ? (input.dto.workerId ?? null)
-                : job.workerId;
+            const nextWorkerIds = await this.resolveNextWorkerIds(tx, input.companyId, input.dto.workerIds, input.dto.workerId);
+            const existingWorkerIds = this.getAssignedWorkerIds(job);
+            const targetWorkerIds = nextWorkerIds ?? existingWorkerIds;
+            const targetWorkerId = targetWorkerIds[0] ?? null;
             const targetStart = nextStart ?? job.startAt;
             const targetEnd = nextEnd ??
                 (nextStart ? (0, date_fns_1.addMinutes)(targetStart, defaultDurationMins) : job.endAt);
@@ -238,28 +259,22 @@ let ScheduleService = class ScheduleService {
             if (targetEnd.getTime() <= targetStart.getTime()) {
                 throw new common_1.BadRequestException('End time must be after start time');
             }
-            if (targetWorkerId) {
-                const worker = await tx.worker.findFirst({
-                    where: {
-                        id: targetWorkerId,
-                        companyId: input.companyId,
-                        active: true,
-                    },
-                    select: { id: true },
-                });
-                if (!worker)
-                    throw new common_1.BadRequestException('Invalid worker');
-            }
             if (shouldConfirm && !job.paidAt) {
                 throw new common_1.BadRequestException('Job must be paid before confirmation');
             }
+            await this.assertNoWorkerConflicts(tx, input.companyId, targetWorkerIds, targetStart, targetEnd, job.id);
             const updates = {};
             const auditChanges = {};
             if (targetWorkerId !== job.workerId) {
                 updates.worker = targetWorkerId
                     ? { connect: { id: targetWorkerId } }
                     : { disconnect: true };
-                auditChanges.workerId = { from: job.workerId, to: targetWorkerId };
+            }
+            if (!this.areStringArraysEqual(existingWorkerIds, targetWorkerIds)) {
+                auditChanges.workerIds = {
+                    from: existingWorkerIds,
+                    to: targetWorkerIds,
+                };
             }
             if (targetStart.getTime() !== job.startAt.getTime() ||
                 targetEnd.getTime() !== job.endAt.getTime()) {
@@ -314,6 +329,7 @@ let ScheduleService = class ScheduleService {
                     },
                 },
             });
+            await this.syncJobAssignments(tx, job.id, targetWorkerIds);
             await tx.auditLog.create({
                 data: {
                     companyId: input.companyId,
@@ -398,6 +414,90 @@ let ScheduleService = class ScheduleService {
             throw new common_1.ForbiddenException();
         }
         return membership;
+    }
+    getAssignedWorkerIds(job) {
+        const assignedWorkerIds = new Set();
+        if (job.workerId) {
+            assignedWorkerIds.add(job.workerId);
+        }
+        for (const assignment of job.assignments ?? []) {
+            const assignmentWorkerId = assignment.workerId ?? assignment.worker?.id ?? null;
+            if (assignmentWorkerId) {
+                assignedWorkerIds.add(assignmentWorkerId);
+            }
+        }
+        return Array.from(assignedWorkerIds);
+    }
+    async resolveNextWorkerIds(db, companyId, workerIds, workerId) {
+        if (typeof workerIds !== 'undefined') {
+            return this.validateWorkerIds(db, companyId, workerIds);
+        }
+        if (typeof workerId !== 'undefined') {
+            return this.validateWorkerIds(db, companyId, workerId ? [workerId] : []);
+        }
+        return null;
+    }
+    async syncJobAssignments(tx, jobId, workerIds) {
+        await tx.jobAssignment.deleteMany({ where: { jobId } });
+        if (!workerIds.length) {
+            return;
+        }
+        await tx.jobAssignment.createMany({
+            data: workerIds.map((workerId) => ({
+                jobId,
+                workerId,
+            })),
+        });
+    }
+    areStringArraysEqual(left, right) {
+        if (left.length !== right.length) {
+            return false;
+        }
+        return left.every((value, index) => value === right[index]);
+    }
+    async assertNoWorkerConflicts(db, companyId, workerIds, start, end, excludeJobId) {
+        if (!workerIds.length) {
+            return;
+        }
+        const conflicting = await db.job.findFirst({
+            where: {
+                companyId,
+                ...(excludeJobId ? { id: { not: excludeJobId } } : {}),
+                status: {
+                    in: [
+                        client_1.JobStatus.PENDING_CONFIRMATION,
+                        client_1.JobStatus.SCHEDULED,
+                        client_1.JobStatus.IN_PROGRESS,
+                    ],
+                },
+                NOT: [{ endAt: { lte: start } }, { startAt: { gte: end } }],
+                OR: [
+                    { workerId: { in: workerIds } },
+                    { assignments: { some: { workerId: { in: workerIds } } } },
+                ],
+            },
+            select: { id: true },
+        });
+        if (conflicting) {
+            throw new common_1.ConflictException('Overlapping booking');
+        }
+    }
+    async validateWorkerIds(db, companyId, workerIds) {
+        const uniqueIds = [...new Set(workerIds.filter(Boolean))];
+        if (!uniqueIds.length)
+            return [];
+        const workers = await db.worker.findMany({
+            where: {
+                id: { in: uniqueIds },
+                companyId,
+                active: true,
+            },
+            select: { id: true },
+        });
+        if (workers.length !== uniqueIds.length) {
+            throw new common_1.BadRequestException('Invalid worker');
+        }
+        return uniqueIds;
     }
 };
 exports.ScheduleService = ScheduleService;
