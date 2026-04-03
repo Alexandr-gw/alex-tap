@@ -1,0 +1,1 @@
+import{j as a}from"./index-CckQ-JLD.js";function t(e){const{name:r}=e,s=r.replace(/\s+local$/i,"").replace(/\s+staging$/i,"").replace(/\s+production$/i,"").trim();return a.jsx("div",{className:"alex-tap-brand",children:a.jsx("span",{className:"alex-tap-brand-text",children:s})})}export{t as B};
