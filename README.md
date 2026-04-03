@@ -1,5 +1,8 @@
 # Alex Tap
 
+[![CI](https://github.com/Alexandr-gw/alex-tap/actions/workflows/ci.yml/badge.svg)](https://github.com/Alexandr-gw/alex-tap/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/Alexandr-gw/alex-tap/blob/main/LICENSE)
+
 Alex Tap is a multi-tenant booking, scheduling, and operations platform for service businesses. The repository currently contains a Vite React frontend, a NestJS backend, and a custom Keycloak theme app.
 
 It supports:
@@ -124,6 +127,8 @@ The app currently reads env values from:
 - [apps/server/.env](C:/Users/thepr/Documents/doc-dev/dev-env-compose/alex-tap/apps/server/.env)
 - [apps/client/.env](C:/Users/thepr/Documents/doc-dev/dev-env-compose/alex-tap/apps/client/.env)
 
+The Keycloak realm generator reads the local auth values from [apps/server/.env](C:/Users/thepr/Documents/doc-dev/dev-env-compose/alex-tap/apps/server/.env) and writes the importable realm JSON files under [apps/server/keycloak/generated](C:/Users/thepr/Documents/doc-dev/dev-env-compose/alex-tap/apps/server/keycloak/generated).
+
 ### 3. Start local infrastructure
 
 ```bash
@@ -189,10 +194,105 @@ npm -w apps/client run dev
 
 Typical local services:
 
-- Client app: `http://localhost:5173`
+- Client app: `http://localhost:3000`
 - API: `http://localhost:3001`
 - Keycloak: `http://localhost:8080`
 - Mailhog: `http://localhost:8025`
+
+## Deployment
+
+The repo now includes baseline deployment config for:
+
+- Vercel client hosting via [vercel.json](C:/Users/thepr/Documents/doc-dev/dev-env-compose/alex-tap/vercel.json)
+- Render API + worker services via [render.yaml](C:/Users/thepr/Documents/doc-dev/dev-env-compose/alex-tap/render.yaml)
+- Docker builds for the API, worker, and Keycloak via [Dockerfile](C:/Users/thepr/Documents/doc-dev/dev-env-compose/alex-tap/apps/server/Dockerfile), [Dockerfile.worker](C:/Users/thepr/Documents/doc-dev/dev-env-compose/alex-tap/apps/server/Dockerfile.worker), and [apps/keycloak/Dockerfile](C:/Users/thepr/Documents/doc-dev/dev-env-compose/alex-tap/apps/keycloak/Dockerfile)
+
+### Assumed domains
+
+- Production app: `https://app.alex-tap.com`
+- Production API: `https://api.alex-tap.com`
+- Production auth: `https://auth.alex-tap.com`
+- Staging app: `https://staging.alex-tap.com`
+- Staging API: `https://api-staging.alex-tap.com`
+- Staging auth: `https://auth-staging.alex-tap.com`
+
+### Branch mapping
+
+- Staging: `dev`
+- Production: `main`
+
+### Vercel
+
+Create one Vercel project per environment, both pointed at the repo root and using [vercel.json](C:/Users/thepr/Documents/doc-dev/dev-env-compose/alex-tap/vercel.json).
+
+Required client env vars:
+
+- `VITE_API_URL=https://api-staging.alex-tap.com` for staging
+- `VITE_API_URL=https://api.alex-tap.com` for production
+
+### Render
+
+Import [render.yaml](C:/Users/thepr/Documents/doc-dev/dev-env-compose/alex-tap/render.yaml) as a blueprint.
+
+This creates six services:
+
+- `alex-tap-api-staging`
+- `alex-tap-worker-staging`
+- `alex-tap-api`
+- `alex-tap-worker`
+
+It also now creates two Keycloak services from [apps/keycloak/Dockerfile](C:/Users/thepr/Documents/doc-dev/dev-env-compose/alex-tap/apps/keycloak/Dockerfile):
+
+- `alex-tap-auth-staging`
+- `alex-tap-auth`
+
+Those Keycloak services build a custom image that already contains:
+
+- the custom theme from [apps/keycloak-theme](C:/Users/thepr/Documents/doc-dev/dev-env-compose/alex-tap/apps/keycloak-theme)
+- the generated realm imports from [apps/server/keycloak/generated](C:/Users/thepr/Documents/doc-dev/dev-env-compose/alex-tap/apps/server/keycloak/generated)
+- a startup wrapper that selects the correct realm JSON based on `APP_ENV` / `KEYCLOAK_IMPORT_ENV`
+
+All runtime env values are intended to live in Render env groups or per-service dashboard settings, not in [render.yaml](C:/Users/thepr/Documents/doc-dev/dev-env-compose/alex-tap/render.yaml).
+
+The API container runs:
+
+```bash
+npx prisma migrate deploy && node dist/main.js
+```
+
+The worker container runs:
+
+```bash
+node dist/notifications/notification-worker.main.js
+```
+
+After importing the blueprint, attach the appropriate Render env groups to each service and add any secrets there.
+
+### Auth setup notes
+
+Keycloak needs separate staging and production values for:
+
+- issuer URL
+- authorization endpoint
+- token endpoint
+- logout endpoint
+- JWKS URI
+- redirect URI
+- post-logout redirect URI
+
+For this repo, the callback URIs are expected to be:
+
+- `https://api-staging.alex-tap.com/auth/callback`
+- `https://api.alex-tap.com/auth/callback`
+
+### First deploy checklist
+
+- attach the correct custom domains in Vercel and Render
+- create managed Postgres and Redis instances
+- set all Render secrets
+- set `VITE_API_URL` in each Vercel project
+- configure Keycloak clients with the staging and production callback/logout URLs
+- run a full staging smoke test: login, booking, payment, webhook, notifications, worker jobs
 
 ## CI
 
