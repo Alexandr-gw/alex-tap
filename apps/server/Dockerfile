@@ -1,0 +1,23 @@
+FROM node:22-alpine
+
+WORKDIR /workspace
+
+COPY package.json package-lock.json ./
+COPY apps/client/package.json ./apps/client/package.json
+COPY apps/server/package.json ./apps/server/package.json
+COPY apps/keycloak-theme/package.json ./apps/keycloak-theme/package.json
+
+RUN npm ci
+
+COPY . .
+
+RUN npm -w apps/server exec prisma generate
+RUN npm -w apps/server run build
+
+ENV NODE_ENV=production
+
+WORKDIR /workspace/apps/server
+
+EXPOSE 10000
+
+CMD ["npm", "run", "start:release"]

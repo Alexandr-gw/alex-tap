@@ -14,10 +14,12 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PublicBookingController = void 0;
 const common_1 = require("@nestjs/common");
+const throttler_1 = require("@nestjs/throttler");
 const public_booking_service_1 = require("./public-booking.service");
 const public_checkout_dto_1 = require("./dto/public-checkout.dto");
 const payments_service_1 = require("../payments/payments.service");
 const request_booking_changes_dto_1 = require("./dto/request-booking-changes.dto");
+const get_public_slots_dto_1 = require("./dto/get-public-slots.dto");
 let PublicBookingController = class PublicBookingController {
     svc;
     payments;
@@ -28,11 +30,8 @@ let PublicBookingController = class PublicBookingController {
     async getService(companySlug, serviceSlug) {
         return this.svc.getPublicService(companySlug, serviceSlug);
     }
-    async getSlots(companyId, serviceId, from, to) {
-        if (!companyId || !serviceId || !from || !to) {
-            throw new common_1.BadRequestException("Missing query params: companyId, serviceId, from, to");
-        }
-        return this.svc.getPublicSlots({ companyId, serviceId, from, to });
+    async getSlots(query) {
+        return this.svc.getPublicSlots(query);
     }
     async listServices(companySlug) {
         return this.svc.listPublicServices(companySlug);
@@ -61,12 +60,9 @@ __decorate([
 ], PublicBookingController.prototype, "getService", null);
 __decorate([
     (0, common_1.Get)("slots"),
-    __param(0, (0, common_1.Query)("companyId")),
-    __param(1, (0, common_1.Query)("serviceId")),
-    __param(2, (0, common_1.Query)("from")),
-    __param(3, (0, common_1.Query)("to")),
+    __param(0, (0, common_1.Query)(new common_1.ValidationPipe({ whitelist: true, transform: true, forbidNonWhitelisted: true }))),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, String, String]),
+    __metadata("design:paramtypes", [get_public_slots_dto_1.GetPublicSlotsDto]),
     __metadata("design:returntype", Promise)
 ], PublicBookingController.prototype, "getSlots", null);
 __decorate([
@@ -78,7 +74,8 @@ __decorate([
 ], PublicBookingController.prototype, "listServices", null);
 __decorate([
     (0, common_1.Post)("bookings/checkout"),
-    __param(0, (0, common_1.Body)()),
+    (0, throttler_1.Throttle)({ default: { ttl: 600_000, limit: 5 } }),
+    __param(0, (0, common_1.Body)(new common_1.ValidationPipe({ whitelist: true, transform: true, forbidNonWhitelisted: true }))),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [public_checkout_dto_1.PublicCheckoutDto]),
     __metadata("design:returntype", Promise)
@@ -92,8 +89,9 @@ __decorate([
 ], PublicBookingController.prototype, "getBookingByAccessToken", null);
 __decorate([
     (0, common_1.Post)("bookings/access/:token/request-changes"),
+    (0, throttler_1.Throttle)({ default: { ttl: 1_800_000, limit: 3 } }),
     __param(0, (0, common_1.Param)("token")),
-    __param(1, (0, common_1.Body)()),
+    __param(1, (0, common_1.Body)(new common_1.ValidationPipe({ whitelist: true, transform: true, forbidNonWhitelisted: true }))),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, request_booking_changes_dto_1.RequestBookingChangesDto]),
     __metadata("design:returntype", Promise)
@@ -107,6 +105,7 @@ __decorate([
 ], PublicBookingController.prototype, "getPublicCheckoutSessionSummary", null);
 exports.PublicBookingController = PublicBookingController = __decorate([
     (0, common_1.Controller)("api/v1/public"),
+    (0, throttler_1.Throttle)({ default: { ttl: 60_000, limit: 30 } }),
     __metadata("design:paramtypes", [public_booking_service_1.PublicBookingService,
         payments_service_1.PaymentsService])
 ], PublicBookingController);

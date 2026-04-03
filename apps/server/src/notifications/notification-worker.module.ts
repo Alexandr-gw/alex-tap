@@ -4,10 +4,11 @@ import { PrismaModule } from '@/prisma/prisma.module';
 import { NotificationModule } from './notification.module';
 import { NotificationWorkerService } from './notification-worker.service';
 import { ObservabilityModule } from '@/observability/observability.module';
+import { configModuleOptions } from '@/config/env.validation';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot(configModuleOptions),
     PrismaModule,
     ObservabilityModule,
     NotificationModule,

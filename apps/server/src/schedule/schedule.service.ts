@@ -244,6 +244,27 @@ export class ScheduleService {
           companyId: input.companyId,
         },
         include: {
+          worker: {
+            select: {
+              id: true,
+              displayName: true,
+              colorTag: true,
+              phone: true,
+            },
+          },
+          assignments: {
+            include: {
+              worker: {
+                select: {
+                  id: true,
+                  displayName: true,
+                  colorTag: true,
+                  phone: true,
+                },
+              },
+            },
+            orderBy: { createdAt: 'asc' },
+          },
           lineItems: {
             include: {
               service: {
@@ -267,10 +288,15 @@ export class ScheduleService {
       );
       const defaultDurationMins =
         serviceLine?.service?.durationMins ?? currentDurationMins;
-      const workerIdProvided = typeof input.dto.workerId !== 'undefined';
-      const targetWorkerId = workerIdProvided
-        ? (input.dto.workerId ?? null)
-        : job.workerId;
+      const nextWorkerIds = await this.resolveNextWorkerIds(
+        tx,
+        input.companyId,
+        input.dto.workerIds,
+        input.dto.workerId,
+      );
+      const existingWorkerIds = this.getAssignedWorkerIds(job);
+      const targetWorkerIds = nextWorkerIds ?? existingWorkerIds;
+      const targetWorkerId = targetWorkerIds[0] ?? null;
       const targetStart = nextStart ?? job.startAt;
       const targetEnd =
         nextEnd ??
@@ -281,21 +307,18 @@ export class ScheduleService {
         throw new BadRequestException('End time must be after start time');
       }
 
-      if (targetWorkerId) {
-        const worker = await tx.worker.findFirst({
-          where: {
-            id: targetWorkerId,
-            companyId: input.companyId,
-            active: true,
-          },
-          select: { id: true },
-        });
-        if (!worker) throw new BadRequestException('Invalid worker');
-      }
-
       if (shouldConfirm && !job.paidAt) {
         throw new BadRequestException('Job must be paid before confirmation');
       }
+
+      await this.assertNoWorkerConflicts(
+        tx,
+        input.companyId,
+        targetWorkerIds,
+        targetStart,
+        targetEnd,
+        job.id,
+      );
 
       const updates: Prisma.JobUpdateInput = {};
       const auditChanges: Record<string, unknown> = {};
@@ -304,7 +327,15 @@ export class ScheduleService {
         updates.worker = targetWorkerId
           ? { connect: { id: targetWorkerId } }
           : { disconnect: true };
-        auditChanges.workerId = { from: job.workerId, to: targetWorkerId };
+      }
+
+      if (
+        !this.areStringArraysEqual(existingWorkerIds, targetWorkerIds)
+      ) {
+        auditChanges.workerIds = {
+          from: existingWorkerIds,
+          to: targetWorkerIds,
+        };
       }
 
       if (
@@ -365,6 +396,8 @@ export class ScheduleService {
           },
         },
       });
+
+      await this.syncJobAssignments(tx, job.id, targetWorkerIds);
 
       await tx.auditLog.create({
         data: {
@@ -462,5 +495,133 @@ export class ScheduleService {
     }
 
     return membership;
+  }
+
+  private getAssignedWorkerIds(job: {
+    workerId: string | null;
+    assignments?: Array<{
+      workerId?: string;
+      worker?: { id: string } | null;
+    }>;
+  }) {
+    const assignedWorkerIds = new Set<string>();
+    if (job.workerId) {
+      assignedWorkerIds.add(job.workerId);
+    }
+
+    for (const assignment of job.assignments ?? []) {
+      const assignmentWorkerId =
+        assignment.workerId ?? assignment.worker?.id ?? null;
+      if (assignmentWorkerId) {
+        assignedWorkerIds.add(assignmentWorkerId);
+      }
+    }
+
+    return Array.from(assignedWorkerIds);
+  }
+
+  private async resolveNextWorkerIds(
+    db: Prisma.TransactionClient | PrismaService,
+    companyId: string,
+    workerIds: string[] | undefined,
+    workerId: string | null | undefined,
+  ) {
+    if (typeof workerIds !== 'undefined') {
+      return this.validateWorkerIds(db, companyId, workerIds);
+    }
+
+    if (typeof workerId !== 'undefined') {
+      return this.validateWorkerIds(db, companyId, workerId ? [workerId] : []);
+    }
+
+    return null;
+  }
+
+  private async syncJobAssignments(
+    tx: Prisma.TransactionClient,
+    jobId: string,
+    workerIds: string[],
+  ) {
+    await tx.jobAssignment.deleteMany({ where: { jobId } });
+
+    if (!workerIds.length) {
+      return;
+    }
+
+    await tx.jobAssignment.createMany({
+      data: workerIds.map((workerId) => ({
+        jobId,
+        workerId,
+      })),
+    });
+  }
+
+  private areStringArraysEqual(left: string[], right: string[]) {
+    if (left.length !== right.length) {
+      return false;
+    }
+
+    return left.every((value, index) => value === right[index]);
+  }
+
+  private async assertNoWorkerConflicts(
+    db: Prisma.TransactionClient | PrismaService,
+    companyId: string,
+    workerIds: string[],
+    start: Date,
+    end: Date,
+    excludeJobId?: string,
+  ) {
+    if (!workerIds.length) {
+      return;
+    }
+
+    const conflicting = await db.job.findFirst({
+      where: {
+        companyId,
+        ...(excludeJobId ? { id: { not: excludeJobId } } : {}),
+        status: {
+          in: [
+            JobStatus.PENDING_CONFIRMATION,
+            JobStatus.SCHEDULED,
+            JobStatus.IN_PROGRESS,
+          ],
+        },
+        NOT: [{ endAt: { lte: start } }, { startAt: { gte: end } }],
+        OR: [
+          { workerId: { in: workerIds } },
+          { assignments: { some: { workerId: { in: workerIds } } } },
+        ],
+      },
+      select: { id: true },
+    });
+
+    if (conflicting) {
+      throw new ConflictException('Overlapping booking');
+    }
+  }
+
+  private async validateWorkerIds(
+    db: Prisma.TransactionClient | PrismaService,
+    companyId: string,
+    workerIds: string[],
+  ) {
+    const uniqueIds = [...new Set(workerIds.filter(Boolean))];
+    if (!uniqueIds.length) return [];
+
+    const workers = await db.worker.findMany({
+      where: {
+        id: { in: uniqueIds },
+        companyId,
+        active: true,
+      },
+      select: { id: true },
+    });
+
+    if (workers.length !== uniqueIds.length) {
+      throw new BadRequestException('Invalid worker');
+    }
+
+    return uniqueIds;
   }
 }

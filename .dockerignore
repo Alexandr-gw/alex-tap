@@ -1,0 +1,15 @@
+.git
+.github
+.idea
+node_modules
+**/node_modules
+**/dist
+**/.vite
+**/coverage
+**/.cache
+**/.turbo
+**/.env
+**/.env.*
+npm-debug.log*
+apps/server/keycloak/generated
+apps/keycloak-theme/dist_keycloak

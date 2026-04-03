@@ -21,6 +21,13 @@ const schedule_service_1 = require("../schedule/schedule.service");
 const payments_service_1 = require("../payments/payments.service");
 const notification_service_1 = require("../notifications/notification.service");
 const activity_service_1 = require("../activity/activity.service");
+const job_access_service_1 = require("./services/job-access.service");
+const job_assignment_service_1 = require("./services/job-assignment.service");
+const job_collaboration_service_1 = require("./services/job-collaboration.service");
+const job_creation_service_1 = require("./services/job-creation.service");
+const job_draft_service_1 = require("./services/job-draft.service");
+const job_lifecycle_service_1 = require("./services/job-lifecycle.service");
+const job_query_service_1 = require("./services/job-query.service");
 let JobsService = class JobsService {
     prisma;
     slots;
@@ -28,13 +35,36 @@ let JobsService = class JobsService {
     payments;
     notifications;
     activity;
-    constructor(prisma, slots, schedule, payments, notifications, activity) {
+    jobAssignments;
+    jobAccess;
+    jobDraft;
+    jobQuery;
+    jobCreation;
+    jobLifecycle;
+    jobCollaboration;
+    constructor(prisma, slots, schedule, payments, notifications, activity, jobAccess, jobAssignments, jobDraft, jobQuery, jobCreation, jobLifecycle, jobCollaboration) {
         this.prisma = prisma;
         this.slots = slots;
         this.schedule = schedule;
         this.payments = payments;
         this.notifications = notifications;
         this.activity = activity;
+        this.jobAssignments = jobAssignments ?? new job_assignment_service_1.JobAssignmentService();
+        this.jobDraft = jobDraft ?? new job_draft_service_1.JobDraftService();
+        this.jobAccess =
+            jobAccess ?? new job_access_service_1.JobAccessService(this.prisma, this.jobAssignments);
+        this.jobQuery =
+            jobQuery ??
+                new job_query_service_1.JobQueryService(this.prisma, this.jobAccess, this.jobDraft, this.notifications, this.activity);
+        this.jobCreation =
+            jobCreation ??
+                new job_creation_service_1.JobCreationService(this.prisma, this.slots, this.notifications, this.activity, this.jobAccess, this.jobAssignments, this.jobDraft, this.jobQuery);
+        this.jobLifecycle =
+            jobLifecycle ??
+                new job_lifecycle_service_1.JobLifecycleService(this.prisma, this.schedule, this.notifications, this.activity, this.jobAccess, this.jobAssignments, this.jobDraft, this.jobQuery);
+        this.jobCollaboration =
+            jobCollaboration ??
+                new job_collaboration_service_1.JobCollaborationService(this.prisma, this.payments, this.notifications, this.activity, this.jobAccess, this.jobDraft, this.jobQuery);
     }
     async findManyForUser(input) {
         const { companyId, roles, userSub, dto } = input;
@@ -192,360 +222,37 @@ let JobsService = class JobsService {
         };
     }
     async findOneForUser(input) {
-        const access = await this.resolveAccess(input.companyId, input.roles, input.userSub);
-        const job = await this.findDetailedJobOrThrow(this.prisma, input.companyId, input.id);
-        this.assertCanAccessJob(job, access);
-        return this.mapJobDetails(job);
+        return this.jobQuery.findOneForUser(input);
     }
     async listNotifications(input) {
-        const access = await this.resolveAccess(input.companyId, input.roles, input.userSub);
-        const job = await this.findDetailedJobOrThrow(this.prisma, input.companyId, input.id);
-        this.assertCanAccessJob(job, access);
-        return this.notifications.getJobNotificationsSummary(input.companyId, input.id);
+        return this.jobQuery.listNotifications(input);
     }
     async listActivity(input) {
-        const access = await this.resolveAccess(input.companyId, input.roles, input.userSub);
-        const job = await this.findDetailedJobOrThrow(this.prisma, input.companyId, input.id);
-        this.assertCanAccessJob(job, access);
-        return this.activity.listJobActivity(input.companyId, input.id, job.client.id);
+        return this.jobQuery.listActivity(input);
     }
     async sendConfirmation(input) {
-        const access = await this.resolveAccess(input.companyId, input.roles, input.userSub);
-        const job = await this.findDetailedJobOrThrow(this.prisma, input.companyId, input.id);
-        this.assertCanAccessJob(job, access);
-        return this.notifications.sendJobConfirmation(input.companyId, input.id);
+        return this.jobCollaboration.sendConfirmation(input);
     }
     async updateJob(input) {
-        const access = await this.resolveAccess(input.companyId, input.roles, input.userSub);
-        if (!access.isManager)
-            throw new common_1.ForbiddenException();
-        const updatedJob = await this.prisma.$transaction(async (tx) => {
-            const existing = await this.findDetailedJobOrThrow(tx, input.companyId, input.id);
-            const data = {};
-            const auditChanges = {};
-            const nextWorkerIds = await this.resolveNextWorkerIds(tx, input.companyId, input.dto.workerIds, input.dto.workerId);
-            const existingWorkerIds = this.getAssignedWorkerIds(existing);
-            const workerIdsChanged = nextWorkerIds !== null &&
-                !this.areStringArraysEqual(existingWorkerIds, nextWorkerIds);
-            const statusChanged = typeof input.dto.status !== 'undefined' &&
-                input.dto.status !== existing.status;
-            if (typeof input.dto.title === 'string') {
-                data.title = this.normalizeOptionalText(input.dto.title);
-                auditChanges.title = input.dto.title;
-            }
-            if (typeof input.dto.description === 'string') {
-                data.description = this.normalizeOptionalText(input.dto.description);
-                auditChanges.description = input.dto.description;
-            }
-            if (nextWorkerIds !== null) {
-                const nextPrimaryWorkerId = nextWorkerIds[0] ?? null;
-                if (nextPrimaryWorkerId !== existing.workerId) {
-                    data.worker = nextPrimaryWorkerId
-                        ? { connect: { id: nextPrimaryWorkerId } }
-                        : { disconnect: true };
-                }
-                if (workerIdsChanged) {
-                    auditChanges.workerIds = {
-                        from: existingWorkerIds,
-                        to: nextWorkerIds,
-                    };
-                }
-            }
-            if (input.dto.lineItems) {
-                const normalized = this.normalizeLineItems(input.dto.lineItems);
-                const totals = this.calculateTotals(normalized, existing.paidCents);
-                data.subtotalCents = totals.subtotalCents;
-                data.taxCents = totals.taxCents;
-                data.totalCents = totals.totalCents;
-                data.balanceCents = totals.balanceCents;
-                data.paidAt =
-                    totals.balanceCents === 0 && totals.totalCents > 0
-                        ? (existing.paidAt ?? new Date())
-                        : null;
-                auditChanges.lineItems = normalized.map((item) => ({
-                    name: item.name,
-                    quantity: item.quantity,
-                    unitPriceCents: item.unitPriceCents,
-                }));
-                await tx.jobLineItem.deleteMany({ where: { jobId: existing.id } });
-                await tx.jobLineItem.createMany({
-                    data: normalized.map((item) => ({
-                        jobId: existing.id,
-                        serviceId: null,
-                        description: item.name,
-                        quantity: item.quantity,
-                        unitPriceCents: item.unitPriceCents,
-                        taxRateBps: 0,
-                        totalCents: item.quantity * item.unitPriceCents,
-                    })),
-                });
-            }
-            if (statusChanged) {
-                if (existing.status === client_1.JobStatus.PENDING_CONFIRMATION &&
-                    input.dto.status === client_1.JobStatus.DONE) {
-                    throw new common_1.BadRequestException('Pending bookings must be confirmed before they can be completed');
-                }
-                data.status = input.dto.status;
-                auditChanges.status = { from: existing.status, to: input.dto.status };
-            }
-            if (Object.keys(data).length) {
-                await tx.job.update({
-                    where: { id: existing.id },
-                    data,
-                });
-            }
-            if (workerIdsChanged) {
-                await this.syncJobAssignments(tx, existing.id, nextWorkerIds ?? []);
-            }
-            if (Object.keys(auditChanges).length) {
-                await tx.auditLog.create({
-                    data: {
-                        companyId: input.companyId,
-                        actorUserId: access.userId,
-                        action: 'JOB_UPDATED',
-                        entityType: 'JOB',
-                        entityId: existing.id,
-                        changes: auditChanges,
-                    },
-                });
-            }
-            if (statusChanged) {
-                const actorLabel = access.userName || 'Team member';
-                const jobLabel = this.getActivityJobLabel(existing);
-                if (input.dto.status === client_1.JobStatus.DONE) {
-                    await this.activity.logJobCompleted({
-                        db: tx,
-                        companyId: input.companyId,
-                        jobId: existing.id,
-                        clientId: existing.client.id,
-                        actorId: access.userId,
-                        actorLabel,
-                        message: `${jobLabel} was completed by ${actorLabel} for ${existing.client.name}.`,
-                        metadata: {
-                            clientName: existing.client.name,
-                            jobTitle: jobLabel,
-                        },
-                    });
-                }
-                if (input.dto.status === client_1.JobStatus.CANCELED ||
-                    input.dto.status === client_1.JobStatus.NO_SHOW) {
-                    await this.activity.logJobCanceled({
-                        db: tx,
-                        companyId: input.companyId,
-                        jobId: existing.id,
-                        clientId: existing.client.id,
-                        actorId: access.userId,
-                        actorLabel,
-                        message: input.dto.status === client_1.JobStatus.NO_SHOW
-                            ? `${existing.client.name} was marked as a no-show for ${jobLabel}.`
-                            : `${jobLabel} was canceled for ${existing.client.name}.`,
-                        metadata: {
-                            clientName: existing.client.name,
-                            jobTitle: jobLabel,
-                            status: input.dto.status,
-                        },
-                    });
-                }
-            }
-            return this.findDetailedJobOrThrow(tx, input.companyId, existing.id);
-        });
-        if (typeof input.dto.status !== 'undefined') {
-            await this.syncJobReminderLifecycle(input.companyId, updatedJob.id, updatedJob.status);
-        }
-        return this.mapJobDetails(updatedJob);
+        return this.jobLifecycle.updateJob(input);
     }
     async completeJob(input) {
-        const access = await this.resolveAccess(input.companyId, input.roles, input.userSub);
-        const job = await this.findDetailedJobOrThrow(this.prisma, input.companyId, input.id);
-        this.assertCanAccessJob(job, access);
-        if (job.status === client_1.JobStatus.PENDING_CONFIRMATION) {
-            throw new common_1.BadRequestException('Pending bookings must be confirmed before they can be completed');
-        }
-        const updated = await this.prisma.$transaction(async (tx) => {
-            await tx.job.update({
-                where: { id: input.id },
-                data: { status: client_1.JobStatus.DONE },
-            });
-            await tx.auditLog.create({
-                data: {
-                    companyId: input.companyId,
-                    actorUserId: access.userId,
-                    action: 'JOB_COMPLETED',
-                    entityType: 'JOB',
-                    entityId: input.id,
-                    changes: { status: { from: job.status, to: client_1.JobStatus.DONE } },
-                },
-            });
-            await this.activity.logJobCompleted({
-                db: tx,
-                companyId: input.companyId,
-                jobId: input.id,
-                clientId: job.client.id,
-                actorId: access.userId,
-                actorLabel: access.userName,
-                message: `${this.getActivityJobLabel(job)} was completed by ${access.userName || 'Team member'} for ${job.client.name}.`,
-                metadata: {
-                    clientName: job.client.name,
-                    jobTitle: this.getActivityJobLabel(job),
-                },
-            });
-            return this.findDetailedJobOrThrow(tx, input.companyId, input.id);
-        });
-        await this.notifications.cancelJobReminders(input.companyId, updated.id, 'Job completed');
-        return this.mapJobDetails(updated);
+        return this.jobLifecycle.completeJob(input);
     }
     async cancelJob(input) {
-        const access = await this.resolveAccess(input.companyId, input.roles, input.userSub);
-        if (!access.isManager)
-            throw new common_1.ForbiddenException();
-        const job = await this.findDetailedJobOrThrow(this.prisma, input.companyId, input.id);
-        const updated = await this.prisma.$transaction(async (tx) => {
-            await tx.job.update({
-                where: { id: input.id },
-                data: { status: client_1.JobStatus.CANCELED },
-            });
-            await tx.auditLog.create({
-                data: {
-                    companyId: input.companyId,
-                    actorUserId: access.userId,
-                    action: 'JOB_CANCELED',
-                    entityType: 'JOB',
-                    entityId: input.id,
-                    changes: { status: { from: job.status, to: client_1.JobStatus.CANCELED } },
-                },
-            });
-            await this.activity.logJobCanceled({
-                db: tx,
-                companyId: input.companyId,
-                jobId: input.id,
-                clientId: job.client.id,
-                actorId: access.userId,
-                actorLabel: access.userName,
-                message: `${this.getActivityJobLabel(job)} was canceled for ${job.client.name}.`,
-                metadata: {
-                    clientName: job.client.name,
-                    jobTitle: this.getActivityJobLabel(job),
-                    status: client_1.JobStatus.CANCELED,
-                },
-            });
-            return this.findDetailedJobOrThrow(tx, input.companyId, input.id);
-        });
-        await this.notifications.cancelJobReminders(input.companyId, updated.id, 'Job canceled');
-        return this.mapJobDetails(updated);
+        return this.jobLifecycle.cancelJob(input);
     }
     async reopenJob(input) {
-        const access = await this.resolveAccess(input.companyId, input.roles, input.userSub);
-        if (!access.isManager)
-            throw new common_1.ForbiddenException();
-        const job = await this.findDetailedJobOrThrow(this.prisma, input.companyId, input.id);
-        const updated = await this.prisma.$transaction(async (tx) => {
-            await tx.job.update({
-                where: { id: input.id },
-                data: { status: client_1.JobStatus.SCHEDULED },
-            });
-            await tx.auditLog.create({
-                data: {
-                    companyId: input.companyId,
-                    actorUserId: access.userId,
-                    action: 'JOB_REOPENED',
-                    entityType: 'JOB',
-                    entityId: input.id,
-                    changes: { status: { from: job.status, to: client_1.JobStatus.SCHEDULED } },
-                },
-            });
-            return this.findDetailedJobOrThrow(tx, input.companyId, input.id);
-        });
-        await this.notifications.scheduleJobReminders(input.companyId, updated.id);
-        return this.mapJobDetails(updated);
+        return this.jobLifecycle.reopenJob(input);
     }
     async createComment(input) {
-        const access = await this.resolveAccess(input.companyId, input.roles, input.userSub);
-        const job = await this.findDetailedJobOrThrow(this.prisma, input.companyId, input.id);
-        this.assertCanAccessJob(job, access);
-        const message = input.dto.body.trim();
-        if (!message.length) {
-            throw new common_1.BadRequestException('Comment body is required');
-        }
-        const updated = await this.prisma.$transaction(async (tx) => {
-            await tx.jobComment.create({
-                data: {
-                    jobId: input.id,
-                    authorUserId: access.userId,
-                    message,
-                },
-            });
-            await tx.auditLog.create({
-                data: {
-                    companyId: input.companyId,
-                    actorUserId: access.userId,
-                    action: 'JOB_COMMENT_ADDED',
-                    entityType: 'JOB',
-                    entityId: input.id,
-                    changes: { message },
-                },
-            });
-            return this.findDetailedJobOrThrow(tx, input.companyId, input.id);
-        });
-        return this.mapJobDetails(updated);
+        return this.jobCollaboration.createComment(input);
     }
     async updateInternalNotes(input) {
-        const access = await this.resolveAccess(input.companyId, input.roles, input.userSub);
-        const job = await this.findDetailedJobOrThrow(this.prisma, input.companyId, input.id);
-        this.assertCanAccessJob(job, access);
-        const internalNotes = this.normalizeOptionalText(input.dto.internalNotes);
-        const updated = await this.prisma.$transaction(async (tx) => {
-            await tx.job.update({
-                where: { id: input.id },
-                data: { internalNotes },
-            });
-            await tx.auditLog.create({
-                data: {
-                    companyId: input.companyId,
-                    actorUserId: access.userId,
-                    action: 'JOB_INTERNAL_NOTES_UPDATED',
-                    entityType: 'JOB',
-                    entityId: input.id,
-                    changes: { internalNotes },
-                },
-            });
-            return this.findDetailedJobOrThrow(tx, input.companyId, input.id);
-        });
-        return this.mapJobDetails(updated);
+        return this.jobCollaboration.updateInternalNotes(input);
     }
     async requestPaymentLink(input) {
-        const access = await this.resolveAccess(input.companyId, input.roles, input.userSub);
-        if (!access.isManager)
-            throw new common_1.ForbiddenException();
-        const job = await this.findDetailedJobOrThrow(this.prisma, input.companyId, input.id);
-        if (job.status === client_1.JobStatus.CANCELED) {
-            throw new common_1.BadRequestException('Cannot request payment for a canceled job');
-        }
-        const payment = await this.payments.createCheckoutSession(input.companyId, access.userId, {
-            jobId: input.id,
-            successUrl: input.dto.successUrl,
-            cancelUrl: input.dto.cancelUrl,
-            idempotencyKey: input.dto.idempotencyKey,
-        });
-        await this.prisma.auditLog.create({
-            data: {
-                companyId: input.companyId,
-                actorUserId: access.userId,
-                action: 'JOB_PAYMENT_REQUESTED',
-                entityType: 'JOB',
-                entityId: input.id,
-                changes: {
-                    sessionId: payment.sessionId,
-                    amountCents: job.balanceCents,
-                },
-            },
-        });
-        return {
-            jobId: input.id,
-            sessionId: payment.sessionId,
-            url: payment.url,
-            amountCents: job.balanceCents,
-            currency: job.currency,
-        };
+        return this.jobCollaboration.requestPaymentLink(input);
     }
     async create(input) {
         const { dto, idempotencyKey, roles, userSub, companyId } = input;
@@ -576,13 +283,13 @@ let JobsService = class JobsService {
         });
     }
     async listCompanyWorkers(input) {
-        return this.schedule.listCompanyWorkers(input);
+        return this.jobLifecycle.listCompanyWorkers(input);
     }
     async reviewJob(input) {
-        return this.schedule.reviewJob(input);
+        return this.jobLifecycle.reviewJob(input);
     }
     async confirmJob(companyId, jobId, resolvedByUserId) {
-        return this.schedule.confirmJob(companyId, jobId, resolvedByUserId);
+        return this.jobLifecycle.confirmJob(companyId, jobId, resolvedByUserId);
     }
     async createManagerJob(input) {
         const access = await this.resolveAccess(input.companyId, ['admin', 'manager'], input.userSub);
@@ -851,178 +558,19 @@ let JobsService = class JobsService {
         return this.mapJobDetails(job);
     }
     getActivityJobLabel(job) {
-        return (job.title?.trim() ||
-            job.lineItems?.find((item) => item.description?.trim())?.description?.trim() ||
-            'Job');
+        return this.jobDraft.getActivityJobLabel(job);
     }
     async resolveAccess(companyId, roles, userSub) {
-        if (!userSub)
-            throw new common_1.ForbiddenException();
-        const [user, membership, worker] = await Promise.all([
-            this.prisma.user.findUnique({
-                where: { sub: userSub },
-                select: { id: true, name: true, email: true },
-            }),
-            this.prisma.membership.findFirst({
-                where: {
-                    companyId,
-                    user: { sub: userSub },
-                },
-                select: { role: true },
-            }),
-            this.prisma.worker.findFirst({
-                where: {
-                    companyId,
-                    active: true,
-                    user: { sub: userSub },
-                },
-                select: { id: true },
-            }),
-        ]);
-        if (!user)
-            throw new common_1.ForbiddenException();
-        const isManagerRole = (0, roles_util_1.hasAnyRole)(roles, ['admin', 'manager']);
-        const isManager = Boolean(isManagerRole &&
-            membership &&
-            (membership.role === client_1.Role.ADMIN || membership.role === client_1.Role.MANAGER));
-        return {
-            isManager,
-            workerId: worker?.id ?? null,
-            userId: user.id,
-            userName: user.name ?? user.email ?? 'Team member',
-        };
+        return this.jobAccess.resolveAccess(companyId, roles, userSub);
     }
     assertCanAccessJob(job, access) {
-        if (access.isManager)
-            return;
-        const assignedWorkerIds = this.getAssignedWorkerIds(job);
-        if (access.workerId && assignedWorkerIds.includes(access.workerId))
-            return;
-        throw new common_1.ForbiddenException();
+        return this.jobAccess.assertCanAccessJob(job, access);
     }
     async findDetailedJobOrThrow(db, companyId, id) {
-        const job = await db.job.findFirst({
-            where: {
-                id,
-                companyId,
-            },
-            include: {
-                client: true,
-                worker: {
-                    select: {
-                        id: true,
-                        displayName: true,
-                        colorTag: true,
-                        phone: true,
-                    },
-                },
-                assignments: {
-                    include: {
-                        worker: {
-                            select: {
-                                id: true,
-                                displayName: true,
-                                colorTag: true,
-                                phone: true,
-                            },
-                        },
-                    },
-                    orderBy: { createdAt: 'asc' },
-                },
-                lineItems: {
-                    include: {
-                        service: {
-                            select: {
-                                id: true,
-                                name: true,
-                                durationMins: true,
-                            },
-                        },
-                    },
-                    orderBy: { id: 'asc' },
-                },
-                comments: {
-                    include: {
-                        author: {
-                            select: {
-                                id: true,
-                                name: true,
-                                email: true,
-                            },
-                        },
-                    },
-                    orderBy: { createdAt: 'asc' },
-                },
-                payments: {
-                    orderBy: { createdAt: 'desc' },
-                    take: 20,
-                },
-            },
-        });
-        if (!job)
-            throw new common_1.NotFoundException('Job not found');
-        return job;
+        return this.jobQuery.findDetailedJobOrThrow(db, companyId, id);
     }
     mapJobDetails(job) {
-        const assignedWorkers = this.mapAssignedWorkers(job).map((worker) => ({
-            id: worker.id,
-            name: worker.name,
-        }));
-        return {
-            id: job.id,
-            jobNumber: this.buildJobNumber(job.id),
-            title: job.title ?? job.lineItems[0]?.description ?? 'Job',
-            description: job.description,
-            status: job.status,
-            completed: job.status === client_1.JobStatus.DONE,
-            startAt: job.startAt.toISOString(),
-            endAt: job.endAt.toISOString(),
-            location: job.location ?? job.client.address,
-            client: {
-                id: job.client.id,
-                name: job.client.name,
-                email: job.client.email,
-                phone: job.client.phone,
-                address: job.client.address,
-                notes: job.client.notes,
-            },
-            workers: assignedWorkers,
-            visits: [
-                {
-                    id: job.id,
-                    start: job.startAt.toISOString(),
-                    end: job.endAt.toISOString(),
-                    status: this.mapVisitStatus(job.status),
-                    assignedWorkers,
-                    completed: job.status === client_1.JobStatus.DONE,
-                },
-            ],
-            lineItems: job.lineItems.map((item) => ({
-                id: item.id,
-                name: item.description,
-                quantity: item.quantity,
-                unitPriceCents: item.unitPriceCents,
-                totalCents: item.totalCents,
-            })),
-            comments: job.comments.map((comment) => ({
-                id: comment.id,
-                body: comment.message,
-                authorName: comment.author.name ?? comment.author.email ?? 'Team member',
-                createdAt: comment.createdAt.toISOString(),
-            })),
-            payments: job.payments.map((payment) => ({
-                id: payment.id,
-                status: payment.status,
-                amountCents: payment.amountCents,
-                currency: payment.currency,
-                createdAt: payment.createdAt.toISOString(),
-                receiptUrl: payment.receiptUrl,
-                sessionId: payment.stripeSessionId,
-            })),
-            internalNotes: job.internalNotes,
-            createdAt: job.createdAt.toISOString(),
-            updatedAt: job.updatedAt.toISOString(),
-        };
+        return this.jobQuery.mapJobDetails(job);
     }
     mapAssignedWorkers(job) {
         const assignedWorkers = [];
@@ -1045,70 +593,19 @@ let JobsService = class JobsService {
         return assignedWorkers;
     }
     getAssignedWorkerIds(job) {
-        const assignedWorkerIds = new Set();
-        if (job.workerId) {
-            assignedWorkerIds.add(job.workerId);
-        }
-        for (const assignment of job.assignments ?? []) {
-            const assignmentWorkerId = assignment.workerId ?? assignment.worker?.id ?? null;
-            if (assignmentWorkerId) {
-                assignedWorkerIds.add(assignmentWorkerId);
-            }
-        }
-        return Array.from(assignedWorkerIds);
+        return this.jobAssignments.getAssignedWorkerIds(job);
     }
     async resolveNextWorkerIds(db, companyId, workerIds, workerId) {
-        if (typeof workerIds !== 'undefined') {
-            return this.validateWorkerIds(db, companyId, workerIds);
-        }
-        if (typeof workerId !== 'undefined') {
-            return this.validateWorkerIds(db, companyId, workerId ? [workerId] : []);
-        }
-        return null;
+        return this.jobAssignments.resolveNextWorkerIds(db, companyId, workerIds, workerId);
     }
     async syncJobAssignments(tx, jobId, workerIds) {
-        await tx.jobAssignment.deleteMany({ where: { jobId } });
-        if (!workerIds.length) {
-            return;
-        }
-        await tx.jobAssignment.createMany({
-            data: workerIds.map((workerId) => ({
-                jobId,
-                workerId,
-            })),
-        });
+        return this.jobAssignments.syncJobAssignments(tx, jobId, workerIds);
     }
     areStringArraysEqual(left, right) {
-        if (left.length !== right.length) {
-            return false;
-        }
-        return left.every((value, index) => value === right[index]);
+        return this.jobAssignments.areStringArraysEqual(left, right);
     }
     async assertNoWorkerConflicts(db, companyId, workerIds, start, end) {
-        if (!workerIds.length) {
-            return;
-        }
-        const conflicting = await db.job.findFirst({
-            where: {
-                companyId,
-                status: {
-                    in: [
-                        client_1.JobStatus.PENDING_CONFIRMATION,
-                        client_1.JobStatus.SCHEDULED,
-                        client_1.JobStatus.IN_PROGRESS,
-                    ],
-                },
-                NOT: [{ endAt: { lte: start } }, { startAt: { gte: end } }],
-                OR: [
-                    { workerId: { in: workerIds } },
-                    { assignments: { some: { workerId: { in: workerIds } } } },
-                ],
-            },
-            select: { id: true },
-        });
-        if (conflicting) {
-            throw new common_1.ConflictException('Overlapping booking');
-        }
+        return this.jobAssignments.assertNoWorkerConflicts(db, companyId, workerIds, start, end);
     }
     async syncJobReminderLifecycle(companyId, jobId, status) {
         if (status === client_1.JobStatus.CANCELED) {
@@ -1122,183 +619,43 @@ let JobsService = class JobsService {
         await this.notifications.scheduleJobReminders(companyId, jobId);
     }
     buildJobNumber(jobId) {
-        return `JOB-${jobId.slice(-6).toUpperCase()}`;
+        return this.jobDraft.buildJobNumber(jobId);
     }
     mapVisitStatus(status) {
-        if (status === client_1.JobStatus.CANCELED)
-            return 'CANCELED';
-        if (status === client_1.JobStatus.DONE)
-            return 'COMPLETED';
-        return 'SCHEDULED';
+        return this.jobDraft.mapVisitStatus(status);
     }
     normalizeOptionalText(value) {
-        const normalized = value?.trim() ?? '';
-        return normalized.length ? normalized : null;
+        return this.jobDraft.normalizeOptionalText(value);
     }
     normalizeLineItems(items) {
-        return items.map((item) => {
-            const name = item.name.trim();
-            if (!name.length) {
-                throw new common_1.BadRequestException('Line item name is required');
-            }
-            if (item.quantity < 1) {
-                throw new common_1.BadRequestException('Line item quantity must be at least 1');
-            }
-            if (item.unitPriceCents < 0) {
-                throw new common_1.BadRequestException('Line item unit price cannot be negative');
-            }
-            return {
-                name,
-                quantity: item.quantity,
-                unitPriceCents: item.unitPriceCents,
-            };
-        });
+        return this.jobDraft.normalizeLineItems(items);
     }
     calculateTotals(items, paidCents) {
-        const subtotalCents = items.reduce((sum, item) => sum + item.quantity * item.unitPriceCents, 0);
-        const taxCents = 0;
-        const totalCents = subtotalCents + taxCents;
-        const balanceCents = Math.max(totalCents - paidCents, 0);
-        return {
-            subtotalCents,
-            taxCents,
-            totalCents,
-            balanceCents,
-        };
+        return this.jobDraft.calculateTotals(items, paidCents);
     }
     resolveJobEnd(start, endValue, serviceDurationMins) {
-        if (endValue) {
-            const parsed = (0, date_fns_1.parseISO)(endValue);
-            if (isNaN(parsed.getTime()))
-                throw new common_1.BadRequestException('Invalid end');
-            if (parsed.getTime() <= start.getTime()) {
-                throw new common_1.BadRequestException('End time must be after start time');
-            }
-            return parsed;
-        }
-        return (0, date_fns_1.addMinutes)(start, serviceDurationMins ?? 60);
+        return this.jobDraft.resolveJobEnd(start, endValue, serviceDurationMins);
     }
     resolveJobTitle(dto, service, lineItems) {
-        return (this.normalizeOptionalText(dto.title) ??
-            service?.name ??
-            lineItems[0]?.name ??
-            'Job');
+        return this.jobDraft.resolveJobTitle(dto, service, lineItems);
     }
     resolveCreateLineItems(dto, service) {
-        if (dto.lineItems?.length) {
-            return this.normalizeLineItems(dto.lineItems).map((item) => ({
-                ...item,
-                serviceId: null,
-            }));
-        }
-        if (!service) {
-            throw new common_1.BadRequestException('Provide a service or at least one line item');
-        }
-        return [
-            {
-                name: service.name,
-                quantity: 1,
-                unitPriceCents: service.basePriceCents,
-                serviceId: service.id,
-            },
-        ];
+        return this.jobDraft.resolveCreateLineItems(dto, service);
     }
     async findService(companyId, serviceId) {
-        const service = await this.prisma.service.findUnique({
-            where: { id: serviceId },
-            select: {
-                id: true,
-                companyId: true,
-                name: true,
-                durationMins: true,
-                basePriceCents: true,
-                currency: true,
-            },
-        });
-        if (!service || service.companyId !== companyId) {
-            throw new common_1.BadRequestException('Invalid service');
-        }
-        return service;
+        return this.jobCreation.findService(companyId, serviceId);
     }
     async validateWorkerId(db, companyId, workerId) {
-        const workerIds = await this.validateWorkerIds(db, companyId, workerId ? [workerId] : []);
-        return workerIds[0] ?? null;
+        return this.jobAssignments.validateWorkerId(db, companyId, workerId);
     }
     async validateWorkerIds(db, companyId, workerIds) {
-        const uniqueIds = [...new Set(workerIds.filter(Boolean))];
-        if (!uniqueIds.length)
-            return [];
-        const workers = await db.worker.findMany({
-            where: {
-                id: { in: uniqueIds },
-                companyId,
-                active: true,
-            },
-            select: { id: true },
-        });
-        if (workers.length !== uniqueIds.length) {
-            throw new common_1.BadRequestException('Invalid worker');
-        }
-        return uniqueIds;
+        return this.jobAssignments.validateWorkerIds(db, companyId, workerIds);
     }
     async resolveClientId(tx, companyId, dto) {
-        if (dto.clientId) {
-            const client = await tx.clientProfile.findFirst({
-                where: {
-                    id: dto.clientId,
-                    companyId,
-                    deletedAt: null,
-                },
-                select: { id: true },
-            });
-            if (!client)
-                throw new common_1.BadRequestException('Invalid client');
-            return client.id;
-        }
-        if (!dto.client) {
-            throw new common_1.BadRequestException('clientId or client is required');
-        }
-        const normalizedName = this.resolveClientName(dto.client.name, dto.client.firstName, dto.client.lastName);
-        const email = dto.client.email?.trim().toLowerCase() ?? null;
-        const phone = this.normalizeOptionalText(dto.client.phone);
-        const address = this.normalizeOptionalText(dto.client.address);
-        const notes = this.normalizeOptionalText(dto.client.notes);
-        if (email) {
-            const existingClient = await tx.clientProfile.findFirst({
-                where: { companyId, email },
-                select: { id: true },
-            });
-            if (existingClient)
-                return existingClient.id;
-        }
-        const newClient = await tx.clientProfile.create({
-            data: {
-                companyId,
-                name: normalizedName,
-                email,
-                phone,
-                address,
-                notes,
-            },
-            select: { id: true },
-        });
-        return newClient.id;
+        return this.jobCreation.resolveClientId(tx, companyId, dto);
     }
     resolveClientName(name, firstName, lastName) {
-        const explicit = this.normalizeOptionalText(name);
-        if (explicit)
-            return explicit;
-        const combined = [
-            this.normalizeOptionalText(firstName),
-            this.normalizeOptionalText(lastName),
-        ]
-            .filter(Boolean)
-            .join(' ')
-            .trim();
-        if (!combined.length) {
-            throw new common_1.BadRequestException('Client name is required');
-        }
-        return combined;
+        return this.jobDraft.resolveClientName(name, firstName, lastName);
     }
 };
 exports.JobsService = JobsService;
@@ -1309,6 +666,13 @@ exports.JobsService = JobsService = __decorate([
         schedule_service_1.ScheduleService,
         payments_service_1.PaymentsService,
         notification_service_1.NotificationService,
-        activity_service_1.ActivityService])
+        activity_service_1.ActivityService,
+        job_access_service_1.JobAccessService,
+        job_assignment_service_1.JobAssignmentService,
+        job_draft_service_1.JobDraftService,
+        job_query_service_1.JobQueryService,
+        job_creation_service_1.JobCreationService,
+        job_lifecycle_service_1.JobLifecycleService,
+        job_collaboration_service_1.JobCollaborationService])
 ], JobsService);
 //# sourceMappingURL=jobs.service.js.map

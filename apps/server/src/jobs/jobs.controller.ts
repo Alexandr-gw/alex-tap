@@ -14,6 +14,7 @@ import {
   UseGuards,
   ValidationPipe,
 } from '@nestjs/common';
+import {Throttle} from '@nestjs/throttler';
 import { Request } from 'express';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 import { JobsService } from './jobs.service';
@@ -40,6 +41,7 @@ export class JobsController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
+  @Throttle({default: {ttl: 60_000, limit: 20}})
   async create(
     @Req() req: JobsRequest,
     @Body(new ValidationPipe({ whitelist: true, transform: true }))
@@ -122,6 +124,7 @@ export class JobsController {
   }
 
   @Post(':id/notifications/send-confirmation')
+  @Throttle({default: {ttl: 60_000, limit: 20}})
   async sendConfirmation(@Req() req: JobsRequest, @Param('id') id: string) {
     const companyId = req.user.companyId;
     if (!companyId) throw new BadRequestException('companyId is required');
@@ -160,6 +163,7 @@ export class JobsController {
   }
 
   @Patch(':id')
+  @Throttle({default: {ttl: 60_000, limit: 20}})
   async update(
     @Req() req: JobsRequest,
     @Param('id') id: string,
@@ -179,6 +183,7 @@ export class JobsController {
   }
 
   @Post(':id/complete')
+  @Throttle({default: {ttl: 60_000, limit: 20}})
   async complete(@Req() req: JobsRequest, @Param('id') id: string) {
     const companyId = req.user.companyId;
     if (!companyId) throw new BadRequestException('companyId is required');
@@ -192,6 +197,7 @@ export class JobsController {
   }
 
   @Post(':id/cancel')
+  @Throttle({default: {ttl: 60_000, limit: 20}})
   async cancel(@Req() req: JobsRequest, @Param('id') id: string) {
     const companyId = req.user.companyId;
     if (!companyId) throw new BadRequestException('companyId is required');
@@ -205,6 +211,7 @@ export class JobsController {
   }
 
   @Post(':id/reopen')
+  @Throttle({default: {ttl: 60_000, limit: 20}})
   async reopen(@Req() req: JobsRequest, @Param('id') id: string) {
     const companyId = req.user.companyId;
     if (!companyId) throw new BadRequestException('companyId is required');
@@ -218,6 +225,7 @@ export class JobsController {
   }
 
   @Post(':id/comments')
+  @Throttle({default: {ttl: 60_000, limit: 20}})
   async createComment(
     @Req() req: JobsRequest,
     @Param('id') id: string,
@@ -237,6 +245,7 @@ export class JobsController {
   }
 
   @Patch(':id/internal-notes')
+  @Throttle({default: {ttl: 60_000, limit: 20}})
   async updateInternalNotes(
     @Req() req: JobsRequest,
     @Param('id') id: string,
@@ -256,6 +265,7 @@ export class JobsController {
   }
 
   @Post(':id/request-payment')
+  @Throttle({default: {ttl: 60_000, limit: 20}})
   async requestPayment(
     @Req() req: JobsRequest,
     @Param('id') id: string,
@@ -275,6 +285,7 @@ export class JobsController {
   }
 
   @Patch(':id/review')
+  @Throttle({default: {ttl: 60_000, limit: 20}})
   async review(
     @Req() req: Request & { user?: any },
     @Param('id') id: string,

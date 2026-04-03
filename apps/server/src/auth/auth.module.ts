@@ -4,7 +4,7 @@ import {AuthController} from './auth.controller';
 import {AuthService} from './auth.service';
 
 @Module({
-    imports: [ConfigModule.forRoot({isGlobal: true})],
+    imports: [ConfigModule],
     controllers: [AuthController],
     providers: [AuthService],
     exports: [AuthService],

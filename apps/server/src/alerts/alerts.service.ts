@@ -135,6 +135,19 @@ export class AlertsService {
                                 phone: true,
                             },
                         },
+                        assignments: {
+                            include: {
+                                worker: {
+                                    select: {
+                                        id: true,
+                                        displayName: true,
+                                        colorTag: true,
+                                        phone: true,
+                                    },
+                                },
+                            },
+                            orderBy: { createdAt: "asc" },
+                        },
                         lineItems: {
                             include: {
                                 service: {
@@ -173,6 +186,7 @@ export class AlertsService {
         });
 
         return {
+            constAssignedWorkerIds: undefined,
             id: alert.id,
             type: alert.type,
             status: alert.status,
@@ -207,6 +221,14 @@ export class AlertsService {
                     notes: alert.job.client.notes,
                 },
                 worker: alert.job.worker,
+                workerIds: Array.from(
+                    new Set(
+                        [
+                            alert.job.worker?.id ?? null,
+                            ...alert.job.assignments.map((assignment) => assignment.worker?.id ?? null),
+                        ].filter((value): value is string => Boolean(value)),
+                    ),
+                ),
                 lineItems: alert.job.lineItems.map((item) => ({
                     id: item.id,
                     description: item.description,

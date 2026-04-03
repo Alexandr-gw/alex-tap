@@ -1,6 +1,7 @@
 // src/me/me.controller.ts
 import { Controller, Get, UseGuards } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import {Throttle} from '@nestjs/throttler';
 import { Role } from '@prisma/client';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 import { AuthUser, CompanyId } from '@/common/decorators/auth-user.decorator';
@@ -28,6 +29,7 @@ export class MeController {
     ) {}
 
     @Get()
+    @Throttle({default: {ttl: 60_000, limit: 60}})
     async me(@AuthUser() claims: Claims, @CompanyId() companyId: string | null) {
         const preferredClient = this.cfg.get<string>('KEYCLOAK_CLIENT_ID') ?? null;
         const normalizedRoles = claims.roles ?? [];
@@ -56,7 +58,7 @@ export class MeController {
             select: { id: true, sub: true, email: true, name: true },
         });
 
-        await this.ensureDemoMembership(user.id);
+        await this.ensureDemoMembership(user.id, rolesFromToken);
 
         const memberships = await this.prisma.membership.findMany({
             where: { userId: user.id },
@@ -95,14 +97,17 @@ export class MeController {
         };
     }
 
-    private async ensureDemoMembership(userId: string) {
+    private async ensureDemoMembership(userId: string, rolesFromToken: string[]) {
         const demoAutoProvisionEnabled =
             this.cfg.get<string>('PUBLIC_DEMO_AUTO_PROVISION')?.toLowerCase() !== 'false';
         const demoCompanyId =
-            this.cfg.get<string>('PUBLIC_DEMO_COMPANY_ID') ??
-            this.cfg.get<string>('MANAGER_AUTO_MEMBERSHIP_COMPANY_ID');
+            this.cfg.get<string>('MANAGER_AUTO_MEMBERSHIP_COMPANY_ID') ??
+            this.cfg.get<string>('PUBLIC_DEMO_COMPANY_ID');
+        const canAutoProvisionManager = rolesFromToken.some(
+            (role) => role === 'manager' || role === 'admin',
+        );
 
-        if (!demoAutoProvisionEnabled || !demoCompanyId) {
+        if (!demoAutoProvisionEnabled || !demoCompanyId || !canAutoProvisionManager) {
             return;
         }
 

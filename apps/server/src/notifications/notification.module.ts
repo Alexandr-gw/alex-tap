@@ -8,11 +8,13 @@ import {
 import { ResendEmailProvider } from './providers/resend.provider';
 import { SmtpEmailProvider } from './providers/smtp.provider';
 import { TwilioSmsProvider } from './providers/twilio.provider';
+import { BookingAccessService } from '@/public-booking/booking-access.service';
 
 @Module({
     providers: [
         NotificationService,
         NotificationQueueService,
+        BookingAccessService,
         SmtpEmailProvider,
         ResendEmailProvider,
         TwilioSmsProvider,

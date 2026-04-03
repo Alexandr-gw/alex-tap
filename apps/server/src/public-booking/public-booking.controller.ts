@@ -1,10 +1,13 @@
-import {Controller, Get, Post, Query, Param, BadRequestException, Body} from "@nestjs/common";
+import {Body, Controller, Get, Param, Post, Query, ValidationPipe} from "@nestjs/common";
+import {Throttle} from "@nestjs/throttler";
 import {PublicBookingService} from "./public-booking.service";
 import {PublicCheckoutDto} from "./dto/public-checkout.dto";
 import {PaymentsService} from "@/payments/payments.service";
 import {RequestBookingChangesDto} from "./dto/request-booking-changes.dto";
+import {GetPublicSlotsDto} from "./dto/get-public-slots.dto";
 
 @Controller("api/v1/public")
+@Throttle({default: {ttl: 60_000, limit: 30}})
 export class PublicBookingController {
     constructor(private readonly svc: PublicBookingService,
                 private readonly payments: PaymentsService,) {
@@ -22,15 +25,10 @@ export class PublicBookingController {
     // GET /public/slots?companyId&serviceId&from&to
     @Get("slots")
     async getSlots(
-        @Query("companyId") companyId?: string,
-        @Query("serviceId") serviceId?: string,
-        @Query("from") from?: string,
-        @Query("to") to?: string,
+        @Query(new ValidationPipe({ whitelist: true, transform: true, forbidNonWhitelisted: true }))
+        query: GetPublicSlotsDto,
     ) {
-        if (!companyId || !serviceId || !from || !to) {
-            throw new BadRequestException("Missing query params: companyId, serviceId, from, to");
-        }
-        return this.svc.getPublicSlots({companyId, serviceId, from, to});
+        return this.svc.getPublicSlots(query);
     }
 
     // GET /public/companies/:companySlug/services
@@ -41,7 +39,11 @@ export class PublicBookingController {
 
     // POST /public/bookings/checkout
     @Post("bookings/checkout")
-    async checkout(@Body() dto: PublicCheckoutDto) {
+    @Throttle({default: {ttl: 600_000, limit: 5}})
+    async checkout(
+        @Body(new ValidationPipe({ whitelist: true, transform: true, forbidNonWhitelisted: true }))
+        dto: PublicCheckoutDto,
+    ) {
         return this.svc.createPublicCheckout(dto);
     }
 
@@ -51,9 +53,11 @@ export class PublicBookingController {
     }
 
     @Post("bookings/access/:token/request-changes")
+    @Throttle({default: {ttl: 1_800_000, limit: 3}})
     async requestBookingChanges(
         @Param("token") token: string,
-        @Body() dto: RequestBookingChangesDto,
+        @Body(new ValidationPipe({ whitelist: true, transform: true, forbidNonWhitelisted: true }))
+        dto: RequestBookingChangesDto,
     ) {
         return this.svc.requestBookingChanges(token, dto);
     }

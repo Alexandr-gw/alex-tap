@@ -14,6 +14,7 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PublicSlotsController = exports.SlotsController = void 0;
 const common_1 = require("@nestjs/common");
+const throttler_1 = require("@nestjs/throttler");
 const jwt_auth_guard_1 = require("../common/guards/jwt-auth.guard");
 const slots_service_1 = require("./slots.service");
 const get_worker_slot_dto_1 = require("./dto/get-worker-slot.dto");
@@ -128,6 +129,7 @@ __decorate([
 ], PublicSlotsController.prototype, "getSlotsDay", null);
 exports.PublicSlotsController = PublicSlotsController = __decorate([
     (0, common_1.Controller)("api/v1/public/slots"),
+    (0, throttler_1.Throttle)({ default: { ttl: 60_000, limit: 30 } }),
     __metadata("design:paramtypes", [slots_service_1.SlotsService])
 ], PublicSlotsController);
 //# sourceMappingURL=slots.controller.js.map

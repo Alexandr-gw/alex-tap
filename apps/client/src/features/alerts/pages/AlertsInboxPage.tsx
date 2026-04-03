@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useAlertDetail, useAlertsList, useMarkAlertRead, useReviewJob } from "@/features/alerts/hooks/alerts.queries";
 import type { AlertDetail, AlertListItem } from "@/features/alerts/api/alerts.types";
+import { JobWorkerPicker } from "@/features/jobs/components/JobWorkerPicker";
 
 function formatMoney(amountCents: number, currency: string) {
     return new Intl.NumberFormat(undefined, {
@@ -89,24 +90,34 @@ function DetailSkeleton() {
 
 function Details({
     detail,
-    workerId,
+    workerIds,
     startValue,
-    onWorkerIdChange,
+    onWorkerIdsChange,
     onStartValueChange,
     onSave,
     onConfirm,
     isSaving,
 }: {
     detail: AlertDetail;
-    workerId: string;
+    workerIds: string[];
     startValue: string;
-    onWorkerIdChange: (value: string) => void;
+    onWorkerIdsChange: (value: string[]) => void;
     onStartValueChange: (value: string) => void;
     onSave: () => void;
     onConfirm: () => void;
     isSaving: boolean;
 }) {
     const latestPayment = detail.job.payments[0] ?? null;
+    const pickerWorkers = useMemo(
+        () =>
+            detail.workers.map((worker) => ({
+                id: worker.id,
+                name: worker.displayName,
+                colorTag: worker.colorTag,
+                phone: worker.phone,
+            })),
+        [detail.workers],
+    );
 
     return (
         <div className="space-y-6 rounded-3xl border border-emerald-100/80 bg-[linear-gradient(180deg,#ffffff_0%,#f9fcff_100%)] p-6 shadow-sm">
@@ -169,18 +180,16 @@ function Details({
 
                 <div className="space-y-4 rounded-2xl border border-emerald-100 bg-white/90 p-4">
                     <div>
-                        <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Assigned worker</label>
-                        <select
-                            value={workerId}
-                            onChange={(event) => onWorkerIdChange(event.target.value)}
-                            className="mt-2 h-11 w-full rounded-xl border border-sky-100 bg-white px-3 text-sm text-slate-900 focus:border-emerald-300 focus:outline-none"
-                        >
-                            {detail.workers.map((worker) => (
-                                <option key={worker.id} value={worker.id}>
-                                    {worker.displayName}
-                                </option>
-                            ))}
-                        </select>
+                        <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Assigned workers</label>
+                        <div className="mt-2">
+                            <JobWorkerPicker
+                                label="Choose workers"
+                                workerIds={workerIds}
+                                workers={pickerWorkers}
+                                onChange={onWorkerIdsChange}
+                                helperText="Changing time will be validated against the selected workers' schedules."
+                            />
+                        </div>
                     </div>
 
                     <div>
@@ -191,7 +200,7 @@ function Details({
                             onChange={(event) => onStartValueChange(event.target.value)}
                             className="mt-2 h-11 w-full rounded-xl border border-sky-100 bg-white px-3 text-sm text-slate-900 focus:border-emerald-300 focus:outline-none"
                         />
-                        <div className="mt-2 text-xs text-slate-500">Changing time will be validated against the selected worker&apos;s schedule.</div>
+                        <div className="mt-2 text-xs text-slate-500">Changing time will be validated against the selected workers&apos; schedules.</div>
                     </div>
 
                     <div className="flex flex-col gap-3 pt-2 sm:flex-row">
@@ -231,8 +240,9 @@ export function AlertsInboxPage() {
         searchParams.get("alertId") ?? matchedAlertId ?? alertsQuery.data?.items[0]?.id ?? "";
     const detailQuery = useAlertDetail(selectedAlertId, !!selectedAlertId);
 
-    const [workerId, setWorkerId] = useState("");
+    const [workerIds, setWorkerIds] = useState<string[]>([]);
     const [startValue, setStartValue] = useState("");
+    const initializedAlertIdRef = useRef<string | null>(null);
 
     useEffect(() => {
         const firstId = alertsQuery.data?.items[0]?.id;
@@ -249,8 +259,21 @@ export function AlertsInboxPage() {
     useEffect(() => {
         const detail = detailQuery.data;
         if (!detail) return;
-        setWorkerId(detail.job.worker?.id ?? detail.workers[0]?.id ?? "");
-        setStartValue(toDateTimeLocal(detail.job.startAt));
+
+        if (initializedAlertIdRef.current !== detail.id) {
+            setWorkerIds(
+                detail.job.workerIds.length
+                    ? detail.job.workerIds
+                    : detail.job.worker?.id
+                        ? [detail.job.worker.id]
+                        : detail.workers[0]?.id
+                            ? [detail.workers[0].id]
+                            : [],
+            );
+            setStartValue(toDateTimeLocal(detail.job.startAt));
+            initializedAlertIdRef.current = detail.id;
+        }
+
         if (!detail.readAt) markRead.mutate(detail.id);
     }, [detailQuery.data, markRead]);
 
@@ -268,7 +291,7 @@ export function AlertsInboxPage() {
                 jobId: detail.job.id,
                 payload: {
                     alertId: detail.id,
-                    workerId,
+                    workerIds,
                     start: fromDateTimeLocal(startValue),
                     confirm,
                 },
@@ -339,9 +362,9 @@ export function AlertsInboxPage() {
                 ) : (
                     <Details
                         detail={detailQuery.data}
-                        workerId={workerId}
+                        workerIds={workerIds}
                         startValue={startValue}
-                        onWorkerIdChange={setWorkerId}
+                        onWorkerIdsChange={setWorkerIds}
                         onStartValueChange={setStartValue}
                         onSave={() => runReview(false)}
                         onConfirm={() => runReview(true)}

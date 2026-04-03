@@ -56,9 +56,7 @@ describe('Public API (e2e)', () => {
       .get('/api/v1/public/slots')
       .expect(400)
       .expect(({ body }) => {
-        expect(body.message).toBe(
-          'Missing query params: companyId, serviceId, from, to',
-        );
+        expect(body.message).toContain('companyId must be a string');
       });
   });
 
@@ -74,6 +72,7 @@ describe('Public API (e2e)', () => {
       .send({
         companyId: 'company_1',
         serviceId: 'service_1',
+        bookingIntentId: 'intent_1',
         start: '2026-03-28T18:00:00.000Z',
         client: {
           name: 'Owen Khan',
@@ -93,12 +92,32 @@ describe('Public API (e2e)', () => {
       expect.objectContaining({
         companyId: 'company_1',
         serviceId: 'service_1',
+        bookingIntentId: 'intent_1',
         client: expect.objectContaining({
           name: 'Owen Khan',
           email: 'owen@example.com',
         }),
       }),
     );
+  });
+
+  it('rejects unknown fields on public checkout', async () => {
+    await request(app.getHttpServer())
+      .post('/api/v1/public/bookings/checkout')
+      .send({
+        companyId: 'company_1',
+        serviceId: 'service_1',
+        bookingIntentId: 'intent_1',
+        start: '2026-03-28T18:00:00.000Z',
+        client: {
+          name: 'Owen Khan',
+        },
+        hacked: true,
+      })
+      .expect(400)
+      .expect(({ body }) => {
+        expect(body.message).toContain('property hacked should not exist');
+      });
   });
 
   it('returns the public checkout session summary', async () => {

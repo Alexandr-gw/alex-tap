@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import cookieParser from "cookie-parser";
@@ -21,12 +22,22 @@ function parseAllowedOrigins() {
 }
 
 async function bootstrap() {
-    const app = await NestFactory.create(AppModule, { bufferLogs: true });
+    const app = await NestFactory.create(AppModule, {
+        bufferLogs: true,
+        rawBody: true,
+    });
     const logger = app.get(AppLogger);
     const requestContextMiddleware = app.get(RequestContextMiddleware);
     const allowedOrigins = parseAllowedOrigins();
 
     app.useLogger(logger);
+    app.useGlobalPipes(
+        new ValidationPipe({
+            whitelist: true,
+            forbidNonWhitelisted: true,
+            transform: true,
+        }),
+    );
 
     // middleware
     app.use(cookieParser());

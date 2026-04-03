@@ -4,6 +4,7 @@ import { ActivityService } from '@/activity/activity.service';
 import { PaymentStatus } from '@prisma/client';
 import { CreateCheckoutDto } from './dto/create-checkout.dto';
 import Stripe from 'stripe';
+import { BookingAccessService } from '@/public-booking/booking-access.service';
 type CheckoutSummaryDto = {
     ok: true;
     status: PaymentStatus;
@@ -22,8 +23,9 @@ export declare class PaymentsService {
     private readonly prisma;
     private readonly alerts;
     private readonly activity;
+    private readonly bookingAccess;
     private readonly stripe;
-    constructor(prisma: PrismaService, alerts: AlertsService, activity: ActivityService, stripe: Stripe);
+    constructor(prisma: PrismaService, alerts: AlertsService, activity: ActivityService, bookingAccess: BookingAccessService, stripe: Stripe);
     createCheckoutSession(companyId: string, actorUserId: string, dto: CreateCheckoutDto): Promise<{
         sessionId: string;
         url: string;
@@ -39,11 +41,14 @@ export declare class PaymentsService {
     markPaymentFailed(paymentIntent: Stripe.PaymentIntent, event: Stripe.Event): Promise<void>;
     markChargeRefunded(charge: Stripe.Charge, event: Stripe.Event): Promise<void>;
     private reconcileCheckoutSessionIfPaid;
+    private ensurePaymentRecordForCheckoutSession;
+    private buildCheckoutSummaryFromSession;
     private getCustomerMessage;
     private getEffectivePaymentStatus;
     private safeRetrieveCheckoutSession;
     private getSessionUrl;
     private getReceiptUrl;
-    private getBookingAccessPath;
+    private resolveCheckoutRedirectUrl;
+    private getAllowedCheckoutOrigins;
 }
 export {};

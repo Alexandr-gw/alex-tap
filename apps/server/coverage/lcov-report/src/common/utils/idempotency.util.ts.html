@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">18.18% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>2/11</span>
+                <span class='fraction'>11/11</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/4</span>
+                <span class='fraction'>4/4</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/3</span>
+                <span class='fraction'>3/3</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">20% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>2/10</span>
+                <span class='fraction'>10/10</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -83,36 +83,36 @@
 <a name='L18'></a><a href='#L18'>18</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">122x</span>
+<span class="cline-any cline-yes">113x</span>
+<span class="cline-any cline-yes">22x</span>
+<span class="cline-any cline-yes">106x</span>
+<span class="cline-any cline-yes">106x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">91x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">9x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import crypto from 'node:crypto';
 &nbsp;
-function <span class="fstat-no" title="function not covered" >sortKeys(</span>value: any): any {
-<span class="cstat-no" title="statement not covered" >    <span class="missing-if-branch" title="if path not taken" >I</span>if (Array.isArray(value)) <span class="cstat-no" title="statement not covered" >return value.map(sortKeys);</span></span>
-<span class="cstat-no" title="statement not covered" >    <span class="missing-if-branch" title="if path not taken" >I</span>if (value &amp;&amp; typeof value === 'object') {</span>
-<span class="cstat-no" title="statement not covered" >        return Object.keys(value).sort().reduce(<span class="fstat-no" title="function not covered" >(a</span>cc, k) =&gt; {</span>
-<span class="cstat-no" title="statement not covered" >            acc[k] = sortKeys(value[k]);</span>
-<span class="cstat-no" title="statement not covered" >            return acc;</span>
+function sortKeys(value: any): any {
+    if (Array.isArray(value)) return value.map(sortKeys);
+    if (value &amp;&amp; typeof value === 'object') {
+        return Object.keys(value).sort().reduce((acc, k) =&gt; {
+            acc[k] = sortKeys(value[k]);
+            return acc;
         }, {} as any);
     }
-<span class="cstat-no" title="statement not covered" >    return value;</span>
+    return value;
 }
 &nbsp;
-export function <span class="fstat-no" title="function not covered" >hashRequestBody(</span>body: unknown): string {
-    const canonical = <span class="cstat-no" title="statement not covered" >JSON.stringify(sortKeys(body));</span>
-<span class="cstat-no" title="statement not covered" >    return crypto.createHash('sha256').update(canonical).digest('hex');</span>
+export function hashRequestBody(body: unknown): string {
+    const canonical = JSON.stringify(sortKeys(body));
+    return crypto.createHash('sha256').update(canonical).digest('hex');
 }
 &nbsp;</pre></td></tr></table></pre>
 
@@ -121,7 +121,7 @@ export function <span class="fstat-no" title="function not covered" >hashRequest
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-03-28T12:40:55.996Z
+                at 2026-04-02T12:51:38.907Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

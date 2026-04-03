@@ -7,11 +7,7 @@ import Stripe from 'stripe';
         {
             provide: 'STRIPE',
             useFactory: () =>
-                new Stripe(process.env.STRIPE_SECRET_KEY!, {
-                    // Let Stripe pick the account default API version
-                    // (or override manually if you prefer)
-                    apiVersion: '2024-06-20' as any,
-                }),
+                new Stripe(process.env.STRIPE_SECRET_KEY!),
         },
     ],
     exports: ['STRIPE'],

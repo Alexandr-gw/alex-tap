@@ -20,7 +20,7 @@ const email_provider_1 = require("./providers/email.provider");
 const notification_queue_service_1 = require("./queue/notification-queue.service");
 const notification_constants_1 = require("./notification.constants");
 const jobConfirmation_1 = require("./templates/jobConfirmation");
-const public_booking_utils_1 = require("../public-booking/public-booking.utils");
+const booking_access_service_1 = require("../public-booking/booking-access.service");
 const EMAIL_REMINDER_DEFINITIONS = [
     {
         key: '24h',
@@ -45,10 +45,12 @@ let NotificationService = class NotificationService {
     prisma;
     queues;
     emailProvider;
-    constructor(prisma, queues, emailProvider) {
+    bookingAccess;
+    constructor(prisma, queues, emailProvider, bookingAccess) {
         this.prisma = prisma;
         this.queues = queues;
         this.emailProvider = emailProvider;
+        this.bookingAccess = bookingAccess;
     }
     async scheduleJobReminders(companyId, jobId) {
         const job = await this.findJobForNotifications(companyId, jobId);
@@ -57,7 +59,7 @@ let NotificationService = class NotificationService {
             return [];
         }
         const notifications = [];
-        const manageUrl = await this.getJobManageUrl(companyId, job.id);
+        const manageUrl = await this.getJobManageUrl(companyId, job.id, job.source);
         const basePayload = {
             jobId: job.id,
             clientId: job.clientId,
@@ -178,7 +180,7 @@ let NotificationService = class NotificationService {
             throw new common_1.BadRequestException(blockedReason);
         }
         const recipient = job.client.email.trim().toLowerCase();
-        const manageUrl = await this.getJobManageUrl(companyId, job.id);
+        const manageUrl = await this.getJobManageUrl(companyId, job.id, job.source);
         const notification = await this.prisma.notification.create({
             data: {
                 companyId,
@@ -217,7 +219,7 @@ let NotificationService = class NotificationService {
         const result = await this.emailProvider.sendEmail({
             to: recipient,
             from,
-            ...this.buildJobConfirmationEmail(job),
+            ...this.buildJobConfirmationEmail(job, manageUrl),
         });
         const updated = await this.prisma.notification.update({
             where: { id: notification.id },
@@ -283,9 +285,6 @@ let NotificationService = class NotificationService {
                 company: true,
                 client: true,
                 worker: true,
-                bookingAccessLink: {
-                    select: { token: true },
-                },
             },
         });
         if (!job) {
@@ -394,7 +393,7 @@ let NotificationService = class NotificationService {
                 return 'NOT_APPLICABLE';
         }
     }
-    buildJobConfirmationEmail(job) {
+    buildJobConfirmationEmail(job, manageUrl) {
         return (0, jobConfirmation_1.jobConfirmation)({
             companyName: job.company.name,
             clientName: job.client.name,
@@ -403,23 +402,11 @@ let NotificationService = class NotificationService {
             startAtISO: job.startAt.toISOString(),
             timezone: job.company.timezone,
             location: job.location ?? job.client.address ?? null,
-            manageUrl: job.bookingAccessLink?.token
-                ? (0, public_booking_utils_1.buildBookingAccessUrl)(job.bookingAccessLink.token)
-                : null,
+            manageUrl,
         });
     }
-    async getJobManageUrl(companyId, jobId) {
-        const link = await this.prisma.bookingAccessLink.upsert({
-            where: { jobId },
-            create: {
-                companyId,
-                jobId,
-                token: (0, public_booking_utils_1.createBookingAccessToken)(),
-                expiresAt: (0, public_booking_utils_1.getBookingAccessExpiry)(),
-            },
-            update: {},
-        });
-        return (0, public_booking_utils_1.buildBookingAccessUrl)(link.token);
+    async getJobManageUrl(companyId, jobId, source) {
+        return this.bookingAccess.getJobAccessUrl(companyId, jobId, source);
     }
     mapClientLastCommunication(notification) {
         if (!notification.sentAt) {
@@ -467,6 +454,6 @@ exports.NotificationService = NotificationService = __decorate([
     (0, common_1.Injectable)(),
     __param(2, (0, common_1.Inject)(email_provider_1.EMAIL_PROVIDER)),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
-        notification_queue_service_1.NotificationQueueService, Object])
+        notification_queue_service_1.NotificationQueueService, Object, booking_access_service_1.BookingAccessService])
 ], NotificationService);
 //# sourceMappingURL=notification.service.js.map
