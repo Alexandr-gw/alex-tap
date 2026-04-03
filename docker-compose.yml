@@ -1,22 +1,108 @@
-version: "3.9"
 services:
-  db: { image: postgres:16-alpine, environment: { POSTGRES_USER: app, POSTGRES_PASSWORD: app, POSTGRES_DB: app }, ports: [ "5432:5432" ] }
-  redis: { image: redis:7-alpine, ports: [ "6379:6379" ] }
-
-  server:
-    build: ./server
-    working_dir: /app
-    command: npm run dev
-    ports: [ "4000:4000" ]
-    volumes: [ "./server:/app" ]
-    depends_on: [ db, redis ]
-
-  client:
-    build: ./client
-    working_dir: /app
-    command: npm run dev
-    ports: [ "3000:3000" ]
+  db:
+    image: postgres:16-alpine
+    container_name: app-postgres
+    restart: unless-stopped
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:4000
-    volumes: [ "./client:/app" ]
-    depends_on: [ server ]
+      POSTGRES_USER: ${POSTGRES_USER:-app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-app}
+      POSTGRES_DB: ${POSTGRES_DB:-app}
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-app}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: app-redis
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  notification-worker:
+    build:
+      context: .
+      dockerfile: ./apps/server/Dockerfile.worker
+    container_name: app-notification-worker
+    restart: unless-stopped
+    env_file:
+      - ./apps/server/.env
+    environment:
+      DATABASE_URL: postgres://app:app@db:5432/app?schema=public
+      REDIS_URL: redis://redis:6379
+      SMTP_HOST: mailhog
+      SMTP_PORT: 1025
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_ISSUER: http://keycloak:8080/realms/alex-tap-local
+      KEYCLOAK_AUTHORIZATION_ENDPOINT: http://keycloak:8080/realms/alex-tap-local/protocol/openid-connect/auth
+      KEYCLOAK_TOKEN_ENDPOINT: http://keycloak:8080/realms/alex-tap-local/protocol/openid-connect/token
+      KEYCLOAK_LOGOUT_ENDPOINT: http://keycloak:8080/realms/alex-tap-local/protocol/openid-connect/logout
+      KEYCLOAK_JWKS_URI: http://keycloak:8080/realms/alex-tap-local/protocol/openid-connect/certs
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mailhog:
+        condition: service_started
+    command: ["npm", "run", "start:worker"]
+
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.3.2
+    volumes:
+      - ./apps/keycloak-theme/dist_keycloak:/opt/keycloak/providers
+      - ./apps/keycloak-theme/theme:/opt/keycloak/themes:ro
+      - ./apps/server/keycloak/generated/local:/opt/keycloak/data/import:ro
+    container_name: app-keycloak
+    command:
+      [
+        "start-dev",
+        "--import-realm",
+        "--spi-theme-static-max-age=-1",
+        "--spi-theme-cache-themes=false",
+        "--spi-theme-cache-templates=false"
+      ]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+
+      KC_HEALTH_ENABLED: "true"
+      KC_METRICS_ENABLED: "true"
+    ports:
+
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      mailhog:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/health/ready"]
+      interval: 10s
+      timeout: 3s
+      retries: 20
+
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    container_name: app-mailhog
+    ports:
+      - "127.0.0.1:8025:8025"  # Web UI
+      - "127.0.0.1:1025:1025"  # SMTP
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "8025"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:

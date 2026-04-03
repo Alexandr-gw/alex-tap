@@ -1,0 +1,542 @@
+// ---------- Generators & datasource ----------
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Enums ----------
+enum Role {
+  ADMIN
+  MANAGER
+  WORKER
+  CLIENT
+}
+
+enum JobStatus {
+  DRAFT
+  PENDING_CONFIRMATION
+  SCHEDULED
+  IN_PROGRESS
+  DONE
+  CANCELED
+  NO_SHOW
+}
+
+enum AlertStatus {
+  OPEN
+  RESOLVED
+}
+
+enum AlertType {
+  BOOKING_REVIEW
+}
+
+enum TaskStatus {
+  OPEN
+  IN_PROGRESS
+  BLOCKED
+  DONE
+}
+
+enum PaymentStatus {
+  REQUIRES_ACTION
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+  CANCELED
+}
+
+enum PaymentProvider {
+  STRIPE
+  CASH
+  CARD_TERMINAL
+}
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+  PUSH
+}
+
+enum NotificationStatus {
+  QUEUED
+  SENT
+  FAILED
+  CANCELED
+  SKIPPED
+}
+
+enum NotificationTargetType {
+  JOB
+  CLIENT
+  COMPANY
+}
+
+enum ActivityType {
+  JOB_CREATED
+  JOB_COMPLETED
+  JOB_CANCELED
+  TASK_CREATED
+  TASK_COMPLETED
+  CLIENT_CREATED
+  BOOKING_SUBMITTED
+  PAYMENT_SUCCEEDED
+  INVOICE_SENT
+}
+
+enum ActivityActorType {
+  USER
+  PUBLIC
+  SYSTEM
+}
+
+// ---------- Base helpers ----------
+model Company {
+  id        String    @id @default(cuid())
+  name      String
+  timezone  String    @default("America/Edmonton")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  slug      String?   @unique
+
+  memberships           Membership[]
+  workers               Worker[]
+  services              Service[]
+  clients               ClientProfile[]
+  jobs                  Job[]
+  tasks                 Task[]
+  payments              Payment[]
+  notifications         Notification[]
+  bookingAccessLinks    BookingAccessLink[]
+  activities            Activity[]
+  alerts                Alert[]
+  auditLogs             AuditLog[]
+  AvailabilityRule      AvailabilityRule[]
+  AvailabilityException AvailabilityException[]
+
+  @@index([createdAt])
+}
+
+model User {
+  id        String    @id @default(cuid())
+  sub       String    @unique // Keycloak user sub
+  email     String?
+  name      String?
+  avatarUrl String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  memberships    Membership[]
+  comments       JobComment[]
+  auditActor     AuditLog[]   @relation("AuditActor")
+  resolvedAlerts Alert[]     @relation("AlertResolvedBy")
+  Worker         Worker[]
+}
+
+model Membership {
+  id        String   @id @default(cuid())
+  companyId String
+  userId    String
+  role      Role
+  createdAt DateTime @default(now())
+  lastSeenPaidJobsAt DateTime?
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Restrict)
+  alerts  Alert[]
+
+  @@unique([companyId, userId])
+  @@index([companyId, role])
+}
+
+// Internal staff/contractors. userId is optional (pure worker profile).
+model Worker {
+  id          String   @id @default(cuid())
+  companyId   String
+  userId      String?
+  displayName String
+  phone       String?
+  colorTag    String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  user    User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  availabilityRules      AvailabilityRule[]
+  availabilityExceptions AvailabilityException[]
+  jobs                   Job[]           @relation("PrimaryJobWorker")
+  jobAssignments         JobAssignment[]
+  taskAssignments        TaskAssignment[]
+
+  @@unique([companyId, userId]) // OK with NULL userId on Postgres
+  @@index([companyId, active])
+}
+
+model Service {
+  id              String    @id @default(cuid())
+  companyId       String
+  name            String
+  durationMins    Int
+  basePriceCents  Int
+  currency        String    @default("CAD")
+  stripeProductId String?
+  stripePriceId   String?
+  active          Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+  slug            String?
+
+  company   Company       @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  lineItems JobLineItem[]
+
+  @@unique([companyId, slug])
+  // Weâ€™ll convert this to a PARTIAL UNIQUE in the migration (active only)
+  @@unique([companyId, name], map: "Service_companyId_name_unique")
+  @@index([companyId, active])
+}
+
+model ClientProfile {
+  id        String    @id @default(cuid())
+  companyId String
+  name      String
+  email     String?
+  phone     String?
+  address   String?
+  notes         String?
+  internalNotes String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  jobs    Job[]
+  tasks   Task[]
+
+  @@index([companyId, createdAt])
+}
+
+model AvailabilityRule {
+  id            String    @id @default(cuid())
+  companyId     String
+  workerId      String
+  dayOfWeek     Int // 0..6
+  startTime     String // "HH:mm"
+  endTime       String // "HH:mm"
+  timezone      String
+  effectiveFrom DateTime?
+  effectiveTo   DateTime?
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  worker  Worker  @relation(fields: [workerId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, workerId, dayOfWeek])
+}
+
+model AvailabilityException {
+  id        String   @id @default(cuid())
+  companyId String
+  workerId  String
+  startAt   DateTime
+  endAt     DateTime
+  reason    String?
+  isOpen    Boolean  @default(false) // true=open slot; false=blackout
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  worker  Worker  @relation(fields: [workerId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, workerId, startAt])
+}
+
+model JobAssignment {
+  id        String   @id @default(cuid())
+  jobId     String
+  workerId  String
+  createdAt DateTime @default(now())
+
+  job    Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  worker Worker @relation(fields: [workerId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, workerId])
+  @@index([workerId])
+}
+
+model Job {
+  id            String    @id @default(cuid())
+  companyId     String
+  clientId      String
+  workerId      String?
+  publicBookingIntentId String? @unique
+  title         String?
+  description   String?
+  internalNotes String?
+  status        JobStatus @default(SCHEDULED)
+  startAt       DateTime
+  endAt         DateTime
+  location      String?
+  // cached totals for fast reads
+  subtotalCents Int       @default(0)
+  taxCents      Int       @default(0)
+  totalCents    Int       @default(0)
+  paidCents     Int       @default(0)
+  balanceCents  Int       @default(0)
+  currency      String    @default("CAD")
+  source        String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  paidAt DateTime?
+
+  company Company       @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  client  ClientProfile @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  worker  Worker?       @relation("PrimaryJobWorker", fields: [workerId], references: [id], onDelete: SetNull)
+
+  assignments    JobAssignment[]
+  lineItems      JobLineItem[]
+  comments       JobComment[]
+  payments       Payment[]
+  bookingAccessLink BookingAccessLink?
+  alerts         Alert[]
+  IdempotencyKey IdempotencyKey[]
+
+  @@index([companyId, startAt])
+  @@index([companyId, status])
+  @@index([companyId, workerId, startAt])
+  @@index([companyId, clientId])
+}
+
+model JobLineItem {
+  id             String  @id @default(cuid())
+  jobId          String
+  serviceId      String?
+  description    String
+  quantity       Int     @default(1)
+  unitPriceCents Int
+  taxRateBps     Int     @default(0) // 100 = 1%
+  totalCents     Int
+
+  job     Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  service Service? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+
+  @@index([jobId])
+}
+
+model Task {
+  id          String   @id @default(cuid())
+  companyId   String
+  customerId  String?
+  subject     String
+  description String?
+  startAt     DateTime
+  endAt       DateTime
+  completed   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company     Company        @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  customer    ClientProfile? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  assignments TaskAssignment[]
+
+  @@index([companyId, startAt])
+  @@index([companyId, completed])
+  @@index([companyId, customerId])
+}
+
+model TaskAssignment {
+  id        String   @id @default(cuid())
+  taskId    String
+  workerId  String
+  createdAt DateTime @default(now())
+
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  worker Worker @relation(fields: [workerId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, workerId])
+  @@index([workerId])
+}
+
+model JobComment {
+  id           String   @id @default(cuid())
+  jobId        String
+  authorUserId String
+  message      String
+  createdAt    DateTime @default(now())
+
+  job    Job  @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  author User @relation(fields: [authorUserId], references: [id], onDelete: Restrict)
+
+  @@index([jobId])
+  @@index([authorUserId])
+}
+
+model Payment {
+  id          String          @id @default(cuid())
+  companyId   String
+  jobId       String
+  provider    PaymentProvider
+  status      PaymentStatus
+  amountCents Int
+  currency    String          @default("CAD")
+
+  providerPaymentId String? @unique
+
+  stripeSessionId       String? @unique
+  stripePaymentIntentId String? @unique
+  stripeCustomerId      String?
+  receiptUrl            String?
+
+  idempotencyKey String?   @unique
+  metadata       Json?
+  raw            Json?
+  capturedAt     DateTime?
+  refundedAt     DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  job     Job     @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, createdAt])
+  @@index([jobId])
+  @@index([status])
+}
+
+model Notification {
+  id          String                 @id @default(cuid())
+  companyId   String
+  type        String // e.g., job_reminder|invoice
+  channel     NotificationChannel
+  status      NotificationStatus     @default(QUEUED)
+  targetType  NotificationTargetType
+  targetId    String
+  payload           Json
+  recipient         String?
+  providerMessageId String?
+  scheduledAt       DateTime?
+  sentAt            DateTime?
+  error             String?
+  createdAt         DateTime               @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Restrict)
+
+  @@index([companyId, status, scheduledAt])
+  @@index([targetType, targetId, channel, type])
+}
+
+model BookingAccessLink {
+  id        String    @id @default(cuid())
+  companyId String
+  jobId     String    @unique
+  token     String    @unique
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  job     Job     @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, createdAt])
+  @@index([companyId, expiresAt])
+}
+
+model Activity {
+  id         String            @id @default(cuid())
+  companyId  String
+  type       ActivityType
+  entityType String
+  entityId   String
+  jobId      String?
+  clientId   String?
+  actorType  ActivityActorType
+  actorId    String?
+  actorLabel String
+  message    String?
+  metadata   Json?
+  createdAt  DateTime          @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Restrict)
+
+  @@index([companyId, createdAt])
+  @@index([companyId, jobId, createdAt])
+  @@index([companyId, clientId, createdAt])
+  @@index([companyId, entityType, entityId, createdAt])
+}
+model Alert {
+  id               String      @id @default(cuid())
+  companyId        String
+  jobId            String
+  membershipId     String
+  type             AlertType   @default(BOOKING_REVIEW)
+  status           AlertStatus @default(OPEN)
+  title            String
+  message          String?
+  payload          Json?
+  readAt           DateTime?
+  resolvedAt       DateTime?
+  resolvedByUserId String?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  company    Company    @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  job        Job        @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  membership Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  resolvedBy User?      @relation("AlertResolvedBy", fields: [resolvedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([jobId, membershipId, type], map: "Alert_jobId_membershipId_type_key")
+  @@index([companyId, membershipId, status, createdAt])
+  @@index([companyId, jobId, status])
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  companyId   String
+  entityType  String
+  entityId    String
+  action      String // create|update|delete|status_change|payment_*
+  actorUserId String?
+  changes     Json
+  ip          String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  actor   User?   @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, entityType, entityId, createdAt])
+}
+
+model IdempotencyKey {
+  key         String   @id
+  companyId   String
+  requestHash String
+  jobId       String?  @unique
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime
+
+  job Job? @relation(fields: [jobId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, createdAt])
+}
+
+
+
+
+
+
+
+
+
+
+
+

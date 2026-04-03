@@ -1,13 +1,24 @@
 {
+  "name": "al",
   "private": true,
-  "name": "alex-tap",
-  "workspaces": ["client","server","packages/*"],
+  "workspaces": [
+    "apps/*"
+  ],
   "scripts": {
-    "dev:client": "npm --workspace client run dev",
-    "build:client": "npm --workspace client run build",
-    "lint:client": "npm --workspace client run lint",
-    "typecheck:client": "npm --workspace client run typecheck",
-    "build:server": "npm --workspace server run build",
-    "dev:server": "npm --workspace server run dev"
+    "dev:client": "npm -w apps/client run dev",
+    "dev:server": "npm -w apps/server run start:dev",
+    "dev": "npm run dev:server & npm run dev:client",
+    "typecheck": "npm -w apps/client run typecheck && npm -w apps/server run typecheck",
+    "lint": "npm -w apps/client run lint && npm -w apps/server run lint",
+    "build": "npm -w apps/server run build && npm -w apps/client run build",
+    "test": "npm -w apps/server run test && npm -w apps/client run test"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  },
+  "dependencies": {
+    "@nestjs/config": "^4.0.2",
+    "jose": "^6.0.13",
+    "stripe": "^19.1.0"
   }
 }
