@@ -7,10 +7,14 @@ import {
     Post,
     Req,
 } from '@nestjs/common';
+import {SkipThrottle} from '@nestjs/throttler';
+import type { RawBodyRequest } from '@nestjs/common';
+import type { Request } from 'express';
 import Stripe from 'stripe';
 import { PaymentsService } from '@/payments/payments.service';
 
 @Controller('api/v1/webhooks/stripe')
+@SkipThrottle({default: true})
 export class StripeWebhookController {
     constructor(
         @Inject('STRIPE') private readonly stripe: Stripe,
@@ -20,7 +24,7 @@ export class StripeWebhookController {
     @Post()
     @HttpCode(200)
     async handle(
-        @Req() req: any,
+        @Req() req: RawBodyRequest<Request>,
         @Headers('stripe-signature') signature: string,
     ) {
         const secret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -31,7 +35,11 @@ export class StripeWebhookController {
         let event: Stripe.Event;
 
         try {
-            event = this.stripe.webhooks.constructEvent(req.body, signature, secret);
+            const payload =
+                req.rawBody && Buffer.isBuffer(req.rawBody)
+                    ? req.rawBody
+                    : Buffer.from(JSON.stringify(req.body ?? {}));
+            event = this.stripe.webhooks.constructEvent(payload, signature, secret);
         } catch (err: any) {
             throw new BadRequestException(`Invalid signature: ${err.message}`);
         }

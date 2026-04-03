@@ -17,6 +17,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.StripeWebhookController = void 0;
 const common_1 = require("@nestjs/common");
+const throttler_1 = require("@nestjs/throttler");
 const stripe_1 = __importDefault(require("stripe"));
 const payments_service_1 = require("../payments/payments.service");
 let StripeWebhookController = class StripeWebhookController {
@@ -33,7 +34,10 @@ let StripeWebhookController = class StripeWebhookController {
         }
         let event;
         try {
-            event = this.stripe.webhooks.constructEvent(req.body, signature, secret);
+            const payload = req.rawBody && Buffer.isBuffer(req.rawBody)
+                ? req.rawBody
+                : Buffer.from(JSON.stringify(req.body ?? {}));
+            event = this.stripe.webhooks.constructEvent(payload, signature, secret);
         }
         catch (err) {
             throw new common_1.BadRequestException(`Invalid signature: ${err.message}`);
@@ -78,6 +82,7 @@ __decorate([
 ], StripeWebhookController.prototype, "handle", null);
 exports.StripeWebhookController = StripeWebhookController = __decorate([
     (0, common_1.Controller)('api/v1/webhooks/stripe'),
+    (0, throttler_1.SkipThrottle)({ default: true }),
     __param(0, (0, common_1.Inject)('STRIPE')),
     __metadata("design:paramtypes", [stripe_1.default,
         payments_service_1.PaymentsService])

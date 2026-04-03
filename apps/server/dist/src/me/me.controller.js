@@ -15,6 +15,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.MeController = void 0;
 const common_1 = require("@nestjs/common");
 const config_1 = require("@nestjs/config");
+const throttler_1 = require("@nestjs/throttler");
 const client_1 = require("@prisma/client");
 const jwt_auth_guard_1 = require("../common/guards/jwt-auth.guard");
 const auth_user_decorator_1 = require("../common/decorators/auth-user.decorator");
@@ -46,7 +47,7 @@ let MeController = class MeController {
             },
             select: { id: true, sub: true, email: true, name: true },
         });
-        await this.ensureDemoMembership(user.id);
+        await this.ensureDemoMembership(user.id, rolesFromToken);
         const memberships = await this.prisma.membership.findMany({
             where: { userId: user.id },
             select: {
@@ -80,11 +81,12 @@ let MeController = class MeController {
             activeCompanyTimezone: memberships.find((m) => m.companyId === activeCompanyId)?.company.timezone ?? null,
         };
     }
-    async ensureDemoMembership(userId) {
+    async ensureDemoMembership(userId, rolesFromToken) {
         const demoAutoProvisionEnabled = this.cfg.get('PUBLIC_DEMO_AUTO_PROVISION')?.toLowerCase() !== 'false';
-        const demoCompanyId = this.cfg.get('PUBLIC_DEMO_COMPANY_ID') ??
-            this.cfg.get('MANAGER_AUTO_MEMBERSHIP_COMPANY_ID');
-        if (!demoAutoProvisionEnabled || !demoCompanyId) {
+        const demoCompanyId = this.cfg.get('MANAGER_AUTO_MEMBERSHIP_COMPANY_ID') ??
+            this.cfg.get('PUBLIC_DEMO_COMPANY_ID');
+        const canAutoProvisionManager = rolesFromToken.some((role) => role === 'manager' || role === 'admin');
+        if (!demoAutoProvisionEnabled || !demoCompanyId || !canAutoProvisionManager) {
             return;
         }
         const existingMembership = await this.prisma.membership.findFirst({
@@ -122,6 +124,7 @@ let MeController = class MeController {
 exports.MeController = MeController;
 __decorate([
     (0, common_1.Get)(),
+    (0, throttler_1.Throttle)({ default: { ttl: 60_000, limit: 60 } }),
     __param(0, (0, auth_user_decorator_1.AuthUser)()),
     __param(1, (0, auth_user_decorator_1.CompanyId)()),
     __metadata("design:type", Function),

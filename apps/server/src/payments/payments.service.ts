@@ -12,7 +12,7 @@ import { PaymentProvider, PaymentStatus, JobStatus } from '@prisma/client';
 import { CreateCheckoutDto } from './dto/create-checkout.dto';
 import { randomUUID } from 'crypto';
 import Stripe from 'stripe';
-import { buildBookingAccessUrl, createBookingAccessToken, getBookingAccessExpiry } from '@/public-booking/public-booking.utils';
+import { BookingAccessService } from '@/public-booking/booking-access.service';
 
 type CheckoutSummaryDto = {
     ok: true;
@@ -35,6 +35,7 @@ export class PaymentsService {
         private readonly prisma: PrismaService,
         private readonly alerts: AlertsService,
         private readonly activity: ActivityService,
+        private readonly bookingAccess: BookingAccessService,
         @Inject('STRIPE') private readonly stripe: Stripe,
     ) {}
 
@@ -123,13 +124,15 @@ export class PaymentsService {
             throw new BadRequestException('APP_PUBLIC_URL is not configured');
         }
 
-        const successUrl =
-            dto.successUrl ??
-            `${appPublicUrl}/payment/success?session_id={CHECKOUT_SESSION_ID}`;
+        const successUrl = this.resolveCheckoutRedirectUrl(
+            dto.successUrl,
+            `${appPublicUrl}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
+        );
 
-        const cancelUrl =
-            dto.cancelUrl ??
-            `${appPublicUrl}/payment/cancel?session_id={CHECKOUT_SESSION_ID}`;
+        const cancelUrl = this.resolveCheckoutRedirectUrl(
+            dto.cancelUrl,
+            `${appPublicUrl}/payment/cancel?session_id={CHECKOUT_SESSION_ID}`,
+        );
 
         const session = await this.stripe.checkout.sessions.create(
             {
@@ -226,9 +229,9 @@ export class PaymentsService {
             payment.status,
             stripeSession,
         );
-        const bookingAccessPath = await this.getBookingAccessPath(
-            payment.job.id,
+        const bookingAccessPath = await this.bookingAccess.getJobAccessPath(
             payment.job.companyId,
+            payment.job.id,
             payment.job.source,
         );
 
@@ -315,9 +318,9 @@ export class PaymentsService {
             receiptUrl: payment.receiptUrl ?? null,
             paymentId: payment.id,
             customerMessage: this.getCustomerMessage(effectiveStatus),
-            bookingAccessPath: await this.getBookingAccessPath(
-                payment.job.id,
+            bookingAccessPath: await this.bookingAccess.getJobAccessPath(
                 payment.job.companyId,
+                payment.job.id,
                 payment.job.source,
             ),
         };
@@ -707,9 +710,9 @@ export class PaymentsService {
             scheduledAt: job.startAt?.toISOString() ?? null,
             receiptUrl,
             customerMessage: this.getCustomerMessage(status),
-            bookingAccessPath: await this.getBookingAccessPath(
-                job.id,
+            bookingAccessPath: await this.bookingAccess.getJobAccessPath(
                 job.companyId,
+                job.id,
                 job.source,
             ),
         };
@@ -785,35 +788,70 @@ export class PaymentsService {
         return latestCharge?.receipt_url ?? null;
     }
 
-    private async getBookingAccessPath(
-        jobId: string,
-        companyId: string,
-        source: string | null,
+    private resolveCheckoutRedirectUrl(
+        candidateUrl: string | undefined,
+        fallbackUrl: string,
     ) {
-        if (source !== 'PUBLIC') {
-            return null;
+        const rawValue = candidateUrl?.trim() || fallbackUrl;
+        const appPublicUrl = process.env.APP_PUBLIC_URL?.trim();
+
+        if (!appPublicUrl) {
+            throw new BadRequestException('APP_PUBLIC_URL is not configured');
         }
 
-        const link = await this.prisma.bookingAccessLink.upsert({
-            where: { jobId },
-            create: {
-                companyId,
-                jobId,
-                token: createBookingAccessToken(),
-                expiresAt: getBookingAccessExpiry(),
-            },
-            update: {},
-            select: { token: true },
-        });
+        const allowedOrigins = this.getAllowedCheckoutOrigins(appPublicUrl);
 
+        let parsed: URL;
         try {
-            const url = new URL(buildBookingAccessUrl(link.token));
-            return `${url.pathname}${url.search}${url.hash}`;
+            if (rawValue.startsWith('//')) {
+                throw new Error('Protocol-relative URLs are not allowed');
+            }
+
+            parsed = rawValue.startsWith('/')
+                ? new URL(rawValue, `${appPublicUrl.replace(/\/$/, '')}/`)
+                : new URL(rawValue);
         } catch {
-            return `/booking/${link.token}`;
+            throw new BadRequestException('Invalid checkout redirect URL');
         }
+
+        if (!['http:', 'https:'].includes(parsed.protocol)) {
+            throw new BadRequestException('Invalid checkout redirect URL');
+        }
+
+        if (!allowedOrigins.has(parsed.origin)) {
+            throw new BadRequestException('Checkout redirect URL origin is not allowed');
+        }
+
+        return parsed.toString();
+    }
+
+    private getAllowedCheckoutOrigins(appPublicUrl: string) {
+        const rawValues = [
+            appPublicUrl,
+            process.env.APP_BASE_URL,
+            process.env.CORS_ORIGINS,
+            process.env.CHECKOUT_ALLOWED_ORIGINS,
+        ]
+            .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+            .flatMap((value) => value.split(','))
+            .map((value) => value.trim())
+            .filter(Boolean);
+
+        const allowedOrigins = new Set<string>();
+        for (const value of rawValues) {
+            try {
+                allowedOrigins.add(new URL(value).origin);
+            } catch {
+                continue;
+            }
+        }
+
+        return allowedOrigins;
     }
 }
+
+
+
 
 
 

@@ -2,6 +2,7 @@ import { PublicBookingService } from "./public-booking.service";
 import { PublicCheckoutDto } from "./dto/public-checkout.dto";
 import { PaymentsService } from "@/payments/payments.service";
 import { RequestBookingChangesDto } from "./dto/request-booking-changes.dto";
+import { GetPublicSlotsDto } from "./dto/get-public-slots.dto";
 export declare class PublicBookingController {
     private readonly svc;
     private readonly payments;
@@ -15,7 +16,7 @@ export declare class PublicBookingController {
         basePriceCents: number;
         currency: string;
     }>;
-    getSlots(companyId?: string, serviceId?: string, from?: string, to?: string): Promise<{
+    getSlots(query: GetPublicSlotsDto): Promise<{
         start: string;
         end: string;
     }[]>;

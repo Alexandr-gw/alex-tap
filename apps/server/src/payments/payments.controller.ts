@@ -1,4 +1,5 @@
 import { Body, Controller, Post, UseGuards, Param, Get } from '@nestjs/common';
+import {Throttle} from '@nestjs/throttler';
 import { PaymentsService } from './payments.service';
 import { CreateCheckoutDto } from './dto/create-checkout.dto';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
@@ -10,6 +11,7 @@ export class PaymentsController {
     constructor(private readonly payments: PaymentsService) {}
 
     @Post('checkout')
+    @Throttle({default: {ttl: 60_000, limit: 10}})
     async checkout(
         @CompanyId() companyId: string,
         @AuthUser() claims: any,
@@ -19,6 +21,7 @@ export class PaymentsController {
     }
 
     @Get("checkout-session/:sessionId")
+    @Throttle({default: {ttl: 60_000, limit: 30}})
     async getCheckoutSessionSummary(
         @CompanyId() companyId: string,
         @AuthUser() claims: any,

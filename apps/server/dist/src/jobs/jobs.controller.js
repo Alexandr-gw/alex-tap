@@ -14,6 +14,7 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.JobsController = void 0;
 const common_1 = require("@nestjs/common");
+const throttler_1 = require("@nestjs/throttler");
 const jwt_auth_guard_1 = require("../common/guards/jwt-auth.guard");
 const jobs_service_1 = require("./jobs.service");
 const create_job_dto_1 = require("./dto/create-job.dto");
@@ -202,6 +203,7 @@ exports.JobsController = JobsController;
 __decorate([
     (0, common_1.Post)(),
     (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
+    (0, throttler_1.Throttle)({ default: { ttl: 60_000, limit: 20 } }),
     __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Body)(new common_1.ValidationPipe({ whitelist: true, transform: true }))),
     __param(2, (0, common_1.Headers)('idempotency-key')),
@@ -247,6 +249,7 @@ __decorate([
 ], JobsController.prototype, "getNotifications", null);
 __decorate([
     (0, common_1.Post)(':id/notifications/send-confirmation'),
+    (0, throttler_1.Throttle)({ default: { ttl: 60_000, limit: 20 } }),
     __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
@@ -264,6 +267,7 @@ __decorate([
 ], JobsController.prototype, "getOne", null);
 __decorate([
     (0, common_1.Patch)(':id'),
+    (0, throttler_1.Throttle)({ default: { ttl: 60_000, limit: 20 } }),
     __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Param)('id')),
     __param(2, (0, common_1.Body)(new common_1.ValidationPipe({ whitelist: true, transform: true }))),
@@ -273,6 +277,7 @@ __decorate([
 ], JobsController.prototype, "update", null);
 __decorate([
     (0, common_1.Post)(':id/complete'),
+    (0, throttler_1.Throttle)({ default: { ttl: 60_000, limit: 20 } }),
     __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
@@ -281,6 +286,7 @@ __decorate([
 ], JobsController.prototype, "complete", null);
 __decorate([
     (0, common_1.Post)(':id/cancel'),
+    (0, throttler_1.Throttle)({ default: { ttl: 60_000, limit: 20 } }),
     __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
@@ -289,6 +295,7 @@ __decorate([
 ], JobsController.prototype, "cancel", null);
 __decorate([
     (0, common_1.Post)(':id/reopen'),
+    (0, throttler_1.Throttle)({ default: { ttl: 60_000, limit: 20 } }),
     __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
@@ -297,6 +304,7 @@ __decorate([
 ], JobsController.prototype, "reopen", null);
 __decorate([
     (0, common_1.Post)(':id/comments'),
+    (0, throttler_1.Throttle)({ default: { ttl: 60_000, limit: 20 } }),
     __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Param)('id')),
     __param(2, (0, common_1.Body)(new common_1.ValidationPipe({ whitelist: true, transform: true }))),
@@ -306,6 +314,7 @@ __decorate([
 ], JobsController.prototype, "createComment", null);
 __decorate([
     (0, common_1.Patch)(':id/internal-notes'),
+    (0, throttler_1.Throttle)({ default: { ttl: 60_000, limit: 20 } }),
     __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Param)('id')),
     __param(2, (0, common_1.Body)(new common_1.ValidationPipe({ whitelist: true, transform: true }))),
@@ -315,6 +324,7 @@ __decorate([
 ], JobsController.prototype, "updateInternalNotes", null);
 __decorate([
     (0, common_1.Post)(':id/request-payment'),
+    (0, throttler_1.Throttle)({ default: { ttl: 60_000, limit: 20 } }),
     __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Param)('id')),
     __param(2, (0, common_1.Body)(new common_1.ValidationPipe({ whitelist: true, transform: true }))),
@@ -324,6 +334,7 @@ __decorate([
 ], JobsController.prototype, "requestPayment", null);
 __decorate([
     (0, common_1.Patch)(':id/review'),
+    (0, throttler_1.Throttle)({ default: { ttl: 60_000, limit: 20 } }),
     __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Param)('id')),
     __param(2, (0, common_1.Headers)('x-company-id')),

@@ -14,6 +14,7 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PaymentsController = void 0;
 const common_1 = require("@nestjs/common");
+const throttler_1 = require("@nestjs/throttler");
 const payments_service_1 = require("./payments.service");
 const create_checkout_dto_1 = require("./dto/create-checkout.dto");
 const jwt_auth_guard_1 = require("../common/guards/jwt-auth.guard");
@@ -33,6 +34,7 @@ let PaymentsController = class PaymentsController {
 exports.PaymentsController = PaymentsController;
 __decorate([
     (0, common_1.Post)('checkout'),
+    (0, throttler_1.Throttle)({ default: { ttl: 60_000, limit: 10 } }),
     __param(0, (0, auth_user_decorator_1.CompanyId)()),
     __param(1, (0, auth_user_decorator_1.AuthUser)()),
     __param(2, (0, common_1.Body)()),
@@ -42,6 +44,7 @@ __decorate([
 ], PaymentsController.prototype, "checkout", null);
 __decorate([
     (0, common_1.Get)("checkout-session/:sessionId"),
+    (0, throttler_1.Throttle)({ default: { ttl: 60_000, limit: 30 } }),
     __param(0, (0, auth_user_decorator_1.CompanyId)()),
     __param(1, (0, auth_user_decorator_1.AuthUser)()),
     __param(2, (0, common_1.Param)("sessionId")),

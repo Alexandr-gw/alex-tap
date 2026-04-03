@@ -14,6 +14,7 @@ const email_provider_1 = require("./providers/email.provider");
 const resend_provider_1 = require("./providers/resend.provider");
 const smtp_provider_1 = require("./providers/smtp.provider");
 const twilio_provider_1 = require("./providers/twilio.provider");
+const booking_access_service_1 = require("../public-booking/booking-access.service");
 let NotificationModule = class NotificationModule {
 };
 exports.NotificationModule = NotificationModule;
@@ -22,6 +23,7 @@ exports.NotificationModule = NotificationModule = __decorate([
         providers: [
             notification_service_1.NotificationService,
             notification_queue_service_1.NotificationQueueService,
+            booking_access_service_1.BookingAccessService,
             smtp_provider_1.SmtpEmailProvider,
             resend_provider_1.ResendEmailProvider,
             twilio_provider_1.TwilioSmsProvider,

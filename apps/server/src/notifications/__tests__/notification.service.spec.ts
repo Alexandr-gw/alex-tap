@@ -21,9 +21,7 @@ describe('NotificationService', () => {
       updateMany: jest.fn(),
       findMany: jest.fn(),
     },
-    bookingAccessLink: {
-      upsert: jest.fn(),
-    },
+
   };
 
   const queues = {
@@ -35,11 +33,16 @@ describe('NotificationService', () => {
     sendEmail: jest.fn(),
   };
 
+  const bookingAccess = {
+    getJobAccessUrl: jest.fn(),
+  };
+
   const makeService = () =>
     new NotificationService(
       prisma as any,
       queues as any,
       emailProvider as any,
+      bookingAccess as any,
     );
 
   const makeJob = (overrides?: Partial<any>) => ({
@@ -58,7 +61,6 @@ describe('NotificationService', () => {
       address: '123 Main St',
     },
     worker: { displayName: 'Lena' },
-    bookingAccessLink: null,
     ...overrides,
   });
 
@@ -83,7 +85,7 @@ describe('NotificationService', () => {
     process.env.APP_PUBLIC_URL = 'http://localhost:3000';
 
     prisma.notification.updateMany.mockResolvedValue({ count: 0 });
-    prisma.bookingAccessLink.upsert.mockResolvedValue({ token: 'booking-token' });
+    bookingAccess.getJobAccessUrl.mockResolvedValue('http://localhost:3000/booking/booking-token');
     queues.cancelEmailReminder.mockResolvedValue(undefined);
     queues.scheduleEmailReminder.mockResolvedValue(undefined);
   });
@@ -180,3 +182,7 @@ describe('NotificationService', () => {
     ]);
   });
 });
+
+
+
+

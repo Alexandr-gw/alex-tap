@@ -1,8 +1,10 @@
 import { Controller, Get, HttpException, HttpStatus } from '@nestjs/common';
+import {SkipThrottle} from '@nestjs/throttler';
 import { PrismaService } from '@/prisma/prisma.service';
 import { NotificationQueueService } from '@/notifications/queue/notification-queue.service';
 
 @Controller('healthz')
+@SkipThrottle({default: true})
 export class HealthController {
     constructor(
         private readonly prisma: PrismaService,
