@@ -11,7 +11,12 @@ RUN npm ci
 
 COPY . .
 
+RUN npm -w apps/server exec prisma generate
+RUN npm -w apps/server run build
+
+ENV NODE_ENV=production
+
 WORKDIR /workspace/apps/server
 
-CMD ["npm", "run", "start:worker"]
+CMD ["npm", "run", "start:worker:prod"]
 

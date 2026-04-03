@@ -1,21 +1,20 @@
+import { AlertsService } from '@/alerts/alerts.service';
+import { ActivityService } from '@/activity/activity.service';
+import { AuditLogService } from '@/observability/audit-log.service';
+import { PaymentsService } from '@/payments/payments.service';
 import { PrismaService } from '@/prisma/prisma.service';
 import { SlotsService } from '@/slots/slots.service';
-import { PaymentsService } from '@/payments/payments.service';
-import { ActivityService } from '@/activity/activity.service';
-import { AlertsService } from '@/alerts/alerts.service';
-import { AuditLogService } from '@/observability/audit-log.service';
 import { type EmailProvider } from '@/notifications/providers/email.provider';
 import { PublicCheckoutDto } from './dto/public-checkout.dto';
 import { RequestBookingChangesDto } from './dto/request-booking-changes.dto';
 export declare class PublicBookingService {
-    private readonly prisma;
-    private readonly slots;
-    private readonly payments;
-    private readonly activity;
-    private readonly alerts;
-    private readonly audit;
-    private readonly emailProvider;
-    constructor(prisma: PrismaService, slots: SlotsService, payments: PaymentsService, activity: ActivityService, alerts: AlertsService, audit: AuditLogService, emailProvider: EmailProvider);
+    private readonly catalog;
+    private readonly availability;
+    private readonly checkout;
+    private readonly bookingAccess;
+    private readonly bookingChangeRequests;
+    private readonly persistence;
+    constructor(prisma: PrismaService, slots: SlotsService, payments: PaymentsService, activity: ActivityService, alerts: AlertsService, audit?: AuditLogService, emailProvider?: EmailProvider);
     getPublicService(companySlug: string, serviceSlug: string): Promise<{
         companyId: string;
         companyName: string;
@@ -88,10 +87,8 @@ export declare class PublicBookingService {
         expiresAt: Date | null;
         token: string;
     }>;
-    private buildPublicCheckoutIdempotencyKey;
     private findBookingAccessLink;
     private sendBookingChangeRequestEmail;
-    private acquireCompanyDayBookingLock;
     private withSerializableRetry;
     private isRetryableTransactionError;
 }

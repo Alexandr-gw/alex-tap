@@ -6,6 +6,7 @@ import {
     UseGuards,
     BadRequestException,
 } from "@nestjs/common";
+import {Throttle} from "@nestjs/throttler";
 
 import { JwtAuthGuard } from "@/common/guards/jwt-auth.guard";
 import { SlotsService } from "./slots.service";
@@ -78,6 +79,7 @@ export class SlotsController {
 }
 
 @Controller("api/v1/public/slots")
+@Throttle({default: {ttl: 60_000, limit: 30}})
 export class PublicSlotsController {
     constructor(private readonly slots: SlotsService) {}
 

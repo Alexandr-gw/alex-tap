@@ -3,7 +3,6 @@ import {defineConfig, loadEnv} from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
 import tailwindcss from "@tailwindcss/vite";
-import {keycloakify} from "keycloakify/vite-plugin";
 
 export default defineConfig(({mode}) => {
     const env = loadEnv(mode, process.cwd(), "");
@@ -11,9 +10,7 @@ export default defineConfig(({mode}) => {
     const SERVER_PORT = env.API_PORT || "5000"; // backend port
 
     return {
-        plugins: [react(), tailwindcss(), keycloakify({
-            themeName: "my-theme", accountThemeImplementation: "none"
-        })],
+        plugins: [react(), tailwindcss()],
         server: {
             port: 3000, // FE port
             proxy: {

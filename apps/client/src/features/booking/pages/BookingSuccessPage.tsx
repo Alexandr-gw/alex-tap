@@ -2,6 +2,7 @@ import { useEffect, useMemo } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { useCheckoutSessionSummary } from "@/features/booking/hooks/payment.queries";
 import { useMe } from "@/features/me/hooks/useMe";
+import { isApiError } from "@/lib/api/apiError";
 import {
     clearLastActiveBookingDraftKey,
     getLastActiveBookingSlug,
@@ -96,6 +97,11 @@ export function BookingSuccessPage() {
         data?.status === "SUCCEEDED" ||
         data?.status === "FAILED" ||
         data?.status === "REFUNDED";
+    const errorMessage = isApiError(error)
+        ? error.message
+        : error instanceof Error
+          ? error.message
+          : "Unknown error";
 
     return (
         <div className="mx-auto max-w-2xl p-6">
@@ -117,7 +123,7 @@ export function BookingSuccessPage() {
                 <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4">
                     <p className="font-medium text-red-900">Something went wrong.</p>
                     <p className="mt-1 text-sm text-red-900/80">
-                        {error instanceof Error ? error.message : "Unknown error"}
+                        {errorMessage}
                     </p>
                 </div>
             )}

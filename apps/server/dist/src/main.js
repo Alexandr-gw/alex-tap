@@ -4,6 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 require("reflect-metadata");
+const common_1 = require("@nestjs/common");
 const core_1 = require("@nestjs/core");
 const app_module_1 = require("./app.module");
 const cookie_parser_1 = __importDefault(require("cookie-parser"));
@@ -23,11 +24,19 @@ function parseAllowedOrigins() {
     return [...new Set(values)];
 }
 async function bootstrap() {
-    const app = await core_1.NestFactory.create(app_module_1.AppModule, { bufferLogs: true });
+    const app = await core_1.NestFactory.create(app_module_1.AppModule, {
+        bufferLogs: true,
+        rawBody: true,
+    });
     const logger = app.get(app_logger_service_1.AppLogger);
     const requestContextMiddleware = app.get(request_context_middleware_1.RequestContextMiddleware);
     const allowedOrigins = parseAllowedOrigins();
     app.useLogger(logger);
+    app.useGlobalPipes(new common_1.ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+    }));
     app.use((0, cookie_parser_1.default)());
     app.use((0, helmet_1.default)({
         contentSecurityPolicy: false,

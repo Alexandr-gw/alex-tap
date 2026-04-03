@@ -21,9 +21,7 @@ exports.StripeModule = StripeModule = __decorate([
         providers: [
             {
                 provide: 'STRIPE',
-                useFactory: () => new stripe_1.default(process.env.STRIPE_SECRET_KEY, {
-                    apiVersion: '2024-06-20',
-                }),
+                useFactory: () => new stripe_1.default(process.env.STRIPE_SECRET_KEY),
             },
         ],
         exports: ['STRIPE'],

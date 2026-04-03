@@ -163,4 +163,10 @@ export declare class ScheduleService {
         paidAt: Date | null;
     }>;
     private requireManagerActor;
+    private getAssignedWorkerIds;
+    private resolveNextWorkerIds;
+    private syncJobAssignments;
+    private areStringArraysEqual;
+    private assertNoWorkerConflicts;
+    private validateWorkerIds;
 }

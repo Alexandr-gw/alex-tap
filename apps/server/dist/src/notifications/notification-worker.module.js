@@ -13,13 +13,14 @@ const prisma_module_1 = require("../prisma/prisma.module");
 const notification_module_1 = require("./notification.module");
 const notification_worker_service_1 = require("./notification-worker.service");
 const observability_module_1 = require("../observability/observability.module");
+const env_validation_1 = require("../config/env.validation");
 let NotificationWorkerModule = class NotificationWorkerModule {
 };
 exports.NotificationWorkerModule = NotificationWorkerModule;
 exports.NotificationWorkerModule = NotificationWorkerModule = __decorate([
     (0, common_1.Module)({
         imports: [
-            config_1.ConfigModule.forRoot({ isGlobal: true }),
+            config_1.ConfigModule.forRoot(env_validation_1.configModuleOptions),
             prisma_module_1.PrismaModule,
             observability_module_1.ObservabilityModule,
             notification_module_1.NotificationModule,

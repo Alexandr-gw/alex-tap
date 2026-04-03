@@ -32,7 +32,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/21</span>
+                <span class='fraction'>0/20</span>
             </div>
         
             
@@ -128,24 +128,22 @@
 <a name='L63'></a><a href='#L63'>63</a>
 <a name='L64'></a><a href='#L64'>64</a>
 <a name='L65'></a><a href='#L65'>65</a>
-<a name='L66'></a><a href='#L66'>66</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L66'></a><a href='#L66'>66</a>
+<a name='L67'></a><a href='#L67'>67</a>
+<a name='L68'></a><a href='#L68'>68</a>
+<a name='L69'></a><a href='#L69'>69</a>
+<a name='L70'></a><a href='#L70'>70</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -155,17 +153,15 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -175,9 +171,6 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -193,13 +186,31 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" >import {Controller, Get, Post, Query, Param, BadRequestException, Body} from "@nestjs/common";</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" >import {Body, Controller, Get, Param, Post, Query, ValidationPipe} from "@nestjs/common";</span>
+<span class="cstat-no" title="statement not covered" >import {Throttle} from "@nestjs/throttler";</span>
 <span class="cstat-no" title="statement not covered" >import {PublicBookingService} from "./public-booking.service";</span>
 <span class="cstat-no" title="statement not covered" >import {PublicCheckoutDto} from "./dto/public-checkout.dto";</span>
 <span class="cstat-no" title="statement not covered" >import {PaymentsService} from "@/payments/payments.service";</span>
 <span class="cstat-no" title="statement not covered" >import {RequestBookingChangesDto} from "./dto/request-booking-changes.dto";</span>
+<span class="cstat-no" title="statement not covered" >import {GetPublicSlotsDto} from "./dto/get-public-slots.dto";</span>
 &nbsp;
 @Controller("api/v1/public")
+@Throttle({default: {ttl: 60_000, limit: 30}})
 export <span class="cstat-no" title="statement not covered" >class <span class="cstat-no" title="statement not covered" ><span class="cstat-no" title="statement not covered" >PublicBookingController </span>{</span></span>
 <span class="fstat-no" title="function not covered" >    constructor(private readonly <span class="cstat-no" title="statement not covered" >s</span>vc: P</span>ublicBookingService,
                 private readonly <span class="cstat-no" title="statement not covered" >payments: P</span>aymentsService,) {
@@ -217,15 +228,10 @@ export <span class="cstat-no" title="statement not covered" >class <span class="
     // GET /public/slots?companyId&amp;serviceId&amp;from&amp;to
     @Get("slots")
 <span class="fstat-no" title="function not covered" >    async <span class="cstat-no" title="statement not covered" ></span>getSlots(</span>
-        @Query("companyId") companyId?: string,
-        @Query("serviceId") serviceId?: string,
-        @Query("from") from?: string,
-        @Query("to") to?: string,
+        @Query(new ValidationPipe({ whitelist: true, transform: true, forbidNonWhitelisted: true }))
+        query: GetPublicSlotsDto,
     ) {
-<span class="cstat-no" title="statement not covered" >        <span class="missing-if-branch" title="if path not taken" >I</span>if (!companyId || !serviceId || !from || !to) {</span>
-<span class="cstat-no" title="statement not covered" >            throw new BadRequestException("Missing query params: companyId, serviceId, from, to");</span>
-        }
-<span class="cstat-no" title="statement not covered" >        return this.svc.getPublicSlots({companyId, serviceId, from, to});</span>
+<span class="cstat-no" title="statement not covered" >        return this.svc.getPublicSlots(query);</span>
     }
 &nbsp;
     // GET /public/companies/:companySlug/services
@@ -236,7 +242,11 @@ export <span class="cstat-no" title="statement not covered" >class <span class="
 &nbsp;
     // POST /public/bookings/checkout
     @Post("bookings/checkout")
-<span class="fstat-no" title="function not covered" >    async <span class="cstat-no" title="statement not covered" ></span>checkout(@Body() dto: PublicCheckoutDto) {</span>
+    @Throttle({default: {ttl: 600_000, limit: 5}})
+<span class="fstat-no" title="function not covered" >    async <span class="cstat-no" title="statement not covered" ></span>checkout(</span>
+        @Body(new ValidationPipe({ whitelist: true, transform: true, forbidNonWhitelisted: true }))
+        dto: PublicCheckoutDto,
+    ) {
 <span class="cstat-no" title="statement not covered" >        return this.svc.createPublicCheckout(dto);</span>
     }
 &nbsp;
@@ -246,9 +256,11 @@ export <span class="cstat-no" title="statement not covered" >class <span class="
     }
 &nbsp;
     @Post("bookings/access/:token/request-changes")
+    @Throttle({default: {ttl: 1_800_000, limit: 3}})
 <span class="fstat-no" title="function not covered" >    async <span class="cstat-no" title="statement not covered" ></span>requestBookingChanges(</span>
         @Param("token") token: string,
-        @Body() dto: RequestBookingChangesDto,
+        @Body(new ValidationPipe({ whitelist: true, transform: true, forbidNonWhitelisted: true }))
+        dto: RequestBookingChangesDto,
     ) {
 <span class="cstat-no" title="statement not covered" >        return this.svc.requestBookingChanges(token, dto);</span>
     }
@@ -265,7 +277,7 @@ export <span class="cstat-no" title="statement not covered" >class <span class="
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-03-28T12:40:55.996Z
+                at 2026-04-02T12:51:38.907Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

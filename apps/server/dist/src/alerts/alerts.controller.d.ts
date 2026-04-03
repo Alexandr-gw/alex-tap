@@ -35,6 +35,7 @@ export declare class AlertsController {
         }[];
     }>;
     getOne(req: any, id: string): Promise<{
+        constAssignedWorkerIds: undefined;
         id: string;
         type: "BOOKING_REVIEW";
         status: import("@prisma/client").$Enums.AlertStatus;
@@ -72,6 +73,7 @@ export declare class AlertsController {
                 phone: string | null;
                 colorTag: string | null;
             } | null;
+            workerIds: string[];
             lineItems: {
                 id: string;
                 description: string;

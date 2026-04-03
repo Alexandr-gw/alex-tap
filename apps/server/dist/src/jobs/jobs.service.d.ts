@@ -12,6 +12,13 @@ import { RequestJobPaymentDto } from './dto/request-job-payment.dto';
 import { PaymentsService } from '@/payments/payments.service';
 import { NotificationService } from '@/notifications/notification.service';
 import { ActivityService } from '@/activity/activity.service';
+import { JobAccessService } from './services/job-access.service';
+import { JobAssignmentService } from './services/job-assignment.service';
+import { JobCollaborationService } from './services/job-collaboration.service';
+import { JobCreationService } from './services/job-creation.service';
+import { JobDraftService } from './services/job-draft.service';
+import { JobLifecycleService } from './services/job-lifecycle.service';
+import { JobQueryService } from './services/job-query.service';
 export declare class JobsService {
     private readonly prisma;
     private readonly slots;
@@ -19,7 +26,14 @@ export declare class JobsService {
     private readonly payments;
     private readonly notifications;
     private readonly activity;
-    constructor(prisma: PrismaService, slots: SlotsService, schedule: ScheduleService, payments: PaymentsService, notifications: NotificationService, activity: ActivityService);
+    private readonly jobAssignments;
+    private readonly jobAccess;
+    private readonly jobDraft;
+    private readonly jobQuery;
+    private readonly jobCreation;
+    private readonly jobLifecycle;
+    private readonly jobCollaboration;
+    constructor(prisma: PrismaService, slots: SlotsService, schedule: ScheduleService, payments: PaymentsService, notifications: NotificationService, activity: ActivityService, jobAccess?: JobAccessService, jobAssignments?: JobAssignmentService, jobDraft?: JobDraftService, jobQuery?: JobQueryService, jobCreation?: JobCreationService, jobLifecycle?: JobLifecycleService, jobCollaboration?: JobCollaborationService);
     findManyForUser(input: {
         companyId: string;
         roles: string[];

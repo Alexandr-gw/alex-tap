@@ -12,7 +12,7 @@ import { PaymentProvider, PaymentStatus, JobStatus } from '@prisma/client';
 import { CreateCheckoutDto } from './dto/create-checkout.dto';
 import { randomUUID } from 'crypto';
 import Stripe from 'stripe';
-import { buildBookingAccessUrl, createBookingAccessToken, getBookingAccessExpiry } from '@/public-booking/public-booking.utils';
+import { BookingAccessService } from '@/public-booking/booking-access.service';
 
 type CheckoutSummaryDto = {
     ok: true;
@@ -35,6 +35,7 @@ export class PaymentsService {
         private readonly prisma: PrismaService,
         private readonly alerts: AlertsService,
         private readonly activity: ActivityService,
+        private readonly bookingAccess: BookingAccessService,
         @Inject('STRIPE') private readonly stripe: Stripe,
     ) {}
 
@@ -123,13 +124,15 @@ export class PaymentsService {
             throw new BadRequestException('APP_PUBLIC_URL is not configured');
         }
 
-        const successUrl =
-            dto.successUrl ??
-            `${appPublicUrl}/payment/success?session_id={CHECKOUT_SESSION_ID}`;
+        const successUrl = this.resolveCheckoutRedirectUrl(
+            dto.successUrl,
+            `${appPublicUrl}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
+        );
 
-        const cancelUrl =
-            dto.cancelUrl ??
-            `${appPublicUrl}/payment/cancel?session_id={CHECKOUT_SESSION_ID}`;
+        const cancelUrl = this.resolveCheckoutRedirectUrl(
+            dto.cancelUrl,
+            `${appPublicUrl}/payment/cancel?session_id={CHECKOUT_SESSION_ID}`,
+        );
 
         const session = await this.stripe.checkout.sessions.create(
             {
@@ -177,7 +180,11 @@ export class PaymentsService {
     async getCheckoutSessionSummaryPublic(args: {
         sessionId: string;
     }): Promise<CheckoutSummaryDto> {
-        await this.reconcileCheckoutSessionIfPaid(args.sessionId);
+        const stripeSession = await this.safeRetrieveCheckoutSession(args.sessionId);
+        if (stripeSession) {
+            await this.ensurePaymentRecordForCheckoutSession(stripeSession);
+        }
+        await this.reconcileCheckoutSessionIfPaid(args.sessionId, stripeSession);
 
         const payment = await this.prisma.payment.findFirst({
             where: {
@@ -212,17 +219,19 @@ export class PaymentsService {
         });
 
         if (!payment || !payment.job || payment.job.source !== 'PUBLIC') {
+            if (stripeSession) {
+                return this.buildCheckoutSummaryFromSession(stripeSession, true);
+            }
             throw new NotFoundException('Payment not found');
         }
 
-        const stripeSession = await this.safeRetrieveCheckoutSession(args.sessionId);
         const effectiveStatus = this.getEffectivePaymentStatus(
             payment.status,
             stripeSession,
         );
-        const bookingAccessPath = await this.getBookingAccessPath(
-            payment.job.id,
+        const bookingAccessPath = await this.bookingAccess.getJobAccessPath(
             payment.job.companyId,
+            payment.job.id,
             payment.job.source,
         );
 
@@ -245,7 +254,11 @@ export class PaymentsService {
         companyId: string;
         sessionId: string;
     }): Promise<CheckoutSummaryDto> {
-        await this.reconcileCheckoutSessionIfPaid(args.sessionId);
+        const stripeSession = await this.safeRetrieveCheckoutSession(args.sessionId);
+        if (stripeSession) {
+            await this.ensurePaymentRecordForCheckoutSession(stripeSession);
+        }
+        await this.reconcileCheckoutSessionIfPaid(args.sessionId, stripeSession);
 
         const payment = await this.prisma.payment.findFirst({
             where: {
@@ -282,10 +295,12 @@ export class PaymentsService {
         });
 
         if (!payment || !payment.job) {
+            if (stripeSession) {
+                return this.buildCheckoutSummaryFromSession(stripeSession, false, args.companyId);
+            }
             throw new NotFoundException('Payment not found');
         }
 
-        const stripeSession = await this.safeRetrieveCheckoutSession(args.sessionId);
         const effectiveStatus = this.getEffectivePaymentStatus(
             payment.status,
             stripeSession,
@@ -303,9 +318,9 @@ export class PaymentsService {
             receiptUrl: payment.receiptUrl ?? null,
             paymentId: payment.id,
             customerMessage: this.getCustomerMessage(effectiveStatus),
-            bookingAccessPath: await this.getBookingAccessPath(
-                payment.job.id,
+            bookingAccessPath: await this.bookingAccess.getJobAccessPath(
                 payment.job.companyId,
+                payment.job.id,
                 payment.job.source,
             ),
         };
@@ -530,7 +545,10 @@ export class PaymentsService {
     }
 
 
-    private async reconcileCheckoutSessionIfPaid(sessionId: string) {
+    private async reconcileCheckoutSessionIfPaid(
+        sessionId: string,
+        sessionOverride?: Stripe.Checkout.Session | null,
+    ) {
         const payment = await this.prisma.payment.findFirst({
             where: { stripeSessionId: sessionId },
             select: { id: true, status: true },
@@ -539,12 +557,165 @@ export class PaymentsService {
             return;
         }
 
-        const session = await this.safeRetrieveCheckoutSession(sessionId);
+        const session = sessionOverride ?? (await this.safeRetrieveCheckoutSession(sessionId));
         if (!session || session.payment_status !== 'paid') {
             return;
         }
 
         await this.markCheckoutSessionCompleted(session, null);
+    }
+
+    private async ensurePaymentRecordForCheckoutSession(
+        session: Stripe.Checkout.Session,
+    ) {
+        const existing = await this.prisma.payment.findFirst({
+            where: { stripeSessionId: session.id },
+            select: { id: true },
+        });
+        if (existing) {
+            return existing.id;
+        }
+
+        const jobId =
+            typeof session.client_reference_id === 'string'
+                ? session.client_reference_id
+                : null;
+        const companyId = session.metadata?.companyId ?? null;
+
+        if (!jobId || !companyId) {
+            return null;
+        }
+
+        const job = await this.prisma.job.findFirst({
+            where: { id: jobId, companyId },
+            select: {
+                id: true,
+                companyId: true,
+                balanceCents: true,
+                totalCents: true,
+                currency: true,
+            },
+        });
+
+        if (!job) {
+            return null;
+        }
+
+        const amountCents =
+            session.amount_total ??
+            (job.balanceCents > 0 ? job.balanceCents : job.totalCents);
+        const sessionStatus =
+            session.payment_status === 'paid'
+                ? PaymentStatus.PENDING
+                : session.status === 'expired'
+                  ? PaymentStatus.FAILED
+                  : PaymentStatus.REQUIRES_ACTION;
+
+        try {
+            const created = await this.prisma.payment.create({
+                data: {
+                    companyId: job.companyId,
+                    jobId: job.id,
+                    provider: PaymentProvider.STRIPE,
+                    amountCents,
+                    currency: (session.currency ?? job.currency ?? 'CAD').toUpperCase(),
+                    status: sessionStatus,
+                    stripeSessionId: session.id,
+                    stripePaymentIntentId:
+                        typeof session.payment_intent === 'string'
+                            ? session.payment_intent
+                            : session.payment_intent?.id,
+                    stripeCustomerId:
+                        typeof session.customer === 'string'
+                            ? session.customer
+                            : session.customer?.id,
+                    metadata: {
+                        recoveredFromSession: true,
+                    },
+                },
+                select: { id: true },
+            });
+
+            return created.id;
+        } catch {
+            return null;
+        }
+    }
+
+    private async buildCheckoutSummaryFromSession(
+        session: Stripe.Checkout.Session,
+        requirePublic: boolean,
+        companyScope?: string,
+    ): Promise<CheckoutSummaryDto> {
+        const jobId =
+            typeof session.client_reference_id === 'string'
+                ? session.client_reference_id
+                : null;
+        const companyId = session.metadata?.companyId ?? companyScope ?? null;
+
+        if (!jobId || !companyId) {
+            throw new NotFoundException('Payment not found');
+        }
+
+        const job = await this.prisma.job.findFirst({
+            where: {
+                id: jobId,
+                companyId,
+                ...(requirePublic ? { source: 'PUBLIC' } : {}),
+            },
+            select: {
+                id: true,
+                companyId: true,
+                source: true,
+                startAt: true,
+                currency: true,
+                client: {
+                    select: { name: true },
+                },
+                lineItems: {
+                    select: { description: true },
+                    take: 1,
+                    orderBy: { id: 'asc' },
+                },
+            },
+        });
+
+        if (!job) {
+            throw new NotFoundException('Payment not found');
+        }
+
+        const status = this.getEffectivePaymentStatus(
+            session.payment_status === 'paid'
+                ? PaymentStatus.SUCCEEDED
+                : session.status === 'expired'
+                  ? PaymentStatus.FAILED
+                  : PaymentStatus.REQUIRES_ACTION,
+            session,
+        );
+
+        const receiptUrl = await this.getReceiptUrl(
+            typeof session.payment_intent === 'string'
+                ? session.payment_intent
+                : session.payment_intent?.id ?? null,
+        );
+
+        return {
+            ok: true,
+            status,
+            amountCents: session.amount_total ?? 0,
+            currency: (session.currency ?? job.currency ?? 'CAD').toUpperCase(),
+            jobId: job.id,
+            serviceName: job.lineItems?.[0]?.description ?? 'Service',
+            clientName: job.client?.name ?? null,
+            scheduledAt: job.startAt?.toISOString() ?? null,
+            receiptUrl,
+            customerMessage: this.getCustomerMessage(status),
+            bookingAccessPath: await this.bookingAccess.getJobAccessPath(
+                job.companyId,
+                job.id,
+                job.source,
+            ),
+        };
     }
     private getCustomerMessage(status: PaymentStatus): string | null {
         if (status === PaymentStatus.SUCCEEDED) {
@@ -617,35 +788,70 @@ export class PaymentsService {
         return latestCharge?.receipt_url ?? null;
     }
 
-    private async getBookingAccessPath(
-        jobId: string,
-        companyId: string,
-        source: string | null,
+    private resolveCheckoutRedirectUrl(
+        candidateUrl: string | undefined,
+        fallbackUrl: string,
     ) {
-        if (source !== 'PUBLIC') {
-            return null;
+        const rawValue = candidateUrl?.trim() || fallbackUrl;
+        const appPublicUrl = process.env.APP_PUBLIC_URL?.trim();
+
+        if (!appPublicUrl) {
+            throw new BadRequestException('APP_PUBLIC_URL is not configured');
         }
 
-        const link = await this.prisma.bookingAccessLink.upsert({
-            where: { jobId },
-            create: {
-                companyId,
-                jobId,
-                token: createBookingAccessToken(),
-                expiresAt: getBookingAccessExpiry(),
-            },
-            update: {},
-            select: { token: true },
-        });
+        const allowedOrigins = this.getAllowedCheckoutOrigins(appPublicUrl);
 
+        let parsed: URL;
         try {
-            const url = new URL(buildBookingAccessUrl(link.token));
-            return `${url.pathname}${url.search}${url.hash}`;
+            if (rawValue.startsWith('//')) {
+                throw new Error('Protocol-relative URLs are not allowed');
+            }
+
+            parsed = rawValue.startsWith('/')
+                ? new URL(rawValue, `${appPublicUrl.replace(/\/$/, '')}/`)
+                : new URL(rawValue);
         } catch {
-            return `/booking/${link.token}`;
+            throw new BadRequestException('Invalid checkout redirect URL');
         }
+
+        if (!['http:', 'https:'].includes(parsed.protocol)) {
+            throw new BadRequestException('Invalid checkout redirect URL');
+        }
+
+        if (!allowedOrigins.has(parsed.origin)) {
+            throw new BadRequestException('Checkout redirect URL origin is not allowed');
+        }
+
+        return parsed.toString();
+    }
+
+    private getAllowedCheckoutOrigins(appPublicUrl: string) {
+        const rawValues = [
+            appPublicUrl,
+            process.env.APP_BASE_URL,
+            process.env.CORS_ORIGINS,
+            process.env.CHECKOUT_ALLOWED_ORIGINS,
+        ]
+            .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+            .flatMap((value) => value.split(','))
+            .map((value) => value.trim())
+            .filter(Boolean);
+
+        const allowedOrigins = new Set<string>();
+        for (const value of rawValues) {
+            try {
+                allowedOrigins.add(new URL(value).origin);
+            } catch {
+                continue;
+            }
+        }
+
+        return allowedOrigins;
     }
 }
+
+
+
 
 
 

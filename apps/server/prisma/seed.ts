@@ -13,8 +13,12 @@ import {
 const prisma = new PrismaClient();
 
 const GST_RATE_BPS = 500;
-const COMPANY_ID = "demo-company";
+const FUTURE_SEED_DAYS = 92;
+const PRIMARY_DEMO_COMPANY_ID = "demo-company";
+const SECONDARY_DEMO_COMPANY_ID = "demo-company-2";
+const DEMO_COMPANY_IDS = [PRIMARY_DEMO_COMPANY_ID, SECONDARY_DEMO_COMPANY_ID] as const;
 const MANAGER_SUB = "00000000-0000-0000-0000-000000000002";
+const SECONDARY_MANAGER_SUB = "00000000-0000-0000-0000-000000000008";
 
 type DemoRole = "ADMIN" | "MANAGER" | "WORKER" | "CLIENT";
 
@@ -106,10 +110,17 @@ type SeededTaskRecord = {
 };
 
 const DEMO_COMPANY = {
-    id: COMPANY_ID,
+    id: PRIMARY_DEMO_COMPANY_ID,
     name: "Alex Tap Home Services",
     timezone: "America/Edmonton",
     slug: "alex-tap-demo"
+} as const;
+
+const SECONDARY_DEMO_COMPANY = {
+    id: SECONDARY_DEMO_COMPANY_ID,
+    name: "Northline Service Group",
+    timezone: "America/Edmonton",
+    slug: "northline-demo"
 } as const;
 
 const DEMO_USERS: DemoUser[] = [
@@ -166,6 +177,34 @@ const DEMO_USERS: DemoUser[] = [
         phone: "+1-780-555-0104",
         colorTag: "#7C3AED",
         specialties: ["hvac", "pest-control"]
+    }
+];
+
+const SECONDARY_MANAGER_USER: DemoUser = {
+    sub: SECONDARY_MANAGER_SUB,
+    email: "manager-demo2@gmail.com",
+    name: "Nora Manager",
+    role: "MANAGER"
+};
+
+const SECONDARY_CONTRACTOR_WORKERS: ContractorWorkerSeed[] = [
+    {
+        displayName: "Eli Electric",
+        phone: "+1-780-555-0211",
+        colorTag: "#2563EB",
+        specialties: ["electrical", "hvac"]
+    },
+    {
+        displayName: "Piper Paint",
+        phone: "+1-780-555-0212",
+        colorTag: "#DB2777",
+        specialties: ["painting", "handyman"]
+    },
+    {
+        displayName: "Luca Leak",
+        phone: "+1-780-555-0213",
+        colorTag: "#059669",
+        specialties: ["plumbing", "window-gutter"]
     }
 ];
 
@@ -424,25 +463,351 @@ function buildClientSeeds(): ClientSeed[] {
 }
 
 async function clearExistingDemoData(): Promise<void> {
-    await prisma.alert.deleteMany({ where: { companyId: COMPANY_ID } });
-    await prisma.notification.deleteMany({ where: { companyId: COMPANY_ID } });
-    await prisma.activity.deleteMany({ where: { companyId: COMPANY_ID } });
-    await prisma.payment.deleteMany({ where: { companyId: COMPANY_ID } });
-    await prisma.jobComment.deleteMany({ where: { job: { companyId: COMPANY_ID } } });
-    await prisma.jobAssignment.deleteMany({ where: { job: { companyId: COMPANY_ID } } });
-    await prisma.jobLineItem.deleteMany({ where: { job: { companyId: COMPANY_ID } } });
-    await prisma.idempotencyKey.deleteMany({ where: { companyId: COMPANY_ID } });
-    await prisma.job.deleteMany({ where: { companyId: COMPANY_ID } });
-    await prisma.taskAssignment.deleteMany({ where: { task: { companyId: COMPANY_ID } } });
-    await prisma.task.deleteMany({ where: { companyId: COMPANY_ID } });
-    await prisma.availabilityException.deleteMany({ where: { companyId: COMPANY_ID } });
-    await prisma.availabilityRule.deleteMany({ where: { companyId: COMPANY_ID } });
-    await prisma.auditLog.deleteMany({ where: { companyId: COMPANY_ID } });
-    await prisma.service.deleteMany({ where: { companyId: COMPANY_ID } });
-    await prisma.clientProfile.deleteMany({ where: { companyId: COMPANY_ID } });
-    await prisma.worker.deleteMany({ where: { companyId: COMPANY_ID } });
-    await prisma.membership.deleteMany({ where: { companyId: COMPANY_ID } });
-    await prisma.company.deleteMany({ where: { id: COMPANY_ID } });
+    const companyIdFilter = { in: [...DEMO_COMPANY_IDS] };
+    await prisma.alert.deleteMany({ where: { companyId: companyIdFilter } });
+    await prisma.notification.deleteMany({ where: { companyId: companyIdFilter } });
+    await prisma.activity.deleteMany({ where: { companyId: companyIdFilter } });
+    await prisma.payment.deleteMany({ where: { companyId: companyIdFilter } });
+    await prisma.jobComment.deleteMany({ where: { job: { companyId: companyIdFilter } } });
+    await prisma.jobAssignment.deleteMany({ where: { job: { companyId: companyIdFilter } } });
+    await prisma.jobLineItem.deleteMany({ where: { job: { companyId: companyIdFilter } } });
+    await prisma.idempotencyKey.deleteMany({ where: { companyId: companyIdFilter } });
+    await prisma.job.deleteMany({ where: { companyId: companyIdFilter } });
+    await prisma.taskAssignment.deleteMany({ where: { task: { companyId: companyIdFilter } } });
+    await prisma.task.deleteMany({ where: { companyId: companyIdFilter } });
+    await prisma.availabilityException.deleteMany({ where: { companyId: companyIdFilter } });
+    await prisma.availabilityRule.deleteMany({ where: { companyId: companyIdFilter } });
+    await prisma.auditLog.deleteMany({ where: { companyId: companyIdFilter } });
+    await prisma.service.deleteMany({ where: { companyId: companyIdFilter } });
+    await prisma.clientProfile.deleteMany({ where: { companyId: companyIdFilter } });
+    await prisma.worker.deleteMany({ where: { companyId: companyIdFilter } });
+    await prisma.membership.deleteMany({ where: { companyId: companyIdFilter } });
+    await prisma.company.deleteMany({ where: { id: companyIdFilter } });
+}
+
+async function seedSecondaryDemoCompany(today: Date, now: Date) {
+    const company = await prisma.company.create({
+        data: {
+            ...SECONDARY_DEMO_COMPANY,
+            createdAt: addDays(today, -120)
+        }
+    });
+
+    const managerUser = await prisma.user.upsert({
+        where: { sub: SECONDARY_MANAGER_USER.sub },
+        update: {
+            email: SECONDARY_MANAGER_USER.email,
+            name: SECONDARY_MANAGER_USER.name
+        },
+        create: {
+            sub: SECONDARY_MANAGER_USER.sub,
+            email: SECONDARY_MANAGER_USER.email,
+            name: SECONDARY_MANAGER_USER.name,
+            createdAt: addDays(today, -110)
+        }
+    });
+
+    const managerMembership = await prisma.membership.create({
+        data: {
+            companyId: company.id,
+            userId: managerUser.id,
+            role: "MANAGER",
+            lastSeenPaidJobsAt: addDays(today, -1)
+        }
+    });
+
+    const workers: SeedWorkerRecord[] = [];
+    for (const [index, workerSeed] of SECONDARY_CONTRACTOR_WORKERS.entries()) {
+        const worker = await prisma.worker.create({
+            data: {
+                companyId: company.id,
+                displayName: workerSeed.displayName,
+                phone: workerSeed.phone,
+                colorTag: workerSeed.colorTag,
+                active: true,
+                createdAt: addDays(today, -90 + index)
+            }
+        });
+
+        workers.push({
+            id: worker.id,
+            displayName: worker.displayName,
+            phone: worker.phone,
+            specialties: workerSeed.specialties
+        });
+
+        for (const dayOfWeek of [1, 2, 3, 4, 5]) {
+            await prisma.availabilityRule.create({
+                data: {
+                    companyId: company.id,
+                    workerId: worker.id,
+                    dayOfWeek,
+                    startTime: dayOfWeek === 5 ? "08:00" : "09:00",
+                    endTime: dayOfWeek === 5 ? "15:00" : "17:00",
+                    timezone: company.timezone,
+                    effectiveFrom: addDays(today, -45)
+                }
+            });
+        }
+    }
+
+    const servicesToSeed = SERVICE_CATALOG.filter((service) =>
+        [
+            "Panel Safety Inspection",
+            "EV Charger Install Consultation",
+            "Furnace Tune-Up",
+            "Interior Room Painting",
+            "Drain Cleaning",
+        ].includes(service.name),
+    );
+
+    const services: SeedServiceRecord[] = [];
+    for (const [index, serviceSeed] of servicesToSeed.entries()) {
+        const service = await prisma.service.create({
+            data: {
+                companyId: company.id,
+                name: serviceSeed.name,
+                slug: `${slugify(serviceSeed.name)}-northline`,
+                durationMins: serviceSeed.durationMins,
+                basePriceCents: serviceSeed.basePriceCents,
+                currency: "CAD",
+                active: true,
+                createdAt: addDays(today, -75 + index)
+            }
+        });
+
+        services.push({
+            id: service.id,
+            name: service.name,
+            slug: service.slug,
+            trade: serviceSeed.trade,
+            durationMins: service.durationMins,
+            basePriceCents: service.basePriceCents
+        });
+    }
+
+    const clients: SeedClientRecord[] = [];
+    for (const [index, clientSeed] of buildClientSeeds().slice(10, 18).entries()) {
+        const client = await prisma.clientProfile.create({
+            data: {
+                companyId: company.id,
+                name: clientSeed.name,
+                email: clientSeed.email,
+                phone: clientSeed.phone,
+                address: clientSeed.address,
+                notes: clientSeed.notes,
+                internalNotes: `${clientSeed.internalNotes} Secondary demo company profile.`,
+                createdAt: addDays(today, -70 + index)
+            }
+        });
+
+        clients.push({
+            id: client.id,
+            name: client.name,
+            email: client.email,
+            phone: client.phone,
+            address: client.address,
+            kind: clientSeed.kind
+        });
+    }
+
+    const seededJobs: SeededJobRecord[] = [];
+
+    const createSecondaryJob = async (params: {
+        client: SeedClientRecord;
+        service: SeedServiceRecord;
+        worker?: SeedWorkerRecord;
+        startAt: Date;
+        status: JobStatus;
+        source: string;
+        createAlert?: boolean;
+    }) => {
+        const subtotalCents = params.service.basePriceCents;
+        const taxCents = taxFor(subtotalCents);
+        const totalCents = subtotalCents + taxCents;
+        const paidCents = params.status === JobStatus.DONE ? totalCents : 0;
+        const endAt = addMinutes(params.startAt, params.service.durationMins);
+
+        const job = await prisma.job.create({
+            data: {
+                companyId: company.id,
+                clientId: params.client.id,
+                workerId: params.worker?.id ?? null,
+                title: params.service.name,
+                description: `${params.service.name} visit for ${params.client.name}.`,
+                status: params.status,
+                startAt: params.startAt,
+                endAt,
+                location: params.client.address,
+                subtotalCents,
+                taxCents,
+                totalCents,
+                paidCents,
+                balanceCents: totalCents - paidCents,
+                currency: "CAD",
+                source: params.source,
+                lineItems: {
+                    create: [
+                        {
+                            serviceId: params.service.id,
+                            description: params.service.name,
+                            quantity: 1,
+                            unitPriceCents: params.service.basePriceCents,
+                            totalCents: subtotalCents
+                        }
+                    ]
+                },
+                assignments:
+                    params.worker && params.status !== JobStatus.PENDING_CONFIRMATION
+                        ? {
+                              create: [
+                                  {
+                                      workerId: params.worker.id
+                                  }
+                              ]
+                          }
+                        : undefined
+            }
+        });
+
+        await prisma.activity.create({
+            data: {
+                companyId: company.id,
+                type: ActivityType.JOB_CREATED,
+                entityType: "Job",
+                entityId: job.id,
+                jobId: job.id,
+                clientId: params.client.id,
+                actorType:
+                    params.source === "public-booking" ? ActivityActorType.PUBLIC : ActivityActorType.USER,
+                actorId: params.source === "public-booking" ? null : managerUser.id,
+                actorLabel:
+                    params.source === "public-booking" ? params.client.name : SECONDARY_MANAGER_USER.name,
+                message: `${params.service.name} was created for ${params.client.name}.`,
+                metadata: {
+                    status: params.status,
+                    worker: params.worker?.displayName ?? null
+                },
+                createdAt: params.startAt < now ? addDays(params.startAt, -1) : addMinutes(now, -30)
+            }
+        });
+
+        if (params.source === "public-booking") {
+            await prisma.activity.create({
+                data: {
+                    companyId: company.id,
+                    type: ActivityType.BOOKING_SUBMITTED,
+                    entityType: "Job",
+                    entityId: job.id,
+                    jobId: job.id,
+                    clientId: params.client.id,
+                    actorType: ActivityActorType.PUBLIC,
+                    actorLabel: params.client.name,
+                    message: `${params.client.name} submitted a booking request for ${params.service.name}.`,
+                    metadata: {
+                        trade: params.service.trade
+                    },
+                    createdAt: params.startAt < now ? addDays(params.startAt, -1) : addMinutes(now, -20)
+                }
+            });
+        }
+
+        if (params.status === JobStatus.DONE) {
+            const payment = await prisma.payment.create({
+                data: {
+                    companyId: company.id,
+                    jobId: job.id,
+                    provider: PaymentProvider.STRIPE,
+                    status: PaymentStatus.SUCCEEDED,
+                    amountCents: totalCents,
+                    currency: "CAD",
+                    receiptUrl: null,
+                    capturedAt: addMinutes(endAt, 20),
+                    metadata: {
+                        source: "seed"
+                    }
+                }
+            });
+
+            await prisma.activity.create({
+                data: {
+                    companyId: company.id,
+                    type: ActivityType.PAYMENT_SUCCEEDED,
+                    entityType: "Payment",
+                    entityId: payment.id,
+                    jobId: job.id,
+                    clientId: params.client.id,
+                    actorType: ActivityActorType.SYSTEM,
+                    actorLabel: "Billing automation",
+                    message: `${params.client.name} paid for ${params.service.name}.`,
+                    metadata: {
+                        totalCents
+                    },
+                    createdAt: addMinutes(endAt, 25)
+                }
+            });
+        }
+
+        if (params.createAlert) {
+            await prisma.alert.create({
+                data: {
+                    companyId: company.id,
+                    jobId: job.id,
+                    membershipId: managerMembership.id,
+                    title: "New booking request",
+                    message: `${params.client.name} needs review before scheduling.`,
+                    payload: {
+                        source: "public-booking"
+                    }
+                }
+            });
+        }
+
+        seededJobs.push({
+            id: job.id,
+            status: job.status,
+            startAt: job.startAt,
+            endAt: job.endAt,
+            client: params.client,
+            worker: params.worker ?? workers[0],
+            trade: params.service.trade,
+            totalCents,
+            source: params.source
+        });
+    };
+
+    for (let index = 0; index < 3; index += 1) {
+        await createSecondaryJob({
+            client: pick(clients, index),
+            service: pick(services, index),
+            worker: pick(workers, index),
+            startAt: setTime(addDays(today, -(index + 1) * 10), 10 + index),
+            status: JobStatus.DONE,
+            source: "admin-panel"
+        });
+    }
+
+    for (let index = 0; index < 10; index += 1) {
+        const pending = index === 1 || index === 5;
+        await createSecondaryJob({
+            client: pick(clients, index + 2),
+            service: pick(services, index),
+            worker: pending ? undefined : pick(workers, index),
+            startAt: setTime(addDays(today, 3 + index * 8), index % 2 === 0 ? 9 : 13),
+            status: pending ? JobStatus.PENDING_CONFIRMATION : JobStatus.SCHEDULED,
+            source: pending ? "public-booking" : "admin-panel",
+            createAlert: pending
+        });
+    }
+
+    return {
+        company,
+        managerUser,
+        workersCount: workers.length,
+        servicesCount: services.length,
+        clientsCount: clients.length,
+        jobsCount: seededJobs.length,
+    };
 }
 
 async function main() {
@@ -1190,7 +1555,7 @@ async function main() {
         });
     }
 
-    for (let dayOffset = 0; dayOffset < 90; dayOffset += 1) {
+    for (let dayOffset = 0; dayOffset < FUTURE_SEED_DAYS; dayOffset += 1) {
         const date = addDays(today, dayOffset);
 
         if (date.getDay() === 0) {
@@ -1348,7 +1713,7 @@ async function main() {
         "Verify invoice details"
     ];
 
-    for (let dayOffset = 0; dayOffset < 90; dayOffset += 1) {
+    for (let dayOffset = 0; dayOffset < FUTURE_SEED_DAYS; dayOffset += 1) {
         const activityDate = addDays(today, dayOffset);
         const job = pick(futureJobs.length ? futureJobs : seededJobs, dayOffset);
         const taskSubject = pick(taskSubjects, dayOffset);
@@ -1488,8 +1853,10 @@ async function main() {
         });
     }
 
+    const secondaryDemo = await seedSecondaryDemoCompany(today, now);
+
     console.log(
-        `Seed complete: ${clients.length} clients, ${services.length} services, ${workers.length} workers, ${seededJobs.length} jobs, ${seededTasks.length} tasks.`
+        `Seed complete: primary=${clients.length} clients, ${services.length} services, ${workers.length} workers, ${seededJobs.length} jobs, ${seededTasks.length} tasks; secondary=${secondaryDemo.clientsCount} clients, ${secondaryDemo.servicesCount} services, ${secondaryDemo.workersCount} workers, ${secondaryDemo.jobsCount} jobs.`
     );
 }
 
