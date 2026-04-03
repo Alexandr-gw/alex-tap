@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.configModuleOptions = void 0;
 exports.validateEnv = validateEnv;
+const node_path_1 = require("node:path");
 const zod_1 = require("zod");
 const urlLike = zod_1.z.string().trim().url();
 const optionalCsv = zod_1.z
@@ -56,6 +57,23 @@ const testDefaults = {
     STRIPE_SECRET_KEY: 'sk_test_placeholder',
     STRIPE_WEBHOOK_SECRET: 'whsec_test_placeholder',
 };
+function resolveEnvFilePaths(nodeEnv = process.env.NODE_ENV) {
+    const normalized = typeof nodeEnv === 'string' && nodeEnv.trim().length > 0
+        ? nodeEnv.trim()
+        : undefined;
+    const paths = [];
+    if (normalized) {
+        paths.push((0, node_path_1.resolve)(process.cwd(), `.env.${normalized}.local`));
+    }
+    if (normalized !== 'test') {
+        paths.push((0, node_path_1.resolve)(process.cwd(), '.env.local'));
+    }
+    if (normalized) {
+        paths.push((0, node_path_1.resolve)(process.cwd(), `.env.${normalized}`));
+    }
+    paths.push((0, node_path_1.resolve)(process.cwd(), '.env'));
+    return [...new Set(paths)];
+}
 function validateEnv(rawEnv) {
     const env = rawEnv.NODE_ENV === 'test' || typeof rawEnv.JEST_WORKER_ID === 'string'
         ? { ...testDefaults, ...rawEnv }
@@ -75,6 +93,7 @@ function validateEnv(rawEnv) {
 }
 exports.configModuleOptions = {
     isGlobal: true,
+    envFilePath: resolveEnvFilePaths(),
     validate: validateEnv,
 };
 //# sourceMappingURL=env.validation.js.map

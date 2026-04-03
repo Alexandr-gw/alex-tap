@@ -1,3 +1,4 @@
+import { resolve } from 'node:path';
 import { z } from 'zod';
 
 const urlLike = z.string().trim().url();
@@ -67,6 +68,30 @@ const testDefaults = {
   STRIPE_WEBHOOK_SECRET: 'whsec_test_placeholder',
 } as const;
 
+function resolveEnvFilePaths(nodeEnv = process.env.NODE_ENV) {
+  const normalized = typeof nodeEnv === 'string' && nodeEnv.trim().length > 0
+    ? nodeEnv.trim()
+    : undefined;
+
+  const paths: string[] = [];
+
+  if (normalized) {
+    paths.push(resolve(process.cwd(), `.env.${normalized}.local`));
+  }
+
+  if (normalized !== 'test') {
+    paths.push(resolve(process.cwd(), '.env.local'));
+  }
+
+  if (normalized) {
+    paths.push(resolve(process.cwd(), `.env.${normalized}`));
+  }
+
+  paths.push(resolve(process.cwd(), '.env'));
+
+  return [...new Set(paths)];
+}
+
 export function validateEnv(
   rawEnv: Record<string, unknown>,
 ): Record<string, unknown> {
@@ -98,5 +123,6 @@ export function validateEnv(
 
 export const configModuleOptions = {
   isGlobal: true,
+  envFilePath: resolveEnvFilePaths(),
   validate: validateEnv,
 } as const;
