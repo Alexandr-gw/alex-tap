@@ -204,8 +204,7 @@ Typical local services:
 The repo now includes baseline deployment config for:
 
 - Vercel client hosting via [vercel.json](C:/Users/thepr/Documents/doc-dev/dev-env-compose/alex-tap/vercel.json)
-- Render API + worker services via [render.yaml](C:/Users/thepr/Documents/doc-dev/dev-env-compose/alex-tap/render.yaml)
-- Docker builds for the API, worker, and Keycloak via [Dockerfile](C:/Users/thepr/Documents/doc-dev/dev-env-compose/alex-tap/apps/server/Dockerfile), [Dockerfile.worker](C:/Users/thepr/Documents/doc-dev/dev-env-compose/alex-tap/apps/server/Dockerfile.worker), and [apps/keycloak/Dockerfile](C:/Users/thepr/Documents/doc-dev/dev-env-compose/alex-tap/apps/keycloak/Dockerfile)
+- VPS-ready Docker builds for the API, worker, and Keycloak via [Dockerfile.vps](C:/Users/thepr/Documents/doc-dev/dev-env-compose/alex-tap/apps/server/Dockerfile.vps), [Dockerfile.worker](C:/Users/thepr/Documents/doc-dev/dev-env-compose/alex-tap/apps/server/Dockerfile.worker), and [apps/keycloak/Dockerfile](C:/Users/thepr/Documents/doc-dev/dev-env-compose/alex-tap/apps/keycloak/Dockerfile)
 
 ### Assumed domains
 
@@ -230,43 +229,41 @@ Required client env vars:
 - `VITE_API_URL=https://api-staging.alex-tap.com` for staging
 - `VITE_API_URL=https://api.alex-tap.com` for production
 
-### Render
+### VPS
 
-Import [render.yaml](C:/Users/thepr/Documents/doc-dev/dev-env-compose/alex-tap/render.yaml) as a blueprint.
+Run the backend stack on your VPS with Docker or Docker Compose. The recommended container split is:
 
-This creates six services:
+- API from [Dockerfile.vps](C:/Users/thepr/Documents/doc-dev/dev-env-compose/alex-tap/apps/server/Dockerfile.vps)
+- worker from [Dockerfile.worker](C:/Users/thepr/Documents/doc-dev/dev-env-compose/alex-tap/apps/server/Dockerfile.worker)
+- Keycloak from [apps/keycloak/Dockerfile](C:/Users/thepr/Documents/doc-dev/dev-env-compose/alex-tap/apps/keycloak/Dockerfile)
 
-- `alex-tap-api-staging`
-- `alex-tap-worker-staging`
-- `alex-tap-api`
-- `alex-tap-worker`
-
-It also now creates two Keycloak services from [apps/keycloak/Dockerfile](C:/Users/thepr/Documents/doc-dev/dev-env-compose/alex-tap/apps/keycloak/Dockerfile):
-
-- `alex-tap-auth-staging`
-- `alex-tap-auth`
-
-Those Keycloak services build a custom image that already contains:
+The Keycloak image already contains:
 
 - the custom theme from [apps/keycloak-theme](C:/Users/thepr/Documents/doc-dev/dev-env-compose/alex-tap/apps/keycloak-theme)
 - the generated realm imports from [apps/server/keycloak/generated](C:/Users/thepr/Documents/doc-dev/dev-env-compose/alex-tap/apps/server/keycloak/generated)
 - a startup wrapper that selects the correct realm JSON based on `APP_ENV` / `KEYCLOAK_IMPORT_ENV`
 
-All runtime env values are intended to live in Render env groups or per-service dashboard settings, not in [render.yaml](C:/Users/thepr/Documents/doc-dev/dev-env-compose/alex-tap/render.yaml).
+Typical image builds from the repo root:
+
+```bash
+docker build -f apps/server/Dockerfile.vps -t alex-tap-api .
+docker build -f apps/server/Dockerfile.worker -t alex-tap-worker .
+docker build -f apps/keycloak/Dockerfile -t alex-tap-auth .
+```
 
 The API container runs:
 
 ```bash
-npx prisma migrate deploy && node dist/main.js
+npm run start:release
 ```
 
 The worker container runs:
 
 ```bash
-node dist/notifications/notification-worker.main.js
+npm run start:worker:prod
 ```
 
-After importing the blueprint, attach the appropriate Render env groups to each service and add any secrets there.
+On the VPS, provision Postgres, Redis, TLS termination, and all runtime secrets through your host, compose file, or secret manager.
 
 ### Auth setup notes
 
@@ -287,9 +284,9 @@ For this repo, the callback URIs are expected to be:
 
 ### First deploy checklist
 
-- attach the correct custom domains in Vercel and Render
+- attach the correct custom domains in Vercel and your VPS reverse proxy
 - create managed Postgres and Redis instances
-- set all Render secrets
+- set all API, worker, and Keycloak secrets on the VPS
 - set `VITE_API_URL` in each Vercel project
 - configure Keycloak clients with the staging and production callback/logout URLs
 - run a full staging smoke test: login, booking, payment, webhook, notifications, worker jobs

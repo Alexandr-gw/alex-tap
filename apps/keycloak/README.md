@@ -1,6 +1,6 @@
-# Keycloak Render Image
+# Keycloak Docker Image
 
-This image gives Render a single reproducible Keycloak build that already contains:
+This image gives you a reproducible Keycloak build that already contains:
 
 - the Alex Tap custom theme JAR from `apps/keycloak-theme`
 - the generated realm import JSON from `apps/server/keycloak/generated`
@@ -30,9 +30,9 @@ Supported values:
 - `staging`
 - `production` or `prod`
 
-## Recommended Render Env
+## Recommended Runtime Env
 
-For each Keycloak service on Render, set these values in a Render env group or directly in the service dashboard:
+For each Keycloak container or Compose service, set these values in your VPS env file or secret manager:
 
 - `APP_ENV=staging` or `APP_ENV=production`
 - `KEYCLOAK_IMPORT_ENV=staging` or `KEYCLOAK_IMPORT_ENV=production`
@@ -51,7 +51,7 @@ The image already defaults these runtime options:
 - `KC_PROXY_HEADERS=xforwarded`
 - `KC_HTTP_ENABLED=true`
 
-## Render Command
+## Start Command
 
 No custom start command is required. The container entrypoint will run:
 
@@ -59,4 +59,4 @@ No custom start command is required. The container entrypoint will run:
 /opt/keycloak/bin/kc.sh start --optimized --import-realm
 ```
 
-unless you explicitly override the command in Render.
+unless you explicitly override the command in Docker Compose or your container runtime.
