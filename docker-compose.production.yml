@@ -6,9 +6,9 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${APP_DB_USER}
-      POSTGRES_PASSWORD: ${APP_DB_PASSWORD}
-      POSTGRES_DB: ${APP_DB_NAME}
+      POSTGRES_USER: ${APP_DB_USER:?APP_DB_USER is required. Pass --env-file .env.production}
+      POSTGRES_PASSWORD: ${APP_DB_PASSWORD:?APP_DB_PASSWORD is required. Pass --env-file .env.production}
+      POSTGRES_DB: ${APP_DB_NAME:?APP_DB_NAME is required. Pass --env-file .env.production}
     volumes:
       - app-db-data:/var/lib/postgresql/data
     healthcheck:
@@ -33,9 +33,9 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${KEYCLOAK_DB_USER}
-      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
-      POSTGRES_DB: ${KEYCLOAK_DB_NAME}
+      POSTGRES_USER: ${KEYCLOAK_DB_USER:?KEYCLOAK_DB_USER is required. Pass --env-file .env.production}
+      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?KEYCLOAK_DB_PASSWORD is required. Pass --env-file .env.production}
+      POSTGRES_DB: ${KEYCLOAK_DB_NAME:?KEYCLOAK_DB_NAME is required. Pass --env-file .env.production}
     volumes:
       - keycloak-db-data:/var/lib/postgresql/data
     healthcheck:
