@@ -1,5 +1,6 @@
 # Run with:
-# docker compose --env-file .env.production -f docker-compose.production.yml up -d --build
+# docker compose --env-file .env.production -f docker-compose.production.yml pull
+# docker compose --env-file .env.production -f docker-compose.production.yml up -d
 
 services:
   db:
@@ -45,9 +46,7 @@ services:
       retries: 10
 
   keycloak:
-    build:
-      context: .
-      dockerfile: ./apps/keycloak/Dockerfile
+    image: gworld/docker-alex-tap:keycloak
     restart: unless-stopped
     env_file:
       - ./.env.production
@@ -58,9 +57,7 @@ services:
         condition: service_healthy
 
   api:
-    build:
-      context: .
-      dockerfile: ./apps/server/Dockerfile.vps
+    image: gworld/docker-alex-tap:api
     restart: unless-stopped
     env_file:
       - ./.env.production
@@ -81,9 +78,7 @@ services:
       start_period: 30s
 
   worker:
-    build:
-      context: .
-      dockerfile: ./apps/server/Dockerfile.worker
+    image: gworld/docker-alex-tap:worker
     restart: unless-stopped
     env_file:
       - ./.env.production
