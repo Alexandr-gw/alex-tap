@@ -1,5 +1,6 @@
 import { isAuthRefreshPath, refreshAccessSession } from "@/lib/session/refresh";
 
+const API_ORIGIN = import.meta.env.VITE_API_URL as string | undefined;
 export const API_BASE = "/server";
 
 export type ApiError = { status: number; message: string };
@@ -17,6 +18,7 @@ function hasJsonBody(init: RequestInit) {
 function buildUrl(path: string) {
     if (/^https?:\/\//i.test(path)) return path;
     const normalized = path.startsWith("/") ? path : `/${path}`;
+    if (API_ORIGIN) return `${API_ORIGIN}${normalized}`;
     if (normalized.startsWith(API_BASE)) return normalized;
     return `${API_BASE}${normalized}`;
 }
