@@ -228,7 +228,7 @@ function Details({
 export function AlertsInboxPage() {
     const [searchParams, setSearchParams] = useSearchParams();
     const alertsQuery = useAlertsList("OPEN", true);
-    const markRead = useMarkAlertRead();
+    const { mutate: markAlertRead, isPending: isMarkingRead } = useMarkAlertRead();
     const reviewJob = useReviewJob();
 
     const selectedJobId = searchParams.get("jobId");
@@ -243,6 +243,7 @@ export function AlertsInboxPage() {
     const [workerIds, setWorkerIds] = useState<string[]>([]);
     const [startValue, setStartValue] = useState("");
     const initializedAlertIdRef = useRef<string | null>(null);
+    const autoMarkedReadIdsRef = useRef<Set<string>>(new Set());
 
     useEffect(() => {
         const firstId = alertsQuery.data?.items[0]?.id;
@@ -274,8 +275,15 @@ export function AlertsInboxPage() {
             initializedAlertIdRef.current = detail.id;
         }
 
-        if (!detail.readAt) markRead.mutate(detail.id);
-    }, [detailQuery.data, markRead]);
+        if (!detail.readAt && !autoMarkedReadIdsRef.current.has(detail.id)) {
+            autoMarkedReadIdsRef.current.add(detail.id);
+            markAlertRead(detail.id, {
+                onError: () => {
+                    autoMarkedReadIdsRef.current.delete(detail.id);
+                },
+            });
+        }
+    }, [detailQuery.data, markAlertRead]);
 
     function handleError(error: unknown, fallback: string) {
         const anyError = error as { message?: string; response?: { data?: { message?: string } } };
@@ -368,7 +376,7 @@ export function AlertsInboxPage() {
                         onStartValueChange={setStartValue}
                         onSave={() => runReview(false)}
                         onConfirm={() => runReview(true)}
-                        isSaving={reviewJob.isPending || markRead.isPending}
+                        isSaving={reviewJob.isPending || isMarkingRead}
                     />
                 )}
             </section>

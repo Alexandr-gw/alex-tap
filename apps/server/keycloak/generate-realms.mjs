@@ -102,6 +102,8 @@ const realmRoles = ['admin', 'manager', 'worker', 'client'].map((name) => ({
     description: `${name} access for Alex Tap`,
 }));
 
+const loginTheme = 'alex-tap-keycloak-theme';
+
 const localUsers = [
     {
         id: '00000000-0000-0000-0000-000000000001',
@@ -217,7 +219,7 @@ function createRealm({
         loginWithEmailAllowed: true,
         duplicateEmailsAllowed: true,
         editUsernameAllowed: false,
-        loginTheme: 'keycloak-theme',
+        loginTheme,
         roles: {
             realm: realmRoles,
         },
@@ -418,6 +420,7 @@ const realms = [
             callbackUrl: `${apiBaseUrl}/auth/callback`,
             clientId: 'web-app',
             apiAudience: 'api',
+            includeUsers: true,
         }),
     })),
 ];

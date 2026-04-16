@@ -4,7 +4,7 @@ ARG KEYCLOAK_THEME_JAR=keycloak-theme-for-kc-all-other-versions.jar
 FROM node:22-bookworm-slim AS assets-builder
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends openjdk-17-jre-headless maven \
+    && apt-get install -y --no-install-recommends openjdk-17-jdk-headless maven \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /workspace
@@ -20,11 +20,18 @@ COPY apps/server ./apps/server
 COPY apps/keycloak-theme ./apps/keycloak-theme
 
 RUN npm -w apps/server run keycloak:generate-realms \
-    && npm -w apps/keycloak-theme run build-keycloak-theme
+    && npm -w apps/keycloak-theme run build-keycloak-theme \
+    && node apps/keycloak-theme/scripts/patch-keycloakify-jars.mjs
 
 FROM quay.io/keycloak/keycloak:${KEYCLOAK_VERSION} AS keycloak-builder
 
 ARG KEYCLOAK_THEME_JAR
+
+ENV KC_DB=postgres \
+    KC_HEALTH_ENABLED=true \
+    KC_METRICS_ENABLED=true \
+    KC_PROXY_HEADERS=xforwarded \
+    KC_HTTP_ENABLED=true
 
 COPY --from=assets-builder /workspace/apps/keycloak-theme/dist_keycloak/${KEYCLOAK_THEME_JAR} /opt/keycloak/providers/alex-tap-keycloak-theme.jar
 
@@ -42,7 +49,8 @@ RUN chmod 0755 /opt/keycloak/bin/alex-tap-keycloak-start.sh \
     && chown -R keycloak:keycloak /opt/keycloak/realm-imports /opt/keycloak/data/import /opt/keycloak/bin/alex-tap-keycloak-start.sh
 USER keycloak
 
-ENV KC_HEALTH_ENABLED=true \
+ENV KC_DB=postgres \
+    KC_HEALTH_ENABLED=true \
     KC_METRICS_ENABLED=true \
     KC_PROXY_HEADERS=xforwarded \
     KC_HTTP_ENABLED=true
