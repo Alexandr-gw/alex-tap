@@ -63,6 +63,16 @@ export class AuthController {
         return new URL(path, `${appBase.replace(/\/$/, '')}/`).toString();
     }
 
+    private getAuthorizationEndpoint() {
+        const configured = this.cfg.get<string>('KEYCLOAK_AUTHORIZATION_ENDPOINT')?.trim();
+        if (configured) {
+            return configured;
+        }
+
+        const issuer = this.cfg.getOrThrow<string>('KEYCLOAK_ISSUER').replace(/\/$/, '');
+        return `${issuer}/protocol/openid-connect/auth`;
+    }
+
     private beginLogin(returnTo: unknown, res: any) {
         const { codeVerifier, codeChallenge } = this.AuthService.generatePkce();
         const state = crypto.randomUUID();
@@ -82,7 +92,7 @@ export class AuthController {
         });
 
         const authorizationUrl = this.AuthService.buildAuthUrl({
-            authorizationEndpoint: this.cfg.getOrThrow<string>('KEYCLOAK_AUTHORIZATION_ENDPOINT'),
+            authorizationEndpoint: this.getAuthorizationEndpoint(),
             clientId: this.cfg.getOrThrow<string>('KEYCLOAK_CLIENT_ID'),
             redirectUri: this.cfg.getOrThrow<string>('OIDC_REDIRECT_URI'),
             challenge: codeChallenge,
