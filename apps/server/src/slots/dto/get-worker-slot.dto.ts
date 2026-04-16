@@ -1,5 +1,5 @@
 import { Transform } from 'class-transformer';
-import { IsISO8601, IsOptional, IsString, IsUUID, Validate } from 'class-validator';
+import { IsISO8601, IsNotEmpty, IsOptional, IsString, Validate } from 'class-validator';
 
 class IsoAfterConstraint {
     validate(value: string, args: any) {
@@ -24,7 +24,8 @@ export class GetWorkerSlotsDto {
     @Transform(({ value }) => new Date(value).toISOString())
     to!: string;
 
-    @IsUUID()
+    @IsString()
+    @IsNotEmpty()
     serviceId!: string;
 
     @IsString()
@@ -36,7 +37,8 @@ export class GetWorkerSlotsDayDto {
     @IsString()
     day!: string; // "YYYY-MM-DD"
 
-    @IsUUID()
+    @IsString()
+    @IsNotEmpty()
     serviceId!: string;
 
     @IsString()
@@ -52,11 +54,13 @@ export class GetPublicSlotsDayDto {
     day!: string; // "YYYY-MM-DD"
 
     @IsOptional()
-    @IsUUID()
+    @IsString()
+    @IsNotEmpty()
     serviceId?: string;
 
     @IsOptional()
-    @IsUUID()
+    @IsString()
+    @IsNotEmpty()
     workerId?: string;
 
     @IsOptional()
