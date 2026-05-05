@@ -396,6 +396,54 @@ export class JobLifecycleService {
     return this.query.mapJobDetails(updated);
   }
 
+  async deleteJob(input: {
+    companyId: string;
+    roles: string[];
+    userSub: string | null;
+    id: string;
+  }) {
+    const access = await this.access.resolveAccess(
+      input.companyId,
+      input.roles,
+      input.userSub,
+    );
+    if (!access.isManager) throw new ForbiddenException();
+
+    const job = await this.query.findDetailedJobOrThrow(
+      this.prisma,
+      input.companyId,
+      input.id,
+    );
+    const deletedAt = new Date();
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.job.update({
+        where: { id: input.id },
+        data: { deletedAt },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          companyId: input.companyId,
+          actorUserId: access.userId,
+          action: 'JOB_DELETED',
+          entityType: 'JOB',
+          entityId: input.id,
+          changes: {
+            deletedAt: deletedAt.toISOString(),
+            status: job.status,
+          },
+        },
+      });
+    });
+
+    await this.notifications.cancelJobReminders(
+      input.companyId,
+      input.id,
+      'Job deleted',
+    );
+  }
+
   async listCompanyWorkers(input: {
     companyId: string;
     userSub: string | null;

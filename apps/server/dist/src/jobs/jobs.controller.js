@@ -116,6 +116,18 @@ let JobsController = class JobsController {
             dto: body,
         });
     }
+    async remove(req, id) {
+        const companyId = req.user.companyId;
+        if (!companyId)
+            throw new common_1.BadRequestException('companyId is required');
+        await this.jobs.remove({
+            companyId,
+            roles: req.user.roles,
+            userSub: req.user.sub,
+            id,
+        });
+        return { ok: true };
+    }
     async complete(req, id) {
         const companyId = req.user.companyId;
         if (!companyId)
@@ -275,6 +287,15 @@ __decorate([
     __metadata("design:paramtypes", [Object, String, update_job_dto_1.UpdateJobDto]),
     __metadata("design:returntype", Promise)
 ], JobsController.prototype, "update", null);
+__decorate([
+    (0, common_1.Delete)(':id'),
+    (0, throttler_1.Throttle)({ default: { ttl: 60_000, limit: 20 } }),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", Promise)
+], JobsController.prototype, "remove", null);
 __decorate([
     (0, common_1.Post)(':id/complete'),
     (0, throttler_1.Throttle)({ default: { ttl: 60_000, limit: 20 } }),

@@ -88,3 +88,9 @@ export function requestJobPayment(jobId: string, input: RequestJobPaymentInput =
         body: input,
     });
 }
+
+export function deleteJob(jobId: string) {
+    return api<{ ok: true }>(`${JOBS_BASE}/${jobId}`, {
+        method: 'DELETE',
+    });
+}

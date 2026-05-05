@@ -48,7 +48,7 @@ let JobQueryService = class JobQueryService {
                 return { items: [], nextCursor: null, timezone: null };
             }
         }
-        const whereBase = { companyId };
+        const whereBase = { companyId, deletedAt: null };
         if (dto.status)
             whereBase.status = dto.status;
         if (dto.from && dto.to) {
@@ -195,6 +195,7 @@ let JobQueryService = class JobQueryService {
             where: {
                 id,
                 companyId,
+                deletedAt: null,
             },
             include: {
                 client: true,

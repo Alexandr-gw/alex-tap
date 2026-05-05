@@ -155,6 +155,12 @@ export declare class ClientsService {
         }[];
         lastCommunication: import("../notifications/notification.dto").ClientLastCommunicationDto | null;
     }>;
+    remove(input: {
+        companyId: string;
+        roles: string[];
+        userSub: string | null;
+        clientId: string;
+    }): Promise<void>;
     private normalizeClientName;
     private normalizeText;
     private summarizeWorkerNames;

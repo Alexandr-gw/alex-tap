@@ -57,6 +57,7 @@ let JobAssignmentService = class JobAssignmentService {
         const conflicting = await db.job.findFirst({
             where: {
                 companyId,
+                deletedAt: null,
                 status: {
                     in: [
                         client_1.JobStatus.PENDING_CONFIRMATION,

@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   Headers,
   HttpCode,
@@ -182,6 +183,22 @@ export class JobsController {
     });
   }
 
+  @Delete(':id')
+  @Throttle({default: {ttl: 60_000, limit: 20}})
+  async remove(@Req() req: JobsRequest, @Param('id') id: string) {
+    const companyId = req.user.companyId;
+    if (!companyId) throw new BadRequestException('companyId is required');
+
+    await this.jobs.remove({
+      companyId,
+      roles: req.user.roles,
+      userSub: req.user.sub,
+      id,
+    });
+
+    return { ok: true as const };
+  }
+
   @Post(':id/complete')
   @Throttle({default: {ttl: 60_000, limit: 20}})
   async complete(@Req() req: JobsRequest, @Param('id') id: string) {
@@ -311,5 +328,4 @@ export class JobsController {
     });
   }
 }
-
 

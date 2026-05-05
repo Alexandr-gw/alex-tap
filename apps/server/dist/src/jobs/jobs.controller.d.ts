@@ -227,6 +227,9 @@ export declare class JobsController {
         createdAt: string;
         updatedAt: string;
     }>;
+    remove(req: JobsRequest, id: string): Promise<{
+        ok: true;
+    }>;
     complete(req: JobsRequest, id: string): Promise<{
         id: string;
         jobNumber: string;

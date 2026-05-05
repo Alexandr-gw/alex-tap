@@ -6,8 +6,10 @@ type Props = {
     client: ClientDetailsDto | null;
     mode?: "create" | "edit";
     isSaving?: boolean;
+    isDeleting?: boolean;
     onClose: () => void;
     onSubmit: (input: CreateClientInput | UpdateClientInput) => Promise<void> | void;
+    onDelete?: () => Promise<void> | void;
 };
 
 type ClientFormState = {
@@ -31,8 +33,10 @@ export function EditClientDialog({
     client,
     mode = "edit",
     isSaving = false,
+    isDeleting = false,
     onClose,
     onSubmit,
+    onDelete,
 }: Props) {
     const [form, setForm] = useState<ClientFormState>(EMPTY_FORM);
 
@@ -73,78 +77,97 @@ export function EditClientDialog({
     const actionLabel = mode === "create" ? "Create client" : "Save changes";
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-[2px]">
-            <div className="w-full max-w-2xl overflow-hidden rounded-[2rem] border border-emerald-100 bg-[linear-gradient(180deg,#ffffff_0%,#f9fcff_100%)] shadow-[0_28px_80px_rgba(15,23,42,0.22)]">
-                <div className="flex items-center justify-between border-b border-emerald-100 bg-[linear-gradient(135deg,#eefbf4_0%,#eef7ff_100%)] px-6 py-5">
-                    <div>
-                        <div className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700">
-                            Clients
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/45 p-4 backdrop-blur-[2px]">
+            <div className="flex min-h-full items-start justify-center py-4 sm:items-center">
+                <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-2xl flex-col overflow-hidden rounded-[2rem] border border-emerald-100 bg-[linear-gradient(180deg,#ffffff_0%,#f9fcff_100%)] shadow-[0_28px_80px_rgba(15,23,42,0.22)]">
+                    <div className="flex items-center justify-between border-b border-emerald-100 bg-[linear-gradient(135deg,#eefbf4_0%,#eef7ff_100%)] px-6 py-5">
+                        <div>
+                            <div className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700">
+                                Clients
+                            </div>
+                            <h2 className="mt-2 text-xl font-semibold text-slate-900">{title}</h2>
+                            <p className="mt-1 text-sm text-slate-500">{subtitle}</p>
                         </div>
-                        <h2 className="mt-2 text-xl font-semibold text-slate-900">{title}</h2>
-                        <p className="mt-1 text-sm text-slate-500">{subtitle}</p>
-                    </div>
 
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="rounded-xl border border-sky-100 bg-white px-3 py-2 text-sm font-medium text-slate-600 hover:border-emerald-200 hover:bg-sky-50"
-                    >
-                        Close
-                    </button>
-                </div>
-
-                <form onSubmit={handleSubmit} className="space-y-5 p-6">
-                    <div className="grid gap-4 sm:grid-cols-2">
-                        <Field
-                            label="Name"
-                            value={form.name}
-                            onChange={(value) => setForm((prev) => ({ ...prev, name: value }))}
-                            required
-                        />
-                        <Field
-                            label="Phone"
-                            value={form.phone}
-                            onChange={(value) => setForm((prev) => ({ ...prev, phone: value }))}
-                        />
-                        <Field
-                            label="Email"
-                            value={form.email}
-                            onChange={(value) => setForm((prev) => ({ ...prev, email: value }))}
-                        />
-                        <Field
-                            label="Address"
-                            value={form.address}
-                            onChange={(value) => setForm((prev) => ({ ...prev, address: value }))}
-                        />
-                    </div>
-
-                    <div>
-                        <label className="text-sm font-medium text-slate-700">Internal notes</label>
-                        <textarea
-                            value={form.internalNotes}
-                            onChange={(e) => setForm((prev) => ({ ...prev, internalNotes: e.target.value }))}
-                            rows={5}
-                            className="mt-2 w-full rounded-2xl border border-sky-100 bg-white p-3 text-sm outline-none focus:border-emerald-300"
-                        />
-                    </div>
-
-                    <div className="flex justify-end gap-3 border-t border-emerald-100 pt-5">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="rounded-xl border border-sky-100 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:border-emerald-200 hover:bg-sky-50"
+                            className="rounded-xl border border-sky-100 bg-white px-3 py-2 text-sm font-medium text-slate-600 hover:border-emerald-200 hover:bg-sky-50"
                         >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={isSaving || !form.name.trim()}
-                            className="rounded-xl border border-emerald-300 bg-[linear-gradient(135deg,#41be7f_0%,#5ea9f0_100%)] px-4 py-2 text-sm font-medium text-white hover:border-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                            {isSaving ? "Saving..." : actionLabel}
+                            Close
                         </button>
                     </div>
-                </form>
+
+                    <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+                        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-6">
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <Field
+                                    label="Name"
+                                    value={form.name}
+                                    onChange={(value) => setForm((prev) => ({ ...prev, name: value }))}
+                                    required
+                                />
+                                <Field
+                                    label="Phone"
+                                    value={form.phone}
+                                    onChange={(value) => setForm((prev) => ({ ...prev, phone: value }))}
+                                />
+                                <Field
+                                    label="Email"
+                                    value={form.email}
+                                    onChange={(value) => setForm((prev) => ({ ...prev, email: value }))}
+                                />
+                                <Field
+                                    label="Address"
+                                    value={form.address}
+                                    onChange={(value) => setForm((prev) => ({ ...prev, address: value }))}
+                                />
+                            </div>
+
+                            <div>
+                                <label className="text-sm font-medium text-slate-700">Internal notes</label>
+                                <textarea
+                                    value={form.internalNotes}
+                                    onChange={(e) => setForm((prev) => ({ ...prev, internalNotes: e.target.value }))}
+                                    rows={5}
+                                    className="mt-2 w-full rounded-2xl border border-sky-100 bg-white p-3 text-sm outline-none focus:border-emerald-300"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex items-center justify-between border-t border-emerald-100 px-6 py-5">
+                            <div>
+                                {mode === "edit" && onDelete ? (
+                                    <button
+                                        type="button"
+                                        onClick={onDelete}
+                                        disabled={isSaving || isDeleting}
+                                        className="rounded-xl border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        {isDeleting ? "Deleting..." : "Delete client"}
+                                    </button>
+                                ) : null}
+                            </div>
+
+                            <div className="flex justify-end gap-3">
+                                <button
+                                    type="button"
+                                    onClick={onClose}
+                                    className="rounded-xl border border-sky-100 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:border-emerald-200 hover:bg-sky-50"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={isSaving || isDeleting || !form.name.trim()}
+                                    className="rounded-xl border border-emerald-300 bg-[linear-gradient(135deg,#41be7f_0%,#5ea9f0_100%)] px-4 py-2 text-sm font-medium text-white hover:border-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    {isSaving ? "Saving..." : actionLabel}
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
     );

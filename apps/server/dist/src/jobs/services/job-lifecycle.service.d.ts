@@ -276,6 +276,12 @@ export declare class JobLifecycleService {
         createdAt: string;
         updatedAt: string;
     }>;
+    deleteJob(input: {
+        companyId: string;
+        roles: string[];
+        userSub: string | null;
+        id: string;
+    }): Promise<void>;
     listCompanyWorkers(input: {
         companyId: string;
         userSub: string | null;

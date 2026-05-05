@@ -366,6 +366,54 @@ let ClientsService = class ClientsService {
             clientId: input.clientId,
         });
     }
+    async remove(input) {
+        const actor = await this.requireManager(input.companyId, input.roles, input.userSub);
+        const existing = await this.prisma.clientProfile.findFirst({
+            where: {
+                id: input.clientId,
+                companyId: input.companyId,
+                deletedAt: null,
+            },
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                phone: true,
+                address: true,
+            },
+        });
+        if (!existing) {
+            throw new common_1.NotFoundException('Client not found');
+        }
+        const deletedAt = new Date();
+        await this.prisma.$transaction(async (tx) => {
+            await tx.task.updateMany({
+                where: {
+                    companyId: input.companyId,
+                    customerId: input.clientId,
+                },
+                data: {
+                    customerId: null,
+                },
+            });
+            await tx.clientProfile.update({
+                where: { id: input.clientId },
+                data: { deletedAt },
+            });
+            await this.audit.record({
+                db: tx,
+                companyId: input.companyId,
+                actorUserId: actor.userId,
+                entityType: 'client',
+                entityId: input.clientId,
+                action: 'CLIENT_DELETED',
+                changes: {
+                    before: existing,
+                    deletedAt: deletedAt.toISOString(),
+                },
+            });
+        });
+    }
     normalizeClientName(dto) {
         const explicitName = dto.name?.trim();
         if (explicitName)
