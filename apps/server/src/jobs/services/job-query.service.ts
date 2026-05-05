@@ -48,7 +48,7 @@ export class JobQueryService {
       }
     }
 
-    const whereBase: Prisma.JobWhereInput = { companyId };
+    const whereBase: Prisma.JobWhereInput = { companyId, deletedAt: null };
 
     if (dto.status) whereBase.status = dto.status;
     if (dto.from && dto.to) {
@@ -208,6 +208,7 @@ export class JobQueryService {
       where: {
         id,
         companyId,
+        deletedAt: null,
       },
       include: {
         client: true,

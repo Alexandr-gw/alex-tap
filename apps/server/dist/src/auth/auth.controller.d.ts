@@ -9,6 +9,7 @@ export declare class AuthController {
     private getCookieOptions;
     private normalizeReturnTo;
     private buildAppRedirect;
+    private getAuthorizationEndpoint;
     private beginLogin;
     login(req: any, res: any): any;
     loginUrl(req: any, res: any): any;

@@ -3,6 +3,7 @@ import {
     cancelJob,
     completeJob,
     createJobComment,
+    deleteJob,
     getJob,
     listJobs,
     reopenJob,
@@ -170,6 +171,21 @@ export function useRequestJobPayment(jobId: string) {
         mutationFn: (input: RequestJobPaymentInput = {}) => requestJobPayment(jobId, input),
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ['job', jobId] });
+        },
+    });
+}
+
+export function useDeleteJob(jobId: string) {
+    const qc = useQueryClient();
+
+    return useMutation({
+        mutationFn: () => deleteJob(jobId),
+        onSuccess: () => {
+            qc.removeQueries({ queryKey: ['job', jobId] });
+            qc.invalidateQueries({ queryKey: ['jobs'] });
+            qc.invalidateQueries({ queryKey: activityQueryKeys.all });
+            qc.invalidateQueries({ queryKey: activityQueryKeys.job(jobId) });
+            qc.invalidateQueries({ queryKey: notificationQueryKeys.job(jobId) });
         },
     });
 }

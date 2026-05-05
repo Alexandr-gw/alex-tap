@@ -462,6 +462,7 @@ let ScheduleService = class ScheduleService {
         const conflicting = await db.job.findFirst({
             where: {
                 companyId,
+                deletedAt: null,
                 ...(excludeJobId ? { id: { not: excludeJobId } } : {}),
                 status: {
                     in: [

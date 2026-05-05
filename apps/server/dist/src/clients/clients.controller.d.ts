@@ -136,5 +136,8 @@ export declare class ClientsController {
         }[];
         lastCommunication: import("../notifications/notification.dto").ClientLastCommunicationDto | null;
     }>;
+    remove(req: ClientsRequest, id: string): Promise<{
+        ok: true;
+    }>;
 }
 export {};

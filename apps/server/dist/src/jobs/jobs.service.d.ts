@@ -398,6 +398,12 @@ export declare class JobsService {
         createdAt: string;
         updatedAt: string;
     }>;
+    remove(input: {
+        companyId: string;
+        roles: string[];
+        userSub: string | null;
+        id: string;
+    }): Promise<void>;
     createComment(input: {
         companyId: string;
         roles: string[];

@@ -111,173 +111,7 @@ export class JobsService {
     userSub: string | null;
     dto: ListJobsDto;
   }) {
-    const { companyId, roles, userSub, dto } = input;
-
-    const isManager = hasAnyRole(roles, ['admin', 'manager']);
-    const isWorker = hasAnyRole(roles, ['worker']);
-    const isClient = hasAnyRole(roles, ['client']);
-
-    let workerScopeId: string | undefined;
-    if (!isManager && isWorker) {
-      const worker = await this.prisma.worker.findFirst({
-        where: { companyId, user: { sub: userSub ?? '' } },
-        select: { id: true },
-      });
-      workerScopeId = worker?.id;
-      if (!workerScopeId)
-        return { items: [], nextCursor: null, timezone: null };
-    }
-
-    const whereBase: Prisma.JobWhereInput = { companyId };
-
-    if (dto.status) whereBase.status = dto.status;
-    if (dto.from && dto.to) {
-      whereBase.AND = [
-        { startAt: { lt: parseISO(dto.to) } },
-        { endAt: { gt: parseISO(dto.from) } },
-      ];
-    } else {
-      if (dto.from)
-        whereBase.startAt = {
-          ...(whereBase.startAt as object),
-          gte: parseISO(dto.from),
-        };
-      if (dto.to)
-        whereBase.startAt = {
-          ...(whereBase.startAt as object),
-          lt: parseISO(dto.to),
-        };
-    }
-
-    const appendWorkerScope = (workerId: string) => {
-      const nextAnd = Array.isArray(whereBase.AND)
-        ? [...whereBase.AND]
-        : whereBase.AND
-          ? [whereBase.AND]
-          : [];
-
-      nextAnd.push({
-        OR: [{ workerId }, { assignments: { some: { workerId } } }],
-      });
-
-      whereBase.AND = nextAnd;
-    };
-
-    if (isManager) {
-      if (dto.workerId) appendWorkerScope(dto.workerId);
-      if (dto.clientEmail) whereBase.client = { email: dto.clientEmail };
-    } else if (isWorker) {
-      appendWorkerScope(workerScopeId!);
-    } else if (isClient) {
-      if (dto.clientEmail) {
-        whereBase.client = { email: dto.clientEmail };
-      } else {
-        return { items: [], nextCursor: null, timezone: null };
-      }
-    } else {
-      throw new ForbiddenException();
-    }
-
-    const [company, items] = await Promise.all([
-      this.prisma.company.findUnique({
-        where: { id: companyId },
-        select: { timezone: true },
-      }),
-      this.prisma.job.findMany({
-        where: whereBase,
-        orderBy: { startAt: 'asc' },
-        take:
-          Math.min(
-            Math.max(dto.take ?? (dto.from && dto.to ? 500 : 20), 1),
-            500,
-          ) + 1,
-        cursor: dto.cursor ? { id: dto.cursor } : undefined,
-        skip: dto.cursor ? 1 : 0,
-        include: {
-          client: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              phone: true,
-              address: true,
-            },
-          },
-          worker: {
-            select: {
-              id: true,
-              displayName: true,
-              colorTag: true,
-              phone: true,
-            },
-          },
-          assignments: {
-            include: {
-              worker: {
-                select: {
-                  id: true,
-                  displayName: true,
-                  colorTag: true,
-                  phone: true,
-                },
-              },
-            },
-            orderBy: { createdAt: 'asc' },
-          },
-          lineItems: {
-            include: {
-              service: {
-                select: {
-                  id: true,
-                  name: true,
-                  durationMins: true,
-                },
-              },
-            },
-            orderBy: { id: 'asc' },
-          },
-        },
-      }),
-    ]);
-
-    const take = Math.min(
-      Math.max(dto.take ?? (dto.from && dto.to ? 500 : 20), 1),
-      500,
-    );
-    const hasMore = items.length > take;
-    const trimmed = hasMore ? items.slice(0, take) : items;
-    const nextCursor = hasMore ? trimmed[trimmed.length - 1].id : null;
-
-    return {
-      items: trimmed.map((job) => {
-        const assignedWorkers = this.mapAssignedWorkers(job);
-
-        return {
-          id: job.id,
-          workerId: job.workerId,
-          workerIds: assignedWorkers.map((worker) => worker.id),
-          startAt: job.startAt.toISOString(),
-          endAt: job.endAt.toISOString(),
-          status: job.status,
-          location: job.location ?? job.client.address,
-          clientName: job.client.name,
-          clientEmail: job.client.email,
-          totalCents: job.totalCents,
-          currency: job.currency,
-          serviceName:
-            job.title ??
-            job.lineItems[0]?.service?.name ??
-            job.lineItems[0]?.description ??
-            'Job',
-          workerName:
-            job.worker?.displayName ?? assignedWorkers[0]?.name ?? null,
-          colorTag:
-            job.worker?.colorTag ?? assignedWorkers[0]?.colorTag ?? null,
-        };
-      }),
-      nextCursor,
-      timezone: company?.timezone ?? null,
-    };
+    return this.jobQuery.findManyForUser(input);
   }
   async findOneForUser(input: {
     companyId: string;
@@ -350,6 +184,15 @@ export class JobsService {
     id: string;
   }) {
     return this.jobLifecycle.reopenJob(input);
+  }
+
+  async remove(input: {
+    companyId: string;
+    roles: string[];
+    userSub: string | null;
+    id: string;
+  }) {
+    return this.jobLifecycle.deleteJob(input);
   }
 
   async createComment(input: {
@@ -1059,7 +902,6 @@ export class JobsService {
     return this.jobDraft.resolveClientName(name, firstName, lastName);
   }
 }
-
 
 
 

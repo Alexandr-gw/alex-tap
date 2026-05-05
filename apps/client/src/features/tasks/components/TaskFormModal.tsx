@@ -193,9 +193,10 @@ export function TaskFormModal({
     const isDeleting = deleteMutation.isPending;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-[2px]">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/45 p-4 backdrop-blur-[2px]">
+            <div className="flex min-h-full items-start justify-center py-4 sm:items-center">
             <div className="w-full max-w-2xl overflow-hidden rounded-[2rem] border border-emerald-100 bg-[linear-gradient(180deg,#ffffff_0%,#f9fcff_100%)] shadow-[0_28px_80px_rgba(15,23,42,0.22)]">
-                <form onSubmit={handleSubmit} className="flex flex-col">
+                <form onSubmit={handleSubmit} className="flex max-h-[calc(100vh-2rem)] flex-col">
                     <div className="border-b border-emerald-100 bg-[linear-gradient(135deg,#eefbf4_0%,#eef7ff_100%)] px-6 py-5">
                         <div className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700">
                             Tasks
@@ -205,7 +206,7 @@ export function TaskFormModal({
                         </h2>
                     </div>
 
-                    <div className="space-y-5 px-6 py-5">
+                    <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5">
                         {errors.form ? (
                             <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
                                 {errors.form}
@@ -363,7 +364,7 @@ export function TaskFormModal({
                         </div>
                     </div>
 
-                    <div className="flex items-center justify-between border-t border-emerald-100 px-6 py-4">
+                    <div className="flex shrink-0 items-center justify-between border-t border-emerald-100 px-6 py-4">
                         <div>
                             {mode === "edit" ? (
                                 <button
@@ -396,6 +397,7 @@ export function TaskFormModal({
                         </div>
                     </div>
                 </form>
+            </div>
             </div>
         </div>
     );

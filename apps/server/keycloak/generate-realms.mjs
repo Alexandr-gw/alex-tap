@@ -80,6 +80,17 @@ function valueOrFallback(name, fallback) {
     return typeof value === 'string' && value.trim().length > 0 ? value.trim() : fallback;
 }
 
+function valueFromFirst(names, fallback = '') {
+    for (const name of names) {
+        const value = valueOrFallback(name, '');
+        if (value) {
+            return value;
+        }
+    }
+
+    return fallback;
+}
+
 function parseOrigin(url, fallback) {
     try {
         return new URL(url).origin;
@@ -192,6 +203,88 @@ const localUsers = [
     ],
 }));
 
+function createSocialIdentityConfig({
+    envPrefixes,
+    includeGenericFallback = false,
+}) {
+    const envNames = (provider, field) => [
+        ...envPrefixes.map((prefix) => `KEYCLOAK_${prefix}_${provider}_${field}`),
+        ...(includeGenericFallback ? [`KEYCLOAK_${provider}_${field}`] : []),
+    ];
+
+    const identityProviders = [];
+    const identityProviderMappers = [];
+
+    const googleClientId = valueFromFirst(envNames('GOOGLE', 'CLIENT_ID'));
+    const googleClientSecret = valueFromFirst(envNames('GOOGLE', 'CLIENT_SECRET'));
+    if (googleClientId && googleClientSecret) {
+        identityProviders.push({
+            alias: 'google',
+            displayName: 'Google',
+            providerId: 'google',
+            enabled: true,
+            updateProfileFirstLoginMode: 'off',
+            trustEmail: true,
+            storeToken: false,
+            addReadTokenRoleOnCreate: false,
+            authenticateByDefault: false,
+            linkOnly: false,
+            hideOnLogin: false,
+            firstBrokerLoginFlowAlias: 'first broker login',
+            config: {
+                syncMode: 'LEGACY',
+                clientId: googleClientId,
+                clientSecret: googleClientSecret,
+            },
+        });
+        identityProviderMappers.push({
+            name: 'google-grant-manager-role',
+            identityProviderAlias: 'google',
+            identityProviderMapper: 'oidc-hardcoded-role-idp-mapper',
+            config: {
+                role: 'manager',
+            },
+        });
+    }
+
+    const githubClientId = valueFromFirst(envNames('GITHUB', 'CLIENT_ID'));
+    const githubClientSecret = valueFromFirst(envNames('GITHUB', 'CLIENT_SECRET'));
+    if (githubClientId && githubClientSecret) {
+        identityProviders.push({
+            alias: 'github',
+            displayName: 'GitHub',
+            providerId: 'github',
+            enabled: true,
+            updateProfileFirstLoginMode: 'off',
+            trustEmail: true,
+            storeToken: false,
+            addReadTokenRoleOnCreate: false,
+            authenticateByDefault: false,
+            linkOnly: false,
+            hideOnLogin: false,
+            firstBrokerLoginFlowAlias: 'first broker login',
+            config: {
+                syncMode: 'LEGACY',
+                clientId: githubClientId,
+                clientSecret: githubClientSecret,
+            },
+        });
+        identityProviderMappers.push({
+            name: 'github-grant-manager-role',
+            identityProviderAlias: 'github',
+            identityProviderMapper: 'oidc-hardcoded-role-idp-mapper',
+            config: {
+                role: 'manager',
+            },
+        });
+    }
+
+    return {
+        identityProviders,
+        identityProviderMappers,
+    };
+}
+
 function createRealm({
     realm,
     displayName,
@@ -297,72 +390,9 @@ const localApiAudience = valueOrFallback('API_AUDIENCE', 'api');
 const notifyFromEmail = parseSmtpFromAddress(valueOrFallback('NOTIFY_FROM_EMAIL', ''), 'alex-tap.local');
 const notifyDomain = notifyFromEmail.split('@')[1] ?? 'alex-tap.local';
 
-const localIdentityProviders = [];
-const localIdentityProviderMappers = [];
-
-const googleClientId = valueOrFallback('KEYCLOAK_LOCAL_GOOGLE_CLIENT_ID', '');
-const googleClientSecret = valueOrFallback('KEYCLOAK_LOCAL_GOOGLE_CLIENT_SECRET', '');
-if (googleClientId && googleClientSecret) {
-    localIdentityProviders.push({
-        alias: 'google',
-        displayName: 'Google',
-        providerId: 'google',
-        enabled: true,
-        updateProfileFirstLoginMode: 'off',
-        trustEmail: true,
-        storeToken: false,
-        addReadTokenRoleOnCreate: false,
-        authenticateByDefault: false,
-        linkOnly: false,
-        hideOnLogin: false,
-        firstBrokerLoginFlowAlias: 'first broker login',
-        config: {
-            syncMode: 'LEGACY',
-            clientId: googleClientId,
-            clientSecret: googleClientSecret,
-        },
-    });
-    localIdentityProviderMappers.push({
-        name: 'google-grant-manager-role',
-        identityProviderAlias: 'google',
-        identityProviderMapper: 'oidc-hardcoded-role-idp-mapper',
-        config: {
-            role: 'manager',
-        },
-    });
-}
-
-const githubClientId = valueOrFallback('KEYCLOAK_LOCAL_GITHUB_CLIENT_ID', '');
-const githubClientSecret = valueOrFallback('KEYCLOAK_LOCAL_GITHUB_CLIENT_SECRET', '');
-if (githubClientId && githubClientSecret) {
-    localIdentityProviders.push({
-        alias: 'github',
-        displayName: 'GitHub',
-        providerId: 'github',
-        enabled: true,
-        updateProfileFirstLoginMode: 'off',
-        trustEmail: true,
-        storeToken: false,
-        addReadTokenRoleOnCreate: false,
-        authenticateByDefault: false,
-        linkOnly: false,
-        hideOnLogin: false,
-        firstBrokerLoginFlowAlias: 'first broker login',
-        config: {
-            syncMode: 'LEGACY',
-            clientId: githubClientId,
-            clientSecret: githubClientSecret,
-        },
-    });
-    localIdentityProviderMappers.push({
-        name: 'github-grant-manager-role',
-        identityProviderAlias: 'github',
-        identityProviderMapper: 'oidc-hardcoded-role-idp-mapper',
-        config: {
-            role: 'manager',
-        },
-    });
-}
+const localSocialIdentityConfig = createSocialIdentityConfig({
+    envPrefixes: ['LOCAL'],
+});
 
 // Keep hosted realm metadata in sync with the deployed domains and realm names.
 const hostedRealmTargets = [
@@ -406,23 +436,32 @@ const realms = [
                 starttls: 'false',
                 auth: 'false',
             },
-            identityProviders: localIdentityProviders,
-            identityProviderMappers: localIdentityProviderMappers,
+            identityProviders: localSocialIdentityConfig.identityProviders,
+            identityProviderMappers: localSocialIdentityConfig.identityProviderMappers,
         }),
     },
-    ...hostedRealmTargets.map(({ directory, filename, realm, displayName, appBaseUrl, apiBaseUrl }) => ({
-        directory,
-        filename,
-        json: createRealm({
-            realm,
-            displayName,
-            appBaseUrl,
-            callbackUrl: `${apiBaseUrl}/auth/callback`,
-            clientId: 'web-app',
-            apiAudience: 'api',
-            includeUsers: true,
-        }),
-    })),
+    ...hostedRealmTargets.map(({ directory, filename, realm, displayName, appBaseUrl, apiBaseUrl }) => {
+        const socialIdentityConfig = createSocialIdentityConfig({
+            envPrefixes: [directory.toUpperCase()],
+            includeGenericFallback: directory === 'prod',
+        });
+
+        return {
+            directory,
+            filename,
+            json: createRealm({
+                realm,
+                displayName,
+                appBaseUrl,
+                callbackUrl: `${apiBaseUrl}/auth/callback`,
+                clientId: 'web-app',
+                apiAudience: 'api',
+                includeUsers: true,
+                identityProviders: socialIdentityConfig.identityProviders,
+                identityProviderMappers: socialIdentityConfig.identityProviderMappers,
+            }),
+        };
+    }),
 ];
 
 for (const realm of realms) {

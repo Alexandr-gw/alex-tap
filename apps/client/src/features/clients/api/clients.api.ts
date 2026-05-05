@@ -40,3 +40,9 @@ export function updateClient(
         body: input,
     });
 }
+
+export function deleteClient(clientId: string): Promise<{ ok: true }> {
+    return api<{ ok: true }>(`/api/v1/clients/${clientId}`, {
+        method: "DELETE",
+    });
+}

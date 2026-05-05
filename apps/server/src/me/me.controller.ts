@@ -58,7 +58,7 @@ export class MeController {
             select: { id: true, sub: true, email: true, name: true },
         });
 
-        await this.ensureDemoMembership(user.id, rolesFromToken);
+        await this.ensureDemoMembership(user.id);
 
         const memberships = await this.prisma.membership.findMany({
             where: { userId: user.id },
@@ -97,17 +97,14 @@ export class MeController {
         };
     }
 
-    private async ensureDemoMembership(userId: string, rolesFromToken: string[]) {
+    private async ensureDemoMembership(userId: string) {
         const demoAutoProvisionEnabled =
             this.cfg.get<string>('PUBLIC_DEMO_AUTO_PROVISION')?.toLowerCase() !== 'false';
         const demoCompanyId =
             this.cfg.get<string>('MANAGER_AUTO_MEMBERSHIP_COMPANY_ID') ??
             this.cfg.get<string>('PUBLIC_DEMO_COMPANY_ID');
-        const canAutoProvisionManager = rolesFromToken.some(
-            (role) => role === 'manager' || role === 'admin',
-        );
 
-        if (!demoAutoProvisionEnabled || !demoCompanyId || !canAutoProvisionManager) {
+        if (!demoAutoProvisionEnabled || !demoCompanyId) {
             return;
         }
 

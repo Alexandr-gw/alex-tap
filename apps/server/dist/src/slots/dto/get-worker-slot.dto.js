@@ -43,7 +43,8 @@ __decorate([
     __metadata("design:type", String)
 ], GetWorkerSlotsDto.prototype, "to", void 0);
 __decorate([
-    (0, class_validator_1.IsUUID)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsNotEmpty)(),
     __metadata("design:type", String)
 ], GetWorkerSlotsDto.prototype, "serviceId", void 0);
 __decorate([
@@ -62,7 +63,8 @@ __decorate([
     __metadata("design:type", String)
 ], GetWorkerSlotsDayDto.prototype, "day", void 0);
 __decorate([
-    (0, class_validator_1.IsUUID)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsNotEmpty)(),
     __metadata("design:type", String)
 ], GetWorkerSlotsDayDto.prototype, "serviceId", void 0);
 __decorate([
@@ -88,12 +90,14 @@ __decorate([
 ], GetPublicSlotsDayDto.prototype, "day", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsUUID)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsNotEmpty)(),
     __metadata("design:type", String)
 ], GetPublicSlotsDayDto.prototype, "serviceId", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsUUID)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsNotEmpty)(),
     __metadata("design:type", String)
 ], GetPublicSlotsDayDto.prototype, "workerId", void 0);
 __decorate([

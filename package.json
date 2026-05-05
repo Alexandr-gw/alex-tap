@@ -11,7 +11,18 @@
     "typecheck": "npm -w apps/client run typecheck && npm -w apps/server run typecheck",
     "lint": "npm -w apps/client run lint && npm -w apps/server run lint",
     "build": "npm -w apps/server run build && npm -w apps/client run build",
-    "test": "npm -w apps/server run test && npm -w apps/client run test"
+    "test": "npm -w apps/server run test && npm -w apps/client run test",
+    "k6:public-read": "k6 run perf/k6/public-read.js",
+    "k6:dashboard-read": "k6 run perf/k6/dashboard-read.js",
+    "k6:write-light": "k6 run perf/k6/write-light.js",
+    "k6:jobs-clients-crud": "k6 run perf/k6/jobs-clients-crud.js",
+    "k6:site": "k6 run perf/k6/site-smoke.js",
+    "k6:prod:site": "TARGET_ENV=prod k6 run perf/k6/site-smoke.js",
+    "k6:prod:conservative-read": "TARGET_ENV=prod k6 run perf/k6/prod-conservative-read.js",
+    "k6:prod:public-read": "TARGET_ENV=prod k6 run perf/k6/public-read.js",
+    "k6:prod:dashboard-read": "TARGET_ENV=prod k6 run perf/k6/dashboard-read.js",
+    "k6:prod:write-light": "TARGET_ENV=prod k6 run perf/k6/write-light.js",
+    "k6:prod:jobs-clients-crud": "TARGET_ENV=prod k6 run perf/k6/jobs-clients-crud.js"
   },
   "devDependencies": {
     "typescript": "^5.4.0"

@@ -114,3 +114,37 @@ npm run start:worker
 ```
 
 The API and notification worker will both emit structured JSON logs to stdout/stderr.
+
+## Keycloak Realm Generation
+
+Generate realm imports with:
+
+```bash
+npm run keycloak:generate-realms
+```
+
+Social identity providers are included only when both client id and client secret are present in the generation environment.
+
+Supported variables:
+
+- `KEYCLOAK_LOCAL_GOOGLE_CLIENT_ID`
+- `KEYCLOAK_LOCAL_GOOGLE_CLIENT_SECRET`
+- `KEYCLOAK_LOCAL_GITHUB_CLIENT_ID`
+- `KEYCLOAK_LOCAL_GITHUB_CLIENT_SECRET`
+- `KEYCLOAK_STAGING_GOOGLE_CLIENT_ID`
+- `KEYCLOAK_STAGING_GOOGLE_CLIENT_SECRET`
+- `KEYCLOAK_STAGING_GITHUB_CLIENT_ID`
+- `KEYCLOAK_STAGING_GITHUB_CLIENT_SECRET`
+- `KEYCLOAK_PROD_GOOGLE_CLIENT_ID`
+- `KEYCLOAK_PROD_GOOGLE_CLIENT_SECRET`
+- `KEYCLOAK_PROD_GITHUB_CLIENT_ID`
+- `KEYCLOAK_PROD_GITHUB_CLIENT_SECRET`
+
+Production generation also accepts generic fallback names:
+
+- `KEYCLOAK_GOOGLE_CLIENT_ID`
+- `KEYCLOAK_GOOGLE_CLIENT_SECRET`
+- `KEYCLOAK_GITHUB_CLIENT_ID`
+- `KEYCLOAK_GITHUB_CLIENT_SECRET`
+
+Realm imports only apply to newly created realms. Existing Keycloak realms need an idempotent `kcadm.sh` update or a reset/reimport.

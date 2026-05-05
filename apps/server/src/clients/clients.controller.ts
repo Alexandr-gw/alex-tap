@@ -2,6 +2,7 @@
     BadRequestException,
     Body,
     Controller,
+    Delete,
     Get,
     Param,
     Patch,
@@ -92,5 +93,20 @@ export class ClientsController {
             clientId: id,
             dto: body,
         });
+    }
+
+    @Delete(':id')
+    async remove(@Req() req: ClientsRequest, @Param('id') id: string) {
+        const companyId = req.user.companyId;
+        if (!companyId) throw new BadRequestException('companyId is required');
+
+        await this.clients.remove({
+            companyId,
+            roles: req.user.roles,
+            userSub: req.user.sub,
+            clientId: id,
+        });
+
+        return { ok: true as const };
     }
 }

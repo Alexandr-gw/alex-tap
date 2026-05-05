@@ -26,7 +26,7 @@ const envSchema = zod_1.z.object({
     KEYCLOAK_JWKS_URI: urlLike,
     KEYCLOAK_CLIENT_ID: zod_1.z.string().trim().min(1),
     API_AUDIENCE: zod_1.z.string().trim().min(1),
-    KEYCLOAK_AUTHORIZATION_ENDPOINT: urlLike,
+    KEYCLOAK_AUTHORIZATION_ENDPOINT: urlLike.optional(),
     KEYCLOAK_TOKEN_ENDPOINT: urlLike,
     KEYCLOAK_LOGOUT_ENDPOINT: urlLike,
     OIDC_REDIRECT_URI: urlLike,

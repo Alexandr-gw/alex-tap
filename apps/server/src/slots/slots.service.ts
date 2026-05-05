@@ -103,6 +103,7 @@ export class SlotsService {
             db.job.findMany({
                 where: {
                     companyId: company.id,
+                    deletedAt: null,
                     workerId: null,
                     status: { in: [...this.BLOCKING_STATUSES] },
                     startAt: { lt: toUtc },
@@ -395,6 +396,7 @@ export class SlotsService {
             db.job.findMany({
                 where: {
                     workerId,
+                    deletedAt: null,
                     status: { in: [...this.BLOCKING_STATUSES] },
                     startAt: { lt: to },
                     endAt: { gt: from },

@@ -89,6 +89,7 @@ export class JobAssignmentService {
     const conflicting = await db.job.findFirst({
       where: {
         companyId,
+        deletedAt: null,
         status: {
           in: [
             JobStatus.PENDING_CONFIRMATION,
